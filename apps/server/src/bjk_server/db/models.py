@@ -10,6 +10,7 @@ from sqlalchemy import (
     CheckConstraint,
     Date,
     DateTime,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -346,3 +347,88 @@ class JobRun(Base):
     finished_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     summary: Mapped[dict[str, Any]] = mapped_column(server_default=sql_text("'{}'::jsonb"))
     error: Mapped[str | None] = mapped_column(Text)
+
+
+class ExternalIndicator(Base):
+    """외부 지표 값과 위험도 (F-EXT). 회사 공통 데이터라 RLS를 걸지 않는다."""
+
+    __tablename__ = "external_indicators"
+    __table_args__ = (
+        UniqueConstraint("code", "as_of"),
+        CheckConstraint("series IN ('lead', 'price')", name="series"),
+    )
+
+    id: Mapped[uuid.UUID] = _id()
+    code: Mapped[str] = mapped_column(String(32))
+    name: Mapped[str] = mapped_column(String(100))
+    series: Mapped[str] = mapped_column(String(8))
+    as_of: Mapped[date] = mapped_column(Date)
+    value: Mapped[float] = mapped_column(Float)
+    # 위험도는 해당 날짜까지의 값으로 계산한다.
+    z: Mapped[float | None] = mapped_column(Float)
+    r: Mapped[float] = mapped_column(Float, server_default="0")
+    level: Mapped[str] = mapped_column(String(8), server_default="normal")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class PartMetrics(Base):
+    """부품별 근거 지표의 날짜별 스냅샷 (F-ANAL). 화면과 검토는 최신 것만 읽는다."""
+
+    __tablename__ = "part_metrics"
+    __table_args__ = (
+        UniqueConstraint("part_id", "computed_on"),
+        Index("ix_part_metrics_company_computed_on", "company_id", "computed_on"),
+    )
+
+    id: Mapped[uuid.UUID] = _id()
+    company_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("companies.id", ondelete="CASCADE"))
+    part_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("parts.id", ondelete="CASCADE"))
+    computed_on: Mapped[date] = mapped_column(Date)
+    computed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    abc: Mapped[str] = mapped_column(String(1))
+    abc_basis: Mapped[str] = mapped_column(String(8))  # amount: 사용 금액, qty: 단가 미입력
+    demand_class: Mapped[str] = mapped_column(String(16))
+    data_mode: Mapped[str] = mapped_column(String(16))  # statistical, estimated
+    forecast_weekly: Mapped[float] = mapped_column(Float)
+    m: Mapped[float] = mapped_column(Float)
+    f_items: Mapped[list[dict[str, Any]]] = mapped_column(JSONB)
+    default_supplier_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("suppliers.id"))
+    lt50: Mapped[int] = mapped_column(Integer)
+    lt90: Mapped[int] = mapped_column(Integer)
+    period_days: Mapped[int] = mapped_column(Integer)
+    d95: Mapped[int] = mapped_column(Integer)
+    d99: Mapped[int] = mapped_column(Integer)
+    reorder_point: Mapped[int] = mapped_column(Integer)
+    stock: Mapped[int] = mapped_column(Integer)
+    hidden_confirmed: Mapped[int] = mapped_column(Integer)
+    hidden_unconfirmed: Mapped[int] = mapped_column(Integer)
+    t_out: Mapped[date | None] = mapped_column(Date)
+    t_deadline: Mapped[date | None] = mapped_column(Date)
+    p_out: Mapped[float] = mapped_column(Float)
+    loss: Mapped[int] = mapped_column(Integer)
+    loss_equipment: Mapped[list[str]] = mapped_column(ARRAY(Text))
+    loss_is_estimate: Mapped[bool] = mapped_column(Boolean)
+    priority: Mapped[float] = mapped_column(Float)
+    recommended_qty: Mapped[int] = mapped_column(Integer)
+    r_lead: Mapped[float] = mapped_column(Float)
+    r_price: Mapped[float] = mapped_column(Float)
+    external_level: Mapped[str] = mapped_column(String(8))
+
+
+class PartSupplierMetrics(Base):
+    """부품×공급사별 납기 (F-ANAL-04, 외부 요인·휴무일 반영 후)."""
+
+    __tablename__ = "part_supplier_metrics"
+    __table_args__ = (UniqueConstraint("part_id", "supplier_id", "computed_on"),)
+
+    id: Mapped[uuid.UUID] = _id()
+    company_id: Mapped[uuid.UUID] = _company_id()
+    part_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("parts.id", ondelete="CASCADE"))
+    supplier_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("suppliers.id", ondelete="CASCADE"))
+    computed_on: Mapped[date] = mapped_column(Date)
+    computed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    lt50: Mapped[int] = mapped_column(Integer)
+    lt90: Mapped[int] = mapped_column(Integer)
+    samples: Mapped[int] = mapped_column(Integer)
+    unit_price: Mapped[int] = mapped_column(Integer)
+    moq: Mapped[int] = mapped_column(Integer)

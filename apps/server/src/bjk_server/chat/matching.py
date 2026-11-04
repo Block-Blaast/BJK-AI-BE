@@ -11,10 +11,13 @@ from typing import Literal
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from bjk_server.db.models import Equipment, EquipmentPart, Part, PartAlias
+from bjk_server.db.models import Equipment, EquipmentPart, Movement, Part, PartAlias
 from bjk_server.inventory import stock_subquery
 
-MAX_CANDIDATES = 5
+# 선택 카드는 후보 3개까지 (기능명세서 F-CHAT-02)
+MAX_CANDIDATES = 3
+# 1회 수량이 과거 1회 최대의 5배를 넘으면 경고 카드 (F-CHAT-02)
+UNUSUAL_QTY_RATIO = 5
 
 
 @dataclass(frozen=True)
@@ -71,3 +74,13 @@ def find_candidates(
     ]
     candidates.sort(key=lambda c: c.reason != "equipment_part")
     return candidates[:MAX_CANDIDATES]
+
+
+def is_unusual_qty(db: Session, part_id: uuid.UUID, intent: str, qty: int) -> bool:
+    """같은 부품·같은 방향의 과거 1회 최대 수량 × 5를 넘는지. 이력이 없으면 경고하지 않는다."""
+    past_max = db.scalar(
+        select(func.max(func.abs(Movement.qty))).where(
+            Movement.part_id == part_id, Movement.type == intent
+        )
+    )
+    return past_max is not None and qty > past_max * UNUSUAL_QTY_RATIO

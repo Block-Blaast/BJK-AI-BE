@@ -1,0 +1,16 @@
+services:
+  server:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    ports:
+      - "8000:8000"
+    depends_on:
+      - ai
+
+  ai:
+    build:
+      context: .
+      dockerfile: apps/ai/Dockerfile
+    ports:
+      - "8001:8001"

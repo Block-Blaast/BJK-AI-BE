@@ -237,3 +237,18 @@ class Movement(Base):
     reason: Mapped[str | None] = mapped_column(Text)
     corrects_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("movements.id"))
     created_at: Mapped[datetime] = _created_at()
+
+
+class IdempotencyKey(Base):
+    """멱등 처리 기록 (API 명세서 1-4). 같은 키의 재요청에는 저장한 응답을 돌려준다."""
+
+    __tablename__ = "idempotency_keys"
+
+    company_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("companies.id", ondelete="CASCADE"), primary_key=True
+    )
+    scope: Mapped[str] = mapped_column(String(32), primary_key=True)
+    key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    status_code: Mapped[int | None] = mapped_column(Integer)
+    response: Mapped[dict[str, Any] | None]
+    created_at: Mapped[datetime] = _created_at()

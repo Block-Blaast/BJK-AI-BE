@@ -32,6 +32,7 @@ uv workspace 하나로 묶는다. 앱끼리 직접 import하지 않고 `bjk_cont
 - `make install` / `make test` / `make lint` / `make format`
 - `make server` (:8000), `make ai` (:8001), `make up` (docker compose)
 - `make db-up` (PostgreSQL :5433), `make migrate` (Alembic 최신 적용)
+- `make seed`: 개발 DB를 시연 상태(demo_v1)로 초기화. 시연 계정은 `bjk_server/seed/demo.py`의 `USERS`
 - DB 테스트는 `TEST_DATABASE_URL`이 있을 때만 실행 (`.env.example` 참고). CI는 PostgreSQL 서비스와 `REQUIRE_DB_TESTS=1`로 항상 실행
 
 ## 설계 원칙

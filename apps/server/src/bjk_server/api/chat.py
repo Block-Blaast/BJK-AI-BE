@@ -134,3 +134,45 @@ def cancel_entry(entry_id: uuid.UUID, user: CurrentUser, db: TenantDB) -> Cancel
     entry = _own_entry(db, user, entry_id)
     entry.status, entry.decided_at = "cancelled", clock.utcnow()
     return CancelResponse(entry_id=entry.id, status="cancelled")
+
+
+class FormEntryRequest(BaseModel):
+    client_message_id: str = Field(min_length=1, max_length=128)
+    type: Literal["OUT", "IN"]
+    part_id: uuid.UUID
+    qty: int = Field(ge=1)
+    equipment_id: uuid.UUID | None = None
+
+
+@router.post("/entries", response_model=RecordResponse)
+def form_entry(body: FormEntryRequest, user: CurrentUser, db: TenantDB):
+    """CHAT-05. 폼 입력. 확인 카드 없이 바로 기록한다(ai 실패 시 대체 경로)."""
+    stored = idempotency.claim(db, user.company_id, "chat_entry", body.client_message_id)
+    if stored:
+        return JSONResponse(stored.body, stored.status_code)
+
+    part = resolve_part(db, body.part_id)
+    equipment_id = resolve_equipment(db, body.equipment_id)
+    movement, stock, reply = record_movement(
+        db, user, body.type, part, body.qty, equipment_id, source_text=None
+    )
+    result = RecordResponse(
+        intent=body.type, movement=movement_out(movement), stock_after=stock, reply=reply
+    )
+    now = clock.utcnow()
+    db.add(
+        ChatEntry(
+            company_id=user.company_id,
+            user_id=user.user_id,
+            type="form",
+            intent=body.type,
+            status="confirmed",
+            payload=body.model_dump(mode="json"),
+            expires_at=now,
+            decided_at=now,
+            result=result.model_dump(mode="json"),
+        )
+    )
+    body_json = result.model_dump(mode="json")
+    idempotency.complete(db, user.company_id, "chat_entry", body.client_message_id, 200, body_json)
+    return result

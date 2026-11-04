@@ -1,0 +1,43 @@
+# 공통 규칙
+
+Notion API 명세서 1장 기준.
+
+## Base URL
+
+- 모든 기능 API는 `/api/v1` 아래에 둔다 (`bjk_server.api.api_router`).
+
+## 오류 형식
+
+모든 오류는 한 가지 형식으로 응답한다 (`bjk_server.errors`).
+
+```json
+{ "code": "REVIEW_NOT_DECIDABLE", "message": "검토가 끝난 건만 결정할 수 있습니다.", "detail": { "status": "held" } }
+```
+
+- `ApiError(code, message, detail, headers)`로 던지면 코드별 HTTP 상태로 변환한다.
+- 요청 형식 오류는 400 `VALIDATION_ERROR`, `detail.errors`에 위치(`loc`)와 사유를 담는다.
+- 없는 경로는 404 `NOT_FOUND`.
+
+| HTTP | code |
+| --- | --- |
+| 400 | `VALIDATION_ERROR` |
+| 401 | `UNAUTHORIZED`, `INVALID_CREDENTIALS`, `INVALID_PIN` |
+| 403 | `FORBIDDEN_ROLE`, `SELF_APPROVAL_NOT_ALLOWED` |
+| 404 | `NOT_FOUND` |
+| 409 | `EMAIL_TAKEN`, `ALREADY_CONFIRMED`, `REVIEW_ALREADY_DECIDED`, `REVIEW_NOT_DECIDABLE`, `SNAPSHOT_REFRESHED`, `ORDER_STATE_CONFLICT`, `PDF_NOT_READY` |
+| 410 | `ENTRY_EXPIRED`, `INVITE_EXPIRED` |
+| 422 | `REASON_REQUIRED`, `PART_NOT_RESOLVED` |
+| 423 | `PIN_LOCKED` |
+| 429 | `RATE_LIMITED` (`Retry-After` 헤더) |
+
+## 목록과 커서
+
+- 응답: `{ "items": [...], "next_cursor": "..." }`. 마지막 페이지면 `next_cursor`는 `null`.
+- 쿼리: `?cursor=&limit=`. `limit` 기본 20, 최대 100. 범위 밖이면 400 `VALIDATION_ERROR`.
+- 커서는 정렬 키 값을 담은 불투명 문자열이다. 잘못된 커서는 400.
+
+## 멱등성
+
+- 채팅·폼 입력은 본문 `client_message_id`, 검토 결정은 `Idempotency-Key` 헤더를 키로 쓴다.
+- 키는 회사·용도(`scope`)별로 유일하다. 같은 키로 다시 보내면 처음 응답을 그대로 돌려준다.
+- 동시에 같은 키가 들어오면 뒤 요청은 앞 요청의 트랜잭션이 끝날 때까지 기다린 뒤 저장된 응답을 받는다.

@@ -20,3 +20,22 @@
 | --- | --- |
 | 없는 이메일, 비밀번호 불일치 | 401 `INVALID_CREDENTIALS` (둘을 구분하지 않음) |
 | 필드 누락 | 400 `VALIDATION_ERROR` |
+
+## AUTH-05 POST /api/v1/auth/refresh
+
+- 권한: 리프레시 토큰.
+- 액세스·리프레시 토큰을 모두 새로 발급한다. 역할은 토큰이 아니라 현재 사용자 정보로 정한다.
+- 이전 리프레시 토큰은 폐기하지 않는다(명세에 회전 폐기 규정 없음). 만료(14일)까지 유효.
+
+```json
+// Request
+{ "refresh_token": "eyJ..." }
+
+// 200 Response
+{ "access_token": "eyJ...", "refresh_token": "eyJ...", "expires_in": 900 }
+```
+
+| 상황 | 응답 |
+| --- | --- |
+| 만료·위조 토큰, 액세스 토큰 사용 | 401 `UNAUTHORIZED` |
+| 비활성·없는 사용자 | 401 `UNAUTHORIZED` |

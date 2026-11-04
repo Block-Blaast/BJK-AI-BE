@@ -9,6 +9,8 @@ from pathlib import Path
 import pytest
 from alembic import command
 from alembic.config import Config
+from bjk_server import ratelimit
+from bjk_server.chat.interpreter import get_interpreter
 from bjk_server.db.session import get_admin_db, get_db
 from bjk_server.main import create_app
 from bjk_server.security import create_access_token
@@ -18,9 +20,12 @@ from sqlalchemy import Engine, create_engine, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session, sessionmaker
 
+from .chat_fakes import NOW, FakeInterpreter
+
 SERVER_DIR = Path(__file__).resolve().parents[1]
 # 테스트 DB 정렬 로케일. compose·CI의 postgres:16 기본값과 같게 둔다.
 TEST_DB_LOCALE = os.environ.get("TEST_DB_LOCALE", "en_US.UTF-8")
+CHAT_URL = "/api/v1/chat/messages"
 
 
 def _base_url() -> str:
@@ -162,3 +167,18 @@ def auth_header(user_key: str) -> dict[str, str]:
         demo_id("user", user.key), demo_id("company", COMPANY_CODE), user.role
     )
     return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+def chat(client, demo_db, monkeypatch):
+    """가짜 해석기로 채팅 메시지를 보내는 함수. 시드와 호출 제한 시각을 고정한다."""
+    demo_db.reseed()
+    monkeypatch.setattr(ratelimit, "utcnow", lambda: NOW)
+    client.app.dependency_overrides[get_interpreter] = FakeInterpreter
+    counter = iter(range(10_000))
+
+    def send(text, user="worker", client_message_id=None):
+        body = {"client_message_id": client_message_id or f"m-{next(counter)}", "text": text}
+        return client.post(CHAT_URL, json=body, headers=auth_header(user))
+
+    return send

@@ -5,4 +5,5 @@ Notion「API 명세서」가 정본이고, 이 디렉터리는 저장소에 구�
 | 문서 | 범위 |
 | --- | --- |
 | [common.md](common.md) | Base URL, 오류 형식, 페이지네이션, 멱등성 |
+| [auth.md](auth.md) | 인증·직원 (AUTH) |
 | [dev.md](dev.md) | 개발·시연 전용 API (DEV) |

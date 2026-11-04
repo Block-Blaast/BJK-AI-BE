@@ -26,3 +26,4 @@ Docker로 두 서비스를 함께 띄우려면 `make up`.
 ## 협업
 
 Issue·브랜치·커밋·PR 규칙은 [docs/collaboration.md](docs/collaboration.md)를 따릅니다.
+발주콕 작업 영역과 Issue 분리 기준은 [docs/work-areas.md](docs/work-areas.md)를 참고합니다.

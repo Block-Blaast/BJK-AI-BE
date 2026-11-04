@@ -39,3 +39,17 @@
 | --- | --- |
 | 만료·위조 토큰, 액세스 토큰 사용 | 401 `UNAUTHORIZED` |
 | 비활성·없는 사용자 | 401 `UNAUTHORIZED` |
+
+## AUTH-08 GET /api/v1/me
+
+- 권한: 로그인한 모든 사용자.
+
+```json
+// 200 Response
+{ "id": "...", "name": "김사장", "role": "owner", "company": { "id": "...", "name": "한서정밀", "code": "HS7F3K" } }
+```
+
+| 상황 | 응답 |
+| --- | --- |
+| 토큰 없음·만료 | 401 `UNAUTHORIZED` |
+| 비활성·없는 사용자, 토큰의 회사와 사용자가 다름 | 401 `UNAUTHORIZED` |

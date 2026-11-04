@@ -31,6 +31,21 @@ services:
       ai:
         condition: service_started
 
+  # 배치 예약 (APScheduler). API 서버와 분리해 서버를 늘려도 예약은 한 곳에서만 돈다.
+  scheduler:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    command: ["uv", "run", "--no-sync", "python", "-m", "bjk_server.jobs.scheduler"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://bjk_app_login:bjk_app_login@db:5432/bjk
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    # 종료 신호 뒤 실행 중인 배치가 끝날 때까지 기다린다 (부품 1,000종 nightly 목표 5분).
+    stop_grace_period: 5m
+
   ai:
     build:
       context: .

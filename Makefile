@@ -1,4 +1,4 @@
-.PHONY: install test lint format server ai up db-up migrate seed job
+.PHONY: install test lint format server ai up db-up migrate seed job scheduler
 
 install:
 	uv sync --all-packages
@@ -35,3 +35,6 @@ seed:
 # 예: make job name=nightly
 job:
 	uv run --package bjk-server python -m bjk_server.jobs $(name)
+
+scheduler:
+	uv run --package bjk-server python -m bjk_server.jobs.scheduler

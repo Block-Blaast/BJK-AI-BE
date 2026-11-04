@@ -218,6 +218,8 @@ class Movement(Base):
             name="qty_sign",
         ),
         Index("ix_movements_company_part_occurred", "company_id", "part_id", "occurred_at"),
+        # 재고 합산(part_id별 SUM(qty))을 인덱스만 읽고 끝내기 위한 인덱스
+        Index("ix_movements_company_part_qty", "company_id", "part_id", postgresql_include=["qty"]),
     )
 
     id: Mapped[uuid.UUID] = _id()

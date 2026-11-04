@@ -5,6 +5,7 @@ description = "발주콕 API 서버"
 requires-python = ">=3.12"
 dependencies = [
     "alembic>=1.14",
+    "apscheduler>=3.11,<4",
     "argon2-cffi>=23.1",
     "bjk-contracts",
     "fastapi>=0.115",

@@ -51,3 +51,9 @@ Notion API 명세서 1장 기준.
 - 회사 격리는 PostgreSQL RLS로 한다. 요청 트랜잭션마다 `set_config('app.company_id', ..., true)`(SET LOCAL)를 실행하고, 정책이 `company_id = app_company_id()`인 행만 보이게 한다. 다른 회사 리소스는 보이지 않으므로 404가 된다.
 - 앱은 `bjk_app` 역할에 속한 로그인 계정으로 접속한다. 테이블 소유자·superuser가 아니라 RLS를 우회하지 못하고, `movements`는 UPDATE·DELETE 권한이 없다.
 - 운영(`APP_ENV`가 `dev`가 아님)에서는 32자 이상 `JWT_SECRET`이 없으면 서버가 시작하지 않는다.
+
+## 호출 제한
+
+- DB 고정 창 카운터(`rate_limits`)로 센다. 여러 서버 프로세스가 같은 횟수를 본다.
+- 요청이 실패로 롤백돼도 횟수는 남는다(별도 트랜잭션).
+- 초과 시 429 `RATE_LIMITED`, `Retry-After` 헤더는 현재 창이 끝날 때까지 남은 초.

@@ -1,0 +1,41 @@
+"""외부 지표 위험도 (기능명세서 F-EXT-02)."""
+
+from collections.abc import Sequence
+from typing import Literal
+
+import numpy as np
+
+Level = Literal["normal", "caution", "high"]
+
+# 3개월 = 13주. 주간 지표 기준.
+WINDOW_WEEKS = 13
+MAX_RISK = 4.0
+
+
+def risk_level(r: float) -> Level:
+    """r < 1 정상, 1 ≤ r < 2 주의, r ≥ 2 높음."""
+    if r >= 2:
+        return "high"
+    if r >= 1:
+        return "caution"
+    return "normal"
+
+
+def indicator_risk(
+    values: Sequence[float], window: int = WINDOW_WEEKS
+) -> tuple[float | None, float]:
+    """z = 최근 3개월 변화율 ÷ 과거 3개월 변화율의 표준편차, r = min(max(0, z), 4).
+
+    부품 공급에 불리한 방향(운임 상승, 원화 약세 = 환율 상승)만 위험으로 보므로 z가 음수면 r = 0.
+    과거 변화율이 2개 미만이면 z를 계산하지 않는다(r = 0).
+    """
+    v = np.asarray(values, dtype=float)
+    if len(v) <= window:
+        return None, 0.0
+    changes = v[window:] / v[:-window] - 1
+    current, past = changes[-1], changes[:-1]
+    if len(past) < 2:
+        return None, 0.0
+    sd = float(past.std(ddof=1))
+    z = 0.0 if sd == 0 else float(current / sd)
+    return z, min(max(0.0, z), MAX_RISK)

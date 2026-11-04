@@ -10,6 +10,7 @@ services:
       - "5433:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
+      - ./infra/db/init-roles.sql:/docker-entrypoint-initdb.d/10-init-roles.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U bjk"]
       interval: 2s
@@ -20,7 +21,8 @@ services:
       context: .
       dockerfile: apps/server/Dockerfile
     environment:
-      DATABASE_URL: postgresql+psycopg://bjk:bjk@db:5432/bjk
+      DATABASE_URL: postgresql+psycopg://bjk_app_login:bjk_app_login@db:5432/bjk
+      ADMIN_DATABASE_URL: postgresql+psycopg://bjk:bjk@db:5432/bjk
     ports:
       - "8000:8000"
     depends_on:

@@ -278,3 +278,51 @@ class RateLimit(Base):
     bucket: Mapped[str] = mapped_column(String(200), primary_key=True)
     window_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), primary_key=True)
     count: Mapped[int] = mapped_column(Integer, server_default="0")
+
+
+class ChatMessage(Base):
+    """채팅 메시지와 서버 답변 (API 명세서 CHAT-01)."""
+
+    __tablename__ = "chat_messages"
+    __table_args__ = (
+        UniqueConstraint("company_id", "client_message_id"),
+        Index("ix_chat_messages_company_user_created", "company_id", "user_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = _id()
+    company_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("companies.id", ondelete="CASCADE"))
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    client_message_id: Mapped[str] = mapped_column(String(128))
+    text: Mapped[str] = mapped_column(Text)
+    intent: Mapped[str] = mapped_column(String(32))
+    reply: Mapped[str] = mapped_column(Text)
+    ai: Mapped[dict[str, Any]]
+    created_at: Mapped[datetime] = _created_at()
+
+
+class ChatEntry(Base):
+    """확인 카드 하나. 확정되면 의도에 맞는 기록(원장 등)을 만든다."""
+
+    __tablename__ = "chat_entries"
+    __table_args__ = (
+        CheckConstraint(
+            "type IN ('confirm', 'select', 'warning', 'unregistered', 'form')", name="type"
+        ),
+        CheckConstraint("status IN ('open', 'confirmed', 'cancelled')", name="status"),
+    )
+
+    id: Mapped[uuid.UUID] = _id()
+    company_id: Mapped[uuid.UUID] = _company_id()
+    message_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("chat_messages.id", ondelete="CASCADE"), index=True
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    type: Mapped[str] = mapped_column(String(16))
+    intent: Mapped[str] = mapped_column(String(32))
+    status: Mapped[str] = mapped_column(String(16), server_default="open")
+    # 카드 내용 (part_text, qty, equipment, candidates, part_id ...)
+    payload: Mapped[dict[str, Any]]
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    result: Mapped[dict[str, Any] | None]
+    created_at: Mapped[datetime] = _created_at()

@@ -64,3 +64,29 @@ def migrated_db_url() -> Iterator[str]:
     with temp_database(_base_url()) as url:
         command.upgrade(alembic_config(url), "head")
         yield url
+
+
+APP_LOGIN = "bjk_app_test"
+
+
+@pytest.fixture(scope="session")
+def app_db_url(migrated_db_url: str) -> str:
+    """RLS가 적용되는 앱 계정 접속 URL. 운영과 같이 bjk_app 역할 소속 로그인 계정을 쓴다."""
+    engine = create_engine(migrated_db_url, isolation_level="AUTOCOMMIT")
+    with engine.connect() as conn:
+        conn.execute(
+            text(
+                f"""
+                DO $$ BEGIN
+                    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '{APP_LOGIN}') THEN
+                        CREATE ROLE {APP_LOGIN} LOGIN PASSWORD '{APP_LOGIN}' IN ROLE bjk_app;
+                    END IF;
+                END $$
+                """
+            )
+        )
+        database = make_url(migrated_db_url).database
+        conn.execute(text(f'GRANT CONNECT ON DATABASE "{database}" TO {APP_LOGIN}'))
+    engine.dispose()
+    url = make_url(migrated_db_url).set(username=APP_LOGIN, password=APP_LOGIN)
+    return url.render_as_string(hide_password=False)

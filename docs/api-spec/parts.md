@@ -29,5 +29,7 @@
 }
 ```
 
-- 현재 구현 범위: 지표(`abc`, `demand_class`, `t_out`, `p_out`, `risk_level`, `computed_at`)는 새벽 계산 결과가 생기기 전까지 `null`이다. 그래서 `abc`·`demand_class`·`risk` 필터와 `ledger_status=suspect`는 결과가 없다.
+- 지표(`abc`, `demand_class`, `t_out`, `p_out`, `risk_level`, `computed_at`)는 부품별 최신 새벽 계산(`part_metrics`) 값이다. 계산 전에는 `null`이고 지표 필터에 걸리지 않는다.
+- `risk_level`과 `risk` 필터는 카테고리 외부 위험 등급(r_lead·r_price 중 큰 값의 등급)이다.
+- 현재 구현 범위: 장부 검증 전이라 `ledger_status`는 모두 `normal`이고 `ledger_status=suspect`는 결과가 없다.
 - 허용 값 밖의 필터는 400 `VALIDATION_ERROR`, 토큰 없음은 401.

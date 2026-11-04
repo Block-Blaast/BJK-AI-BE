@@ -18,6 +18,7 @@ TABLES = {
     "equipment_parts",
     "maintenance",
     "movements",
+    "idempotency_keys",
 }
 
 

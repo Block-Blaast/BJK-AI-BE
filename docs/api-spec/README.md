@@ -9,3 +9,4 @@ Notion「API 명세서」가 정본이고, 이 디렉터리는 저장소에 구�
 | [parts.md](parts.md) | 부품·기준 정보 (SET) |
 | [chat.md](chat.md) | 채팅 기록 (CHAT) |
 | [dev.md](dev.md) | 개발·시연 전용 API (DEV) |
+| [jobs.md](jobs.md) | 배치 실행과 예약 |

@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from bjk_server import clock
 from bjk_server.chat.interpreter import Interpretation, Interpreter, InterpreterUnavailable
-from bjk_server.chat.matching import Candidate, find_candidates, find_equipment
+from bjk_server.chat.matching import Candidate, find_candidates, find_equipment, is_unusual_qty
 from bjk_server.chat.schemas import (
     AiStatus,
     CandidateOut,
@@ -99,14 +99,14 @@ def _record_card(
 
     part = candidates[0]
     payload["part_id"] = str(part.part_id)
-    short = parsed.intent == "OUT" and parsed.qty is not None and parsed.qty > part.stock
-    type_: CardType = "warning" if short else "confirm"
+    unusual = parsed.qty is not None and is_unusual_qty(db, part.part_id, parsed.intent, parsed.qty)
+    type_: CardType = "warning" if unusual else "confirm"
     entry = _add_entry(db, user, message_id, type_, parsed.intent, payload, now)
     action = "출고" if parsed.intent == "OUT" else "입고"
     qty = f" {parsed.qty}{part.unit}" if parsed.qty is not None else ""
     reply = (
-        f"장부 재고({part.stock}{part.unit})보다 많아요. 그래도 {action}할까요?"
-        if short
+        f"{part.name}{qty} 맞나요? 평소보다 훨씬 많아요."
+        if unusual
         else f"{part.name}{qty} {action}할까요?"
     )
     card = Card(

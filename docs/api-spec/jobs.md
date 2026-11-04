@@ -15,7 +15,7 @@ python -m bjk_server.jobs nightly
 | `weekly-merge` | 월요일 03:30 | 미구현 |
 
 - 예약 예시: `infra/cron/crontab`
-- 소유자 DB 계정(`ADMIN_DATABASE_URL`)으로 회사 전체를 대상으로 실행한다.
+- RLS가 적용되는 앱 계정(`DATABASE_URL`)으로 실행한다. 회사 ID 목록만 `system_company_ids()` 함수로 받고, 회사마다 `app.company_id`를 지정한 뒤 그 회사 데이터만 읽고 쓴다.
 - 같은 작업은 advisory lock으로 한 번에 하나만 돈다. 겹치면 `skipped`(`already_running`)로 기록한다.
 - 실패하면 작업 트랜잭션을 롤백하고 `job_runs`에 `error`로 남긴다. CLI 종료 코드 1.
 - 실행 기록(`job_runs`)은 `GET /health`의 마지막 배치 상태에 쓴다.

@@ -1,12 +1,33 @@
 services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: bjk
+      POSTGRES_PASSWORD: bjk
+      POSTGRES_DB: bjk
+    # 로컬에 설치된 PostgreSQL(5432)과 겹치지 않게 5433으로 연다.
+    ports:
+      - "5433:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bjk"]
+      interval: 2s
+      retries: 15
+
   server:
     build:
       context: .
       dockerfile: apps/server/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg://bjk:bjk@db:5432/bjk
     ports:
       - "8000:8000"
     depends_on:
-      - ai
+      db:
+        condition: service_healthy
+      ai:
+        condition: service_started
 
   ai:
     build:
@@ -14,3 +35,6 @@ services:
       dockerfile: apps/ai/Dockerfile
     ports:
       - "8001:8001"
+
+volumes:
+  db-data:

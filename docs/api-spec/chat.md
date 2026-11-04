@@ -59,3 +59,49 @@
 | --- | --- |
 | 500자 초과, 빈 본문 | 400 `VALIDATION_ERROR` |
 | 분당 20회 초과 | 429 `RATE_LIMITED` |
+
+## CHAT-03 POST /api/v1/chat/entries/{id}/confirm
+
+- 권한: 카드 작성자. 다른 사람의 카드는 404.
+- 선택·수정한 값(`part_id`, `qty`, `equipment_id`)만 보낸다. 비우면 카드의 값을 쓴다.
+- `select` 카드는 후보 중 하나를 골라야 한다.
+- 확정한 표현(`part_text`)이 부품 이름과 다르면 별칭으로 남긴다(`alias_learned`). 같은 표현이 여러 부품에 쓰이면 모두 모호로 표시해 자동 확정에서 뺀다.
+
+```json
+// Request
+{ "part_id": "..." }
+
+// 200 Response
+{
+  "intent": "OUT",
+  "movement": { "id": "...", "type": "OUT", "part_id": "...", "qty": -2, "equipment_id": "...", "maintenance_id": null },
+  "stock_after": 1,
+  "reply": "출고 완료. 남은 재고 1개",
+  "alias_learned": { "text": "베어링", "part_id": "..." },
+  "triggered": { "draft_review_id": null, "audit_flag_id": null }
+}
+```
+
+| 상황 | 응답 |
+| --- | --- |
+| 10분 지난 카드 | 410 `ENTRY_EXPIRED` |
+| 이미 확정·취소된 카드 | 409 `ALREADY_CONFIRMED` (`detail.status`) |
+| 부품 미선택, 후보 밖 부품 | 422 `PART_NOT_RESOLVED` |
+| 수량 없음·1 미만, `form` 카드 | 400 `VALIDATION_ERROR` |
+| 다른 사람의 카드, 없는 설비 | 404 `NOT_FOUND` |
+
+- 현재 구현 범위: `OUT`·`IN`만 처리한다. `triggered`(재고 부족 초안·장부 의심), `IN`의 `po_match`·`actual_lead_time_days`는 검토·장부 검증·발주 기능에서 채운다.
+
+## CHAT-04 POST /api/v1/chat/entries/{id}/cancel
+
+- 권한: 카드 작성자. 원장은 바뀌지 않는다.
+
+```json
+// 200 Response
+{ "entry_id": "...", "status": "cancelled" }
+```
+
+| 상황 | 응답 |
+| --- | --- |
+| 이미 확정·취소된 카드 | 409 `ALREADY_CONFIRMED` |
+| 다른 사람의 카드 | 404 `NOT_FOUND` |

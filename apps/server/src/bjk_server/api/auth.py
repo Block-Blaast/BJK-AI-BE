@@ -12,7 +12,7 @@ from bjk_server.auth import set_tenant
 from bjk_server.db.models import User
 from bjk_server.db.session import get_db
 from bjk_server.errors import ApiError, ErrorCode
-from bjk_server.security import hash_secret, verify_secret
+from bjk_server.security import decode_token, hash_secret, verify_secret
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -55,3 +55,22 @@ def login(body: LoginRequest, db: DB) -> LoginResponse:
     return LoginResponse(
         **tokens.model_dump(), user=UserBrief(id=user.id, name=user.name, role=user.role)
     )
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
+@router.post("/refresh", response_model=TokenPair)
+def refresh(body: RefreshRequest, db: DB) -> TokenPair:
+    """AUTH-05. 리프레시 토큰으로 액세스·리프레시 토큰을 새로 발급한다.
+
+    역할이 바뀌었을 수 있어 현재 사용자 정보로 발급한다. 이전 리프레시 토큰 폐기는
+    명세에 없어 하지 않는다(만료 14일까지 유효).
+    """
+    claims = decode_token(body.refresh_token, "refresh")
+    set_tenant(db, claims.company_id)
+    user = db.get(User, claims.user_id)
+    if user is None or not user.active:
+        raise ApiError(ErrorCode.UNAUTHORIZED, "인증이 필요합니다.")
+    return TokenPair.issue(user.id, user.company_id, user.role)

@@ -252,3 +252,27 @@ class IdempotencyKey(Base):
     status_code: Mapped[int | None] = mapped_column(Integer)
     response: Mapped[dict[str, Any] | None]
     created_at: Mapped[datetime] = _created_at()
+
+
+class PinAttempt(Base):
+    """PIN 연속 실패 기록 (API 명세서 1-5). 5회 실패 시 10분 잠금."""
+
+    __tablename__ = "pin_attempts"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    company_id: Mapped[uuid.UUID] = _company_id()
+    failed_count: Mapped[int] = mapped_column(Integer, server_default="0")
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class RateLimit(Base):
+    """고정 창 호출 제한 카운터. 회사 구분 전(로그인 화면) 요청에도 쓰므로 RLS를 걸지 않는다."""
+
+    __tablename__ = "rate_limits"
+
+    bucket: Mapped[str] = mapped_column(String(200), primary_key=True)
+    window_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), primary_key=True)
+    count: Mapped[int] = mapped_column(Integer, server_default="0")

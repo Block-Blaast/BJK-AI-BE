@@ -1,6 +1,7 @@
 """채팅 기록 API (API 명세서 3-3 CHAT)."""
 
 import uuid
+from datetime import datetime
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends
@@ -22,8 +23,9 @@ from bjk_server.chat.records import (
 )
 from bjk_server.chat.schemas import MessageRequest, MessageResponse
 from bjk_server.chat.service import handle_message
-from bjk_server.db.models import ChatEntry
+from bjk_server.db.models import ChatEntry, ChatMessage
 from bjk_server.errors import ApiError, ErrorCode
+from bjk_server.pagination import Page, PageParams, keyset_page, page_params
 from bjk_server.security import TokenClaims
 
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -176,3 +178,69 @@ def form_entry(body: FormEntryRequest, user: CurrentUser, db: TenantDB):
     body_json = result.model_dump(mode="json")
     idempotency.complete(db, user.company_id, "chat_entry", body.client_message_id, 200, body_json)
     return result
+
+
+class HistoryCard(BaseModel):
+    entry_id: uuid.UUID
+    type: str
+    status: Literal["open", "confirmed", "cancelled", "expired"]
+    expires_at: datetime
+
+
+class HistoryMessage(BaseModel):
+    message_id: uuid.UUID
+    client_message_id: str
+    text: str
+    intent: str
+    reply: str
+    created_at: datetime
+    cards: list[HistoryCard]
+
+
+def _card_status(entry: ChatEntry, now: datetime) -> str:
+    if entry.status == "open" and entry.expires_at <= now:
+        return "expired"
+    return entry.status
+
+
+@router.get("/messages", response_model=Page[HistoryMessage])
+def history(
+    user: CurrentUser, db: TenantDB, params: Annotated[PageParams, Depends(page_params)]
+) -> Page[HistoryMessage]:
+    """CHAT-02. 내 대화 이력. 최신순, 카드 상태(open·confirmed·cancelled·expired) 포함."""
+    stmt = select(ChatMessage).where(ChatMessage.user_id == user.user_id)
+    page = keyset_page(
+        db,
+        stmt,
+        [ChatMessage.created_at, ChatMessage.id],
+        params,
+        to_item=lambda r: r.ChatMessage,
+        cursor_of=lambda r: [r.ChatMessage.created_at, r.ChatMessage.id],
+        descending=True,
+    )
+    entries = db.scalars(
+        select(ChatEntry)
+        .where(ChatEntry.message_id.in_([m.id for m in page.items]))
+        .order_by(ChatEntry.created_at, ChatEntry.id)
+    ).all()
+    now = clock.utcnow()
+    cards: dict[uuid.UUID, list[HistoryCard]] = {}
+    for e in entries:
+        cards.setdefault(e.message_id, []).append(
+            HistoryCard(
+                entry_id=e.id, type=e.type, status=_card_status(e, now), expires_at=e.expires_at
+            )
+        )
+    items = [
+        HistoryMessage(
+            message_id=m.id,
+            client_message_id=m.client_message_id,
+            text=m.text,
+            intent=m.intent,
+            reply=m.reply,
+            created_at=m.created_at,
+            cards=cards.get(m.id, []),
+        )
+        for m in page.items
+    ]
+    return Page(items=items, next_cursor=page.next_cursor)

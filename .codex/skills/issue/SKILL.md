@@ -6,6 +6,7 @@ description: 이 저장소의 Issue 생성 및 작업 체크리스트 갱신 시
 # Issue 작성
 
 [공통 작성 규칙](../../../docs/collaboration.md)의 Issue 양식을 읽는다.
+[작업 영역 기준](../../../docs/work-areas.md)을 확인해 책임과 Issue 범위를 정한다.
 
 - 작업 전 Issue 생성, 실제 작업자 지정
 - 제목은 `feat/fix/chore/refactor: <한국어 작업 내용>`

@@ -119,7 +119,13 @@ git push -u origin HEAD
 
 ---
 
-## 10. Draft PR 생성
+## 10. API 명세서 동기화
+
+/docs/api-spec 패키지에 변경 사항에 따라 API 명세서를 업데이트 및 추가한다.
+
+---
+
+## 11. Draft PR 생성
 
 ```bash
 gh pr create --draft \
@@ -131,7 +137,7 @@ PR 본문은 `docs/collaboration.md`의 PR 양식을 따른다.
 
 ---
 
-## 11. 보고
+## 12. 보고
 
 사용자에게 보고할 내용: 무엇을 바꿨는지 · 어떻게 검증했는지(명령과 결과) ·
 남긴 것과 그 이유 · PR 링크.

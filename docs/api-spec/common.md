@@ -41,3 +41,13 @@ Notion API 명세서 1장 기준.
 - 채팅·폼 입력은 본문 `client_message_id`, 검토 결정은 `Idempotency-Key` 헤더를 키로 쓴다.
 - 키는 회사·용도(`scope`)별로 유일하다. 같은 키로 다시 보내면 처음 응답을 그대로 돌려준다.
 - 동시에 같은 키가 들어오면 뒤 요청은 앞 요청의 트랜잭션이 끝날 때까지 기다린 뒤 저장된 응답을 받는다.
+
+## 인증과 회사 격리
+
+- 헤더: `Authorization: Bearer {access_token}`. 액세스 토큰 15분, 리프레시 토큰 14일 (HS256).
+- 클레임: `user_id`, `company_id`, `role`(`worker`, `manager`, `owner`), `type`(`access`, `refresh`), `jti`.
+- 토큰 없음·만료·위조·리프레시 토큰 사용은 401 `UNAUTHORIZED`.
+- 역할은 `worker < manager < owner` 순서. `require_role("manager")`는 manager·owner만 통과, 부족하면 403 `FORBIDDEN_ROLE`.
+- 회사 격리는 PostgreSQL RLS로 한다. 요청 트랜잭션마다 `set_config('app.company_id', ..., true)`(SET LOCAL)를 실행하고, 정책이 `company_id = app_company_id()`인 행만 보이게 한다. 다른 회사 리소스는 보이지 않으므로 404가 된다.
+- 앱은 `bjk_app` 역할에 속한 로그인 계정으로 접속한다. 테이블 소유자·superuser가 아니라 RLS를 우회하지 못하고, `movements`는 UPDATE·DELETE 권한이 없다.
+- 운영(`APP_ENV`가 `dev`가 아님)에서는 32자 이상 `JWT_SECRET`이 없으면 서버가 시작하지 않는다.

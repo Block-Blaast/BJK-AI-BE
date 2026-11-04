@@ -105,3 +105,22 @@
 | --- | --- |
 | 이미 확정·취소된 카드 | 409 `ALREADY_CONFIRMED` |
 | 다른 사람의 카드 | 404 `NOT_FOUND` |
+
+## CHAT-05 POST /api/v1/chat/entries
+
+- 권한: 로그인한 모든 사용자. ai 해석이 실패했을 때(`form` 카드)의 대체 입력.
+- 확인 카드 없이 바로 원장에 기록하고 CHAT-03과 같은 형식으로 응답한다. 기록은 `form` 유형의 확정 카드로 남는다.
+- 같은 `client_message_id`로 다시 보내면 처음 응답을 돌려주고 원장에 다시 기록하지 않는다.
+
+```json
+// Request
+{ "client_message_id": "f-20261104-0002", "type": "OUT", "part_id": "...", "qty": 2, "equipment_id": "..." }
+```
+
+| 상황 | 응답 |
+| --- | --- |
+| `type`이 `OUT`·`IN` 외, 수량 1 미만 | 400 `VALIDATION_ERROR` |
+| 없는·병합된 부품 | 422 `PART_NOT_RESOLVED` |
+| 없는 설비 | 404 `NOT_FOUND` |
+
+- 현재 구현 범위: `OUT`·`IN`만. 폼 발주 요청(`PURCHASE_REQUEST`)은 검토 기능에서 추가한다.

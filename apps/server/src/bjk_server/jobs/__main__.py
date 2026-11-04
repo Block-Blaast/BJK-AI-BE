@@ -20,7 +20,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     settings = get_settings()
-    engine = create_engine(settings.admin_database_url or settings.database_url)
+    # 배치는 RLS가 적용되는 앱 계정으로 실행한다.
+    engine = create_engine(settings.database_url)
     try:
         result = run_job(engine, args.name, "schedule")
     finally:

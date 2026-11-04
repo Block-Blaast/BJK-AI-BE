@@ -13,7 +13,7 @@ from bjk_server.api.schemas import TokenPair, UserBrief
 from bjk_server.auth import TenantDB, require_role
 from bjk_server.clock import KST
 from bjk_server.db.models import User
-from bjk_server.db.session import get_admin_db
+from bjk_server.db.session import get_admin_db, get_db
 from bjk_server.errors import ApiError, ErrorCode
 from bjk_server.jobs import registry  # noqa: F401 - 작업 등록
 from bjk_server.jobs.runner import JobName, run_job
@@ -79,11 +79,9 @@ def impersonate(body: ImpersonateRequest, owner: Owner, db: TenantDB) -> LoginRe
 
 
 @router.post("/jobs/{name}/run")
-def run_job_now(
-    name: JobName, _: Owner, admin_db: Annotated[Session, Depends(get_admin_db)]
-) -> dict:
-    """DEV-01. 배치를 즉시 실행하고 실행 기록과 같은 요약을 돌려준다."""
-    result = run_job(admin_db.get_bind(), name, "manual")
+def run_job_now(name: JobName, _: Owner, db: Annotated[Session, Depends(get_db)]) -> dict:
+    """DEV-01. 배치를 즉시 실행하고 실행 기록과 같은 요약을 돌려준다(앱 계정, 회사별 RLS)."""
+    result = run_job(db.get_bind(), name, "manual")
     return {
         "job": result.name,
         "status": result.status,

@@ -1,4 +1,4 @@
-.PHONY: install test lint format server ai up
+.PHONY: install test lint format server ai up db-up migrate
 
 install:
 	uv sync --all-packages
@@ -22,3 +22,9 @@ ai:
 
 up:
 	docker compose up --build
+
+db-up:
+	docker compose up -d db
+
+migrate:
+	uv run --package bjk-server alembic -c apps/server/alembic.ini upgrade head

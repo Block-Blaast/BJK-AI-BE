@@ -1,6 +1,6 @@
 # 배치 (HTTP API 아님)
 
-API 명세서 14장 기준. 플랫폼 cron이 서버 이미지에서 CLI를 호출한다. 서버 프로세스 안에서 예약하지 않아 서버를 여러 대 띄워도 중복 실행되지 않는다.
+API 명세서 14장 기준. 예약은 API 서버와 분리된 APScheduler 프로세스(`python -m bjk_server.jobs.scheduler`, compose `scheduler` 서비스)가 하고, 실행·잠금·기록은 `run_job`이 맡는다. 수동 실행은 CLI를 쓴다.
 
 ```bash
 python -m bjk_server.jobs nightly
@@ -14,11 +14,24 @@ python -m bjk_server.jobs nightly
 | `briefing` | 매일 07:30 | 미구현 |
 | `weekly-merge` | 월요일 03:30 | 미구현 |
 
-- 예약 예시: `infra/cron/crontab`
+- 플랫폼 cron을 쓰는 환경이면 스케줄러 대신 `infra/cron/crontab`처럼 CLI를 예약해도 된다. 둘을 같이 켜도 advisory lock으로 한 번만 실행된다.
 - RLS가 적용되는 앱 계정(`DATABASE_URL`)으로 실행한다. 회사 ID 목록만 `system_company_ids()` 함수로 받고, 회사마다 `app.company_id`를 지정한 뒤 그 회사 데이터만 읽고 쓴다.
 - 같은 작업은 advisory lock으로 한 번에 하나만 돈다. 겹치면 `skipped`(`already_running`)로 기록한다.
 - 실패하면 작업 트랜잭션을 롤백하고 `job_runs`에 `error`로 남긴다. CLI 종료 코드 1.
 - 실행 기록(`job_runs`)은 `GET /health`의 마지막 배치 상태에 쓴다.
+
+## 스케줄러 스레드 풀
+
+| 설정 | 값 | 이유 |
+| --- | --- | --- |
+| 실행기 | `ThreadPoolExecutor(max_workers=SCHEDULER_WORKERS)`, 기본 2 | 같은 시각에 겹치는 작업이 최대 2개(07:00 `missed-scan`·`order-check`, nightly가 길어질 때 월요일 03:30 `weekly-merge`) |
+| DB 연결 풀 | `pool_size` = 워커 수, `max_overflow` 0 | `run_job`은 작업당 연결을 하나씩만 쓰므로 워커가 연결을 기다리며 막히지 않고, DB 연결 수도 워커 수를 넘지 않는다 |
+| 같은 작업 동시 실행 | `max_instances` 1 | 앞 실행이 안 끝났으면 이번 실행은 건너뛰고 경고 로그 |
+| 밀린 실행 | `coalesce` true, `misfire_grace_time` 30분 | 여러 번 밀려도 1회만, 30분 넘게 늦으면 건너뜀 |
+| 종료 | SIGTERM·SIGINT → 새 실행 중단, 실행 중 작업 완료 대기, 엔진 정리 | compose `stop_grace_period` 5분. 그 안에 못 끝나면 강제 종료되고 작업 트랜잭션은 롤백 |
+
+- 워커 수를 늘리면 DB 연결 풀도 같이 늘어난다(`SCHEDULER_WORKERS` 하나로 조절).
+- 작업 목록은 코드에 있고 메모리에만 둔다. 스케줄러가 꺼져 있던 동안의 실행은 다시 하지 않는다(필요하면 DEV-01·CLI로 수동 실행).
 
 ## nightly: 외부 지표 위험도 → 부품 근거 지표
 

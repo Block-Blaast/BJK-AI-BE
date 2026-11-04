@@ -124,3 +124,24 @@
 | 없는 설비 | 404 `NOT_FOUND` |
 
 - 현재 구현 범위: `OUT`·`IN`만. 폼 발주 요청(`PURCHASE_REQUEST`)은 검토 기능에서 추가한다.
+
+## CHAT-02 GET /api/v1/chat/messages
+
+- 권한: 본인 이력만. 최신순 커서 목록(`?cursor=&limit=`).
+- 카드 상태: `open`, `confirmed`, `cancelled`, `expired`(열린 채 10분이 지난 카드).
+
+```json
+{
+  "items": [
+    {
+      "message_id": "...", "client_message_id": "m-20261104-0007",
+      "text": "3호기 베어링 두 개 씀", "intent": "OUT", "reply": "어떤 베어링인가요?",
+      "created_at": "2026-11-04T10:10:00+09:00",
+      "cards": [ { "entry_id": "...", "type": "select", "status": "confirmed", "expires_at": "2026-11-04T10:20:00+09:00" } ]
+    }
+  ],
+  "next_cursor": null
+}
+```
+
+- 폼 입력(CHAT-05)은 메시지가 없어 이 목록에 나오지 않는다.

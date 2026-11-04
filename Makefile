@@ -1,4 +1,4 @@
-.PHONY: install test lint format server ai up db-up migrate
+.PHONY: install test lint format server ai up db-up migrate seed
 
 install:
 	uv sync --all-packages
@@ -28,3 +28,6 @@ db-up:
 
 migrate:
 	uv run --package bjk-server alembic -c apps/server/alembic.ini upgrade head
+
+seed:
+	uv run --package bjk-server python -m bjk_server.seed

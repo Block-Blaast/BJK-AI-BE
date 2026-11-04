@@ -1,7 +1,14 @@
 from datetime import UTC, date, datetime
 
 import pytest
-from bjk_server.db.models import ExternalIndicator, Movement, Part, PartMetrics, PartSupplierMetrics
+from bjk_server.db.models import (
+    Company,
+    ExternalIndicator,
+    Movement,
+    Part,
+    PartMetrics,
+    PartSupplierMetrics,
+)
 from bjk_server.jobs import registry  # noqa: F401
 from bjk_server.jobs.nightly import SupplierTerms, lead_time
 from bjk_server.jobs.runner import run_job
@@ -20,7 +27,7 @@ def nightly(demo_db):
     demo_db.reseed()
 
     def run():
-        result = run_job(demo_db.admin, "nightly", "manual", now=NOW)
+        result = run_job(demo_db.app, "nightly", "manual", now=NOW)
         assert result.status == "ok", result.error
         return result
 
@@ -143,3 +150,23 @@ def test_metrics_are_isolated_per_company(nightly, demo_db):
     with Session(demo_db.app) as s:
         set_tenant(s, demo_id("company", "OTHER"))
         assert s.scalar(select(func.count()).select_from(PartMetrics)) == 0
+
+
+def test_each_company_is_computed_inside_its_own_tenant(nightly, demo_db):
+    other = demo_id("company", "OTHER1")
+    with Session(demo_db.admin) as s, s.begin():
+        s.add(Company(id=other, name="다른회사", code="OTHER1"))
+        s.flush()
+        part = Part(company_id=other, name="볼베어링 6205ZZ", unit="개")
+        s.add(part)
+        s.flush()
+        s.add(Movement(company_id=other, part_id=part.id, type="ADJUST", qty=7))
+    assert nightly().summary["companies"] == 2
+    with Session(demo_db.admin) as s:
+        rows = s.execute(
+            select(PartMetrics.company_id, Part.company_id, PartMetrics.stock).join(
+                Part, Part.id == PartMetrics.part_id
+            )
+        ).all()
+    assert all(metric_company == part_company for metric_company, part_company, _ in rows)
+    assert sorted(stock for company, _, stock in rows if company == other) == [7]

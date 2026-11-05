@@ -10,7 +10,7 @@
 
 ## 한 일
 
-- `notifications` 테이블·RLS (마이그레이션 0021)
+- `notifications` 테이블·RLS (마이그레이션 0024)
 - `bjk_server/notify/service.py`: 받는 사람별 생성, `dedupe_key` 중복 방지, 조용한 시간 보류
 - `api/notifications.py`: `GET /notifications`, `POST /notifications/{id}/read`
 - `docs/api-spec/notifications.md`, `tests/test_notifications.py`
@@ -25,9 +25,10 @@
 
 - `REQUIRE_DB_TESTS=1 uv run pytest apps/server/tests/test_notifications.py`: 11개 통과
 - `REQUIRE_DB_TESTS=1 make test`: 586개 통과, `make lint` 통과
-- dev 반영 후 `REQUIRE_DB_TESTS=1 make test` 592개 통과, 마이그레이션 0021(dev 최신 0020 다음) 확인
+- dev 반영 후 `REQUIRE_DB_TESTS=1 make test` 592개 통과, 마이그레이션 0021(당시 dev 최신 0020 다음) 확인
 
 ## 남은 일·확인 필요
 
 - 실제 알림 생성 지점(검토 완료·실사 요청·브리핑) 연결은 각 Issue에서
-- 마이그레이션 번호 0021은 A의 #137 머지 순서에 따라 바뀔 수 있음
+- #137 머지(0021~0023)로 마이그레이션을 0024로 변경
+- dev 색인의 #137 줄 링크(24 → 실제 파일 25), 누락된 정리 배치 줄, 중복된 토큰 상한 줄을 이 PR에서 바로잡음

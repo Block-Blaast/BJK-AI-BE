@@ -1,4 +1,5 @@
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
+from contextlib import AbstractContextManager
 from functools import lru_cache
 
 from sqlalchemy import Engine, create_engine
@@ -21,6 +22,11 @@ def get_db() -> Iterator[Session]:
     """요청 하나에 트랜잭션 하나. 정상 종료 시 커밋, 예외 시 롤백."""
     with get_sessionmaker().begin() as session:
         yield session
+
+
+def get_session_scope() -> Callable[[], AbstractContextManager[Session]]:
+    """요청 트랜잭션과 따로, 필요할 때마다 짧은 트랜잭션을 여는 함수. 오래 열린 SSE 연결이 쓴다."""
+    return get_sessionmaker().begin
 
 
 @lru_cache

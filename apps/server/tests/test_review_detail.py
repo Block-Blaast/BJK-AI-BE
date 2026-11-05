@@ -96,3 +96,22 @@ def test_unknown_and_other_company_review_is_404(client, demo_db, vbelt):
     with Session(demo_db.app) as s, s.begin():
         set_tenant(s, uuid.uuid4())
         assert s.get(Review, vbelt) is None
+
+
+def test_detail_reads_review_saved_by_run_service(client, demo_db):
+    """검토 실행 서비스(#146)가 저장한 행을 그대로 읽는다."""
+    from bjk_server.jobs import registry  # noqa: F401
+    from bjk_server.jobs.runner import run_job
+
+    from .test_review_run import NIGHTLY_AT, _create, _run
+
+    demo_db.reseed()
+    assert run_job(demo_db.app, "nightly", "manual", now=NIGHTLY_AT).status == "ok"
+    review_id = _create(demo_db)
+    _run(demo_db, review_id)
+    body = _get(client, review_id).json()
+    assert (body["status"], body["verdict"]) == ("reviewed", "revise")
+    assert body["proposal"]["qty"] == 10 and body["proposal"]["basis"] == ["C-01"]
+    assert body["snapshot"]["values"]["R"] == 10
+    assert body["opinion"]["source"] == "template"
+    assert body["part"] == "V벨트 A-42"

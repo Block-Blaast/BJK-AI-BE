@@ -120,3 +120,11 @@ def test_form_card_cannot_be_confirmed_here(client, chat):
 @pytest.mark.parametrize("qty", [0, -1])
 def test_non_positive_qty_is_400(client, chat, qty):
     assert _confirm(client, _card(chat, "베어링 작은 거 2개 씀"), qty=qty).status_code == 400
+
+
+def test_confirmed_movement_links_source_message(client, chat, demo_db):
+    sent = chat("베어링 작은 거 2개 씀").json()
+    body = _confirm(client, sent["cards"][0]).json()
+    with Session(demo_db.admin) as s:
+        movement = s.get(Movement, body["movement"]["id"])
+    assert str(movement.message_id) == sent["message_id"]

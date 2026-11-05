@@ -10,11 +10,14 @@ class Settings(BaseSettings):
     gemini_api_key: str | None = None
     gemini_chat_model: str = "gemini-3.5-flash-lite"
     gemini_embedding_model: str = "gemini-embedding-2"
+    gemini_opinion_model: str = "gemini-3.5-flash-lite"
 
     # 채팅은 전송부터 확인 카드까지 3초(기능명세서 17장). server의 매칭·카드 몫을 남기고
     # 재시도까지 이 예산 안에서 끝낸다.
     chat_budget_seconds: float = 2.5
     embed_budget_seconds: float = 10.0
+    # 검토는 요청부터 의견서까지 10초. server가 검증 실패로 최대 2번 더 부를 수 있어 한 번에 3초.
+    opinion_budget_seconds: float = 3.0
 
     @property
     def llm_configured(self) -> bool:

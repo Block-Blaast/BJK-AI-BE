@@ -29,8 +29,12 @@ LLM과 임베딩은 모두 **Gemini API**로 하고, API 키 하나를 `apps/ai`
 | `GEMINI_API_KEY` | 없음 | 비어 있으면 Gemini를 부르지 않고 모든 요청에 대체 응답 |
 | `GEMINI_CHAT_MODEL` | `gemini-3.5-flash-lite` | 채팅 해석 모델 |
 | `GEMINI_EMBEDDING_MODEL` | `gemini-embedding-2` | 임베딩 모델(1536차원으로 받음) |
+| `GEMINI_OPINION_MODEL` | `gemini-3.5-flash-lite` | 의견서 문장 모델 |
 | `CHAT_BUDGET_SECONDS` | 2.5 | 채팅 해석 재시도 포함 시간 예산 |
 | `EMBED_BUDGET_SECONDS` | 10 | 임베딩 재시도 포함 시간 예산 |
+| `OPINION_BUDGET_SECONDS` | 3 | 의견서 한 번 호출의 재시도 포함 시간 예산 |
+
+환경 변수는 레포 루트 `.env`(커밋 안 됨)에 둔다. `make ai`가 루트에서 실행되며 이 파일을 읽는다.
 
 ## 2. 지킬 원칙
 

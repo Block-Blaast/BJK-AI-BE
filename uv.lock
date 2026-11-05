@@ -11,6 +11,7 @@ members = [
     "bjk-ai",
     "bjk-ai-be",
     "bjk-contracts",
+    "bjk-review",
     "bjk-server",
 ]
 
@@ -97,6 +98,21 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [{ name = "pydantic", specifier = ">=2.9" }]
+
+[[package]]
+name = "bjk-review"
+version = "0.1.0"
+source = { editable = "packages/review" }
+dependencies = [
+    { name = "bjk-contracts" },
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "bjk-contracts", editable = "packages/contracts" },
+    { name = "pydantic", specifier = ">=2.9" },
+]
 
 [[package]]
 name = "bjk-server"

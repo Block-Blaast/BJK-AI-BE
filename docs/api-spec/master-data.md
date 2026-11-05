@@ -142,4 +142,5 @@
 - `scope`: `KR`(국내 명절), `CN`(중국, 춘절 등), `supplier`(특정 공급사 휴무, `supplier_id` 필수). `supplier`가 아닌데 `supplier_id`가 있거나, `supplier`인데 없으면 400. 없는 공급사는 404.
 - `end`가 `start`보다 빠르면 400(수정 후 값으로도 검사). `name`·`start`·`end`·`scope`에 `null`은 400.
 - 시연 시드에 2027년 춘절(CN)·설날 연휴(KR)가 들어 있다.
-- 현재 구현 범위: 새벽 배치 납기 연장과 외부 요인 현황 연결은 #108에서 반영한다. 공급사 상세의 `holidays`(날짜 목록)는 그대로 쓴다.
+- 새벽 배치가 납기 구간과 겹치는 연휴만큼 납기를 늘린다([jobs.md](jobs.md) nightly). `KR`·`CN`은 카테고리 납기 요인(`HOLIDAY_KR`·`HOLIDAY_CN`)이 있는 부품에, `supplier`는 그 공급사 납기에 적용한다. 공급사 상세의 `holidays`(날짜 목록)도 함께 쓴다.
+- 외부 요인 현황(DSH-03)의 `upcoming_holidays`에 90일 안 일정이 나온다.

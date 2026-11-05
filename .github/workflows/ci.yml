@@ -1,9 +1,9 @@
 name: CI
 
+# dev에서는 CI를 돌리지 않는다. dev 머지 검증은 머지 큐의 로컬 테스트·lint가 맡는다.
 on:
   pull_request:
-  push:
-    branches: [dev]
+    branches: [main]
 
 permissions:
   contents: read

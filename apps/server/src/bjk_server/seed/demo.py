@@ -77,9 +77,9 @@ class DemoPart:
 
 CATEGORIES = (
     ("bearing", "베어링", "high", ["FREIGHT", "HOLIDAY_CN"], ["USDKRW"], "8482"),
-    ("belt", "V벨트·전동벨트", "medium", ["FREIGHT"], ["USDKRW"], "4010"),
-    ("bolt", "볼트·너트", "low", [], [], "7318"),
-    ("oil", "절삭유·윤활유", "medium", [], ["USDKRW"], "2710"),
+    ("belt", "V벨트·전동벨트", "medium", ["FREIGHT", "HOLIDAY_KR"], ["USDKRW"], "4010"),
+    ("bolt", "볼트·너트", "low", ["HOLIDAY_KR"], [], "7318"),
+    ("oil", "절삭유·윤활유", "medium", ["HOLIDAY_KR"], ["USDKRW"], "2710"),
 )
 
 PARTS = (

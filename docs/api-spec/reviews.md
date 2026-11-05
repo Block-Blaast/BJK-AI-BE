@@ -17,6 +17,7 @@ HTTP API가 아니라 채팅 발주 요청(CHAT-03 확정, CHAT-05 폼), 재고 
 | `hold` | `held` | 저장 시각 + `system.review_expire_days` |
 
 - 저장: `reviews`에 판정·표시·보류 사유·결과(`checks`, `original`, `proposal`, `alternatives`, `risk_if_not_ordered`, `count_requests`)·의견서(`text`, `source`, `verified`)·원안 총액·절감액·미발주 예상 손실, `review_snapshots`에 스냅샷 값·검토 기준값·해시(`sha256:…`)·계산 시각.
+- 알림(F-NOTI-01·04, 결과 저장과 같은 트랜잭션): 긴급(`urgent`)인 직원 요청·재고 부족 초안은 `review_urgent`, 그 밖의 직원 요청은 `review_completed`를 요청자를 뺀 활성 manager·owner에게(채널 `push`, `in_app`) 만든다. 일반 재고 부족 초안과 놓친 발주는 즉시 알리지 않고 아침 브리핑(DSH-01)으로 알린다. 보류는 요청자에게 `decision_result`(채널 `chat`)를 만들고, 보완 뒤 다시 보류되면 새로 만든다.
 - 의견서: ai(`AI_BASE_URL`)가 없거나 실패·시간 초과(8초)·숫자 검증 실패면 양식 의견서(`source: template`). ai 호출 사용량은 `llm_calls`(`purpose: opinion`)에 남긴다.
 - 이미 `reviewing`이 아닌 검토는 다시 실행하지 않는다.
 

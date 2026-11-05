@@ -8,7 +8,7 @@ python -m bjk_server.jobs nightly
 
 | 이름 | 시각 (Asia/Seoul) | 구현 |
 | --- | --- | --- |
-| `nightly` | 매일 03:00 | 외부 지표 위험도 → 부품 근거 지표 |
+| `nightly` | 매일 03:00 | 외부 지표 위험도 → 부품 근거 지표 → 장부 검증 |
 | `missed-scan` | 매일 07:00 | 미구현 |
 | `order-check` | 매일 07:00 | 미구현 |
 | `briefing` | 매일 07:30 | 미구현 |
@@ -58,4 +58,5 @@ python -m bjk_server.jobs nightly
 - 숨은 재고: 같은 카테고리·같은 규격 부품의 재고를 H_u로 기록한다. 실사 기록 전이라 H_c는 항상 0이다.
 - 입고 예정 O: 열린 발주 전이라 0이다.
 - 수입 의존: 카테고리(또는 부품 예외)의 수입 의존도가 `high`·`medium`이면 수입 의존으로 본다.
-- 장부 검증(F-AUDIT)과 재고 요약 대조(F-LEDGER-02)는 해당 기능에서 이 작업에 더한다.
+- 근거 지표 계산 뒤 장부 검증 규칙 5종을 실행한다([audit.md](audit.md)). 요약의 `audit_flags_created`는 새로 만든 의심 항목 수다.
+- 재고 요약 대조(F-LEDGER-02)는 요약 도입 시 더한다.

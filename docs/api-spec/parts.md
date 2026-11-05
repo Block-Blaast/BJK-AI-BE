@@ -31,5 +31,5 @@
 
 - 지표(`abc`, `demand_class`, `t_out`, `p_out`, `risk_level`, `computed_at`)는 부품별 최신 새벽 계산(`part_metrics`) 값이다. 계산 전에는 `null`이고 지표 필터에 걸리지 않는다.
 - `risk_level`과 `risk` 필터는 카테고리 외부 위험 등급(r_lead·r_price 중 큰 값의 등급)이다.
-- 현재 구현 범위: 장부 검증 전이라 `ledger_status`는 모두 `normal`이고 `ledger_status=suspect`는 결과가 없다.
+- `ledger_status`는 열린 장부 의심 항목(AUD-01)이 있으면 `suspect`, 없으면 `normal`이다.
 - 허용 값 밖의 필터는 400 `VALIDATION_ERROR`, 토큰 없음은 401.

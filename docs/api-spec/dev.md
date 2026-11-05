@@ -51,7 +51,7 @@
 
 ```json
 // 200 Response
-{ "job": "nightly", "status": "ok", "started_at": "...", "finished_at": "...", "parts_computed": 6 }
+{ "job": "nightly", "status": "ok", "started_at": "...", "finished_at": "...", "companies": 1, "parts_computed": 6, "audit_flags_created": 6, "indicators": 2 }
 ```
 
 | `status` | 뜻 |

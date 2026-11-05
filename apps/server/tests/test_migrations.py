@@ -202,3 +202,63 @@ def test_downgrade_0011_removes_embedding_columns(empty_db_url):
     with engine.connect() as conn:
         assert not conn.scalar(text("SELECT 1 FROM pg_extension WHERE extname = 'vector'"))
     engine.dispose()
+
+
+def _embedding_state(conn, part) -> tuple[str, str | None]:
+    column = conn.scalar(
+        text(
+            "SELECT format_type(atttypid, atttypmod) FROM pg_attribute "
+            "WHERE attrelid = 'parts'::regclass AND attname = 'embedding'"
+        )
+    )
+    return column, conn.scalar(text("SELECT embedding_model FROM parts WHERE id = :p"), {"p": part})
+
+
+def _part_with_embedding(conn, dimension: int):
+    company = conn.execute(
+        text("INSERT INTO companies (name, code) VALUES ('t', 'c0019') RETURNING id")
+    ).scalar_one()
+    return conn.execute(
+        text(
+            "INSERT INTO parts (company_id, name, unit, embedding, embedding_model) "
+            "VALUES (:c, 'p', '개', CAST(:v AS vector), 'm1') RETURNING id"
+        ),
+        {"c": company, "v": str([0.1] * dimension)},
+    ).scalar_one()
+
+
+def test_0019_keeps_embeddings_already_1024(empty_db_url):
+    # main 배포 DB: 0012(1024)까지 적용되고 벡터가 있는 상태에서 head로 올린다.
+    config = alembic_config(empty_db_url)
+    engine = create_engine(empty_db_url)
+    command.upgrade(config, "0018")
+    with engine.begin() as conn:
+        part = _part_with_embedding(conn, 1024)
+
+    command.upgrade(config, "head")
+    with engine.connect() as conn:
+        assert _embedding_state(conn, part) == ("vector(1024)", "m1")
+    engine.dispose()
+
+
+def test_0019_resizes_old_1536_columns(empty_db_url):
+    # 이전 0012(1536)로 만든 로컬 DB: 벡터를 비우고 1024로 바꾼다.
+    config = alembic_config(empty_db_url)
+    engine = create_engine(empty_db_url)
+    command.upgrade(config, "0018")
+    with engine.begin() as conn:
+        for table in EMBEDDING_TABLES:
+            conn.execute(text(f"ALTER TABLE {table} ALTER COLUMN embedding TYPE vector(1536)"))
+        part = _part_with_embedding(conn, 1536)
+
+    command.upgrade(config, "head")
+    with engine.connect() as conn:
+        assert _embedding_state(conn, part) == ("vector(1024)", None)
+        alias_column = conn.scalar(
+            text(
+                "SELECT format_type(atttypid, atttypmod) FROM pg_attribute "
+                "WHERE attrelid = 'part_aliases'::regclass AND attname = 'embedding'"
+            )
+        )
+        assert alias_column == "vector(1024)"
+    engine.dispose()

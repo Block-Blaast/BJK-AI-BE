@@ -8,7 +8,8 @@ from fastapi import APIRouter, Depends, Query, Response
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import exists, select
 
-from bjk_server.auth import TenantDB, require_role
+from bjk_server import clock
+from bjk_server.auth import CurrentUser, TenantDB, require_role
 from bjk_server.db.models import Equipment, EquipmentPart, Maintenance, Movement, Part
 from bjk_server.errors import ApiError, ErrorCode
 from bjk_server.pagination import Page, PageParams, keyset_page, page_params
@@ -68,6 +69,7 @@ class MaintenanceOut(BaseModel):
     parts: list[PartNeed]
     parts_source: Literal["schedule", "equipment"]
     completed_at: datetime | None
+    completed_by: uuid.UUID | None
 
 
 def _out(db: TenantDB, m: Maintenance) -> MaintenanceOut:
@@ -98,6 +100,7 @@ def _out(db: TenantDB, m: Maintenance) -> MaintenanceOut:
         parts=parts,
         parts_source=source,
         completed_at=m.completed_at,
+        completed_by=m.completed_by,
     )
 
 
@@ -227,3 +230,43 @@ def delete_maintenance(maintenance_id: uuid.UUID, _: Manager, db: TenantDB) -> R
         )
     db.delete(m)
     return Response(status_code=204)
+
+
+class CompleteRequest(BaseModel):
+    # 비우면 지금. 늦게 기록할 때 실제 완료 시각을 넣는다(미래 시각은 400).
+    completed_at: datetime | None = None
+
+
+class CompleteResponse(BaseModel):
+    maintenance_id: uuid.UUID
+    completed_at: datetime
+
+
+@router.post("/{maintenance_id}/complete", response_model=CompleteResponse)
+def complete_maintenance(
+    maintenance_id: uuid.UUID, user: CurrentUser, db: TenantDB, body: CompleteRequest | None = None
+) -> CompleteResponse:
+    """SET-09. 정비 완료 처리 (전체 역할). 채팅 정비 완료(F-CHAT-06)와 같은 결과다.
+
+    완료 후 48시간 안의 같은 설비 출고는 이 정비에 연결되고, 장부 검증(F-AUDIT-02)은 완료
+    기록이 있는 정비만 판단한다.
+    """
+    now = clock.utcnow()
+    completed_at = (body.completed_at if body else None) or now
+    if completed_at.tzinfo is None:
+        raise ApiError(
+            ErrorCode.VALIDATION_ERROR, "시간대를 포함해 보내 주세요.", {"field": "completed_at"}
+        )
+    if completed_at > now:
+        raise ApiError(
+            ErrorCode.VALIDATION_ERROR,
+            "미래 시각으로 완료할 수 없습니다.",
+            {"field": "completed_at"},
+        )
+    m = db.scalar(select(Maintenance).where(Maintenance.id == maintenance_id).with_for_update())
+    if m is None:
+        raise ApiError(ErrorCode.NOT_FOUND, "정비 일정을 찾을 수 없습니다.")
+    _not_completed(m)
+    m.completed_at, m.completed_by = completed_at, user.user_id
+    db.flush()
+    return CompleteResponse(maintenance_id=m.id, completed_at=completed_at)

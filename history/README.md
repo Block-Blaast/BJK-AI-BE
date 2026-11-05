@@ -5,6 +5,12 @@ AI·server 영역 작업 기록 색인. 작성 규칙은 [docs/ai-work-rules.md]
 | 날짜 | 파일 | 내용 |
 | --- | --- | --- |
 | 2026-11-05 | [2026-11-05-32-part-merge.md](2026-11-05-32-part-merge.md) | 중복 부품 후보 탐지 `weekly-merge`, MAT-01·02 병합, 병합 재고 합산(#209), 714개 통과 |
+| 2026-11-05 | [2026-11-05-37-policy-main-only.md](2026-11-05-37-policy-main-only.md) | dev 대상 PR 협업 정책 검사 중단, main·Issue 검사 유지 |
+| 2026-11-05 | [2026-11-05-36-ci-main-only.md](2026-11-05-36-ci-main-only.md) | dev CI 실행 중단(main 대상 PR만 CI), main 배포 유지 |
+| 2026-11-05 | [2026-11-05-35-review-recheck.md](2026-11-05-35-review-recheck.md) | 재검토 미리 보기 API(REV-04), 같은 수정 값이면 같은 해시 |
+| 2026-11-05 | [2026-11-05-34-purchase-orders.md](2026-11-05-34-purchase-orders.md) | 발주 테이블(0026)과 열린 발주·최근 단가 조회 함수, DB 포함 705개 통과 |
+| 2026-11-05 | [2026-11-05-33-review-run.md](2026-11-05-33-review-run.md) | 검토 실행·저장 서비스, 스냅샷 수집, 의견서 ai 호출 |
+| 2026-11-05 | [2026-11-05-32-hidden-stock-confirmed.md](2026-11-05-32-hidden-stock-confirmed.md) | nightly H_c·H_u 분리, 최근 실사·의심 여부 판정 순수 함수 |
 | 2026-11-05 | [2026-11-05-31-lane-c-chat-batch.md](2026-11-05-31-lane-c-chat-batch.md) | 레인 C 채팅 기능(#179·#186·#192) 통합 브랜치로 묶어 dev 반영(#200) |
 | 2026-11-05 | [2026-11-05-30-chat-multi-item-cards.md](2026-11-05-30-chat-multi-item-cards.md) | 채팅 여러 품목을 품목별 확인 카드로 응답(#192), 556개 통과 |
 | 2026-11-05 | [2026-11-05-29-chat-maintenance-done.md](2026-11-05-29-chat-maintenance-done.md) | 채팅 MAINTENANCE_DONE 의도를 정비 완료 확인 카드로 연결(#186), 558개 통과 |
@@ -14,7 +20,6 @@ AI·server 영역 작업 기록 색인. 작성 규칙은 [docs/ai-work-rules.md]
 | 2026-11-05 | [2026-11-05-25-part-detail-dev-merge.md](2026-11-05-25-part-detail-dev-merge.md) | #137 dev 반영, 충돌 양쪽 유지, 마이그레이션 0021~0023으로 변경 |
 | 2026-11-05 | [2026-11-05-25-expired-rows-cleanup.md](2026-11-05-25-expired-rows-cleanup.md) | `cleanup` 배치(#185), 호출 제한·PIN 잠금·멱등 키 만료 행 삭제 |
 | 2026-11-05 | [2026-11-05-25-expired-rows-cleanup.md](2026-11-05-25-expired-rows-cleanup.md) | `cleanup` 배치(#185), 호출 제한·PIN 잠금·멱등 키 만료 행 삭제 |
-| 2026-11-05 | [2026-11-05-24-part-detail-dev-merge.md](2026-11-05-24-part-detail-dev-merge.md) | #137 dev 반영, 충돌 양쪽 유지, 마이그레이션 0021~0023으로 변경 |
 | 2026-11-05 | [2026-11-05-24-llm-daily-token-quota.md](2026-11-05-24-llm-daily-token-quota.md) | 회사별 LLM 일일 토큰 상한(#172), `system.llm_daily_tokens`, 초과 시 `quota_exceeded` 대체 |
 | 2026-11-05 | [2026-11-05-23-chat-intent-handlers.md](2026-11-05-23-chat-intent-handlers.md) | 채팅 의도별 처리기 파일 분리와 등록 표(#174), 554개 통과 |
 | 2026-11-05 | [2026-11-05-22-chat-idempotency-port.md](2026-11-05-22-chat-idempotency-port.md) | #68 멱등 요청 사용자·본문 검증 dev 이식, 마이그레이션 0020, 566개 통과 |

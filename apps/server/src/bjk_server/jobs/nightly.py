@@ -25,9 +25,11 @@ from bjk_server.audit.flags import audit_company
 from bjk_server.auth import set_tenant
 from bjk_server.clock import KST
 from bjk_server.db.models import (
+    AuditFlag,
     CalendarEvent,
     Category,
     CompanySettings,
+    CountRequest,
     Equipment,
     EquipmentPart,
     ExternalIndicator,
@@ -41,6 +43,7 @@ from bjk_server.db.models import (
 )
 from bjk_server.defaults import default_settings
 from bjk_server.domain import analytics as an
+from bjk_server.domain import hidden_stock as hs
 from bjk_server.domain.external import (
     apply_shock,
     extend_for_holidays,
@@ -172,6 +175,7 @@ def compute_company(
     service_level = settings["review"]["service_level"]
     next_order_days = settings["review"]["next_order_weeks"] * 7
     k = settings["system"]["external_k"]
+    count_days = settings["system"]["hidden_stock_count_days"]
 
     parts = session.scalars(
         select(Part).where(Part.company_id == company_id, Part.merged_into.is_(None))
@@ -218,6 +222,21 @@ def compute_company(
             .where(Movement.company_id == company_id)
             .group_by(Movement.part_id)
         ).all()
+    )
+    # 숨은 재고 확인 여부 (F-MATCH-03): 마지막 실사 응답 시각, 열린 장부 의심 항목
+    last_counted = dict(
+        session.execute(
+            select(CountRequest.part_id, func.max(CountRequest.answered_at))
+            .where(CountRequest.company_id == company_id, CountRequest.answered_at <= now)
+            .group_by(CountRequest.part_id)
+        ).all()
+    )
+    suspect = set(
+        session.scalars(
+            select(AuditFlag.part_id).where(
+                AuditFlag.company_id == company_id, AuditFlag.status != "closed"
+            )
+        )
     )
     first_seen = dict(
         session.execute(
@@ -381,16 +400,19 @@ def compute_company(
         reorder_point = an.upper_quantile(lead_samples, service_level[abc[part.id]], f_lead_total)
 
         s = int(stock.get(part.id, 0))
-        hidden = [
-            int(stock.get(o.id, 0))
-            for o in parts
-            if o.id != part.id
-            and part.spec
-            and o.category_id == part.category_id
-            and o.spec == part.spec
-        ]
-        # 실사 기록 기능 전이라 같은 규격 부품의 재고는 모두 미확인(H_u)으로 본다 (F-MATCH-03).
-        h_c, h_u = 0, sum(hidden)
+        hidden = hs.split_hidden(
+            (
+                hs.HiddenPart(
+                    o.id, int(stock.get(o.id, 0)), last_counted.get(o.id), o.id in suspect
+                )
+                for o in parts
+                if o.id != part.id
+                and hs.same_spec(part.category_id, part.spec, o.category_id, o.spec)
+            ),
+            now,
+            count_days,
+        )
+        h_c, h_u = hidden.h_c, hidden.h_u
         paths = an.simulate_paths(
             s + h_c,
             weekly_samples,

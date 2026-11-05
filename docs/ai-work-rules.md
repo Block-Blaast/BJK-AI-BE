@@ -22,6 +22,16 @@ MVP의 LLM 사용처는 `about_project/01-functional-spec.md` 기준으로 아�
 
 LLM과 임베딩은 모두 **Gemini API**로 하고, API 키 하나를 `apps/ai`에서만 관리한다(2026-11-05 결정). 로컬 임베딩 모델(BGE-M3 등)은 쓰지 않는다.
 
+### 실행 설정 (`apps/ai`)
+
+| 환경 변수 | 기본값 | 내용 |
+| --- | --- | --- |
+| `GEMINI_API_KEY` | 없음 | 비어 있으면 Gemini를 부르지 않고 모든 요청에 대체 응답 |
+| `GEMINI_CHAT_MODEL` | `gemini-3.5-flash-lite` | 채팅 해석 모델 |
+| `GEMINI_EMBEDDING_MODEL` | `gemini-embedding-2` | 임베딩 모델(1536차원으로 받음) |
+| `CHAT_BUDGET_SECONDS` | 2.5 | 채팅 해석 재시도 포함 시간 예산 |
+| `EMBED_BUDGET_SECONDS` | 10 | 임베딩 재시도 포함 시간 예산 |
+
 ## 2. 지킬 원칙
 
 - LLM은 수량·판정·수정안을 만들지 않는다. 숫자는 입력으로 받은 스냅샷 값만 문장에 쓴다.

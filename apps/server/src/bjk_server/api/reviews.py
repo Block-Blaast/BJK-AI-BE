@@ -120,6 +120,12 @@ def visible_reviews(user: TokenClaims):
     return stmt
 
 
+class ItemDecision(BaseModel):
+    action: str
+    reason: str | None
+    decided_at: datetime | None
+
+
 class ReviewItem(BaseModel):
     id: uuid.UUID
     entry: Entry
@@ -127,9 +133,22 @@ class ReviewItem(BaseModel):
     status: Status
     verdict: Verdict | None
     flags: list[str]
+    # 요청 수량(원안). 폰 "내 요청"이 상세를 따로 받지 않고 보여 준다 (#297)
+    qty: int | None
     original_total: int | None
     saving: int
+    decision: ItemDecision | None
     created_at: datetime
+
+
+def _item_decision(review: Review) -> ItemDecision | None:
+    if not review.decision:
+        return None
+    return ItemDecision(
+        action=review.decision["action"],
+        reason=review.decision.get("reason"),
+        decided_at=review.decided_at.astimezone(KST) if review.decided_at else None,
+    )
 
 
 # 긴급(C-08) 먼저, 그다음 미발주 예상 손실 큰 순 (REV-01)
@@ -175,8 +194,10 @@ def list_reviews(
             status=r.Review.status,
             verdict=r.Review.verdict,
             flags=r.Review.flags,
+            qty=(r.Review.request or {}).get("qty"),
             original_total=r.Review.original_total,
             saving=r.Review.saving,
+            decision=_item_decision(r.Review),
             created_at=r.Review.created_at.astimezone(KST),
         ),
         cursor_of=lambda r: [r.urgent_rank, r.Review.loss, r.Review.created_at, r.Review.id],

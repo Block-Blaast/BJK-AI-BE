@@ -19,7 +19,7 @@ API 명세서 REV 기준. 검토 실행·저장은 [reviews.md](reviews.md)(#146
 | `cursor`, `limit` | 커서 페이지네이션 (기본 20, 최대 100) |
 
 - 정렬: 긴급 먼저 → 미발주 예상 손실(`loss`) 큰 순 → 최근 생성 순.
-- 항목: `id`, `entry`, `part`(부품 이름, 미확정이면 `null`), `status`, `verdict`, `flags`, `original_total`, `saving`, `created_at`(Asia/Seoul).
+- 항목: `id`, `entry`, `part`(부품 이름, 미확정이면 `null`), `status`, `verdict`, `flags`, `qty`(요청 수량), `original_total`, `saving`, `decision`(결정 전 `null`, 결정 뒤 `{action, reason, decided_at}`, #297), `created_at`(Asia/Seoul).
 - 허용 값 밖의 필터·잘못된 커서는 400 `VALIDATION_ERROR`.
 
 ## REV-02 `GET /reviews/{id}`

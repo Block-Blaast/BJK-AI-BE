@@ -106,3 +106,37 @@ HTTP API가 아니라 채팅 발주 요청(CHAT-04), 재고 부족 초안, 놓�
 | 검토가 아직 끝나지 않음(`reviewing`) | 409 `REVIEW_NOT_DECIDABLE`, `detail.status` |
 | 없는 검토, 다른 회사 검토 | 404 `NOT_FOUND` |
 | 빈 질문, 500자 초과 | 400 `VALIDATION_ERROR` |
+
+## REV-07 GET /api/v1/reviews/{id}/pdf
+
+- 권한: manager 이상. worker는 403 `FORBIDDEN_ROLE`.
+- 200 `application/pdf`. 저장한 판정 결과·최근 스냅샷·의견서·승인 기록만 써서(생성 시각 없음) 다시 받아도 같은 바이트다.
+- 구성: 발주 요약(원안·수정안), 판정·검토 의견, 근거 수치 표와 체크별 근거, 재고 추이 예측 그래프(발주 시·미발주 시), 미발주 리스크, 외부 요인, 승인자·승인 시각·계산 기준 시각.
+- 재고 추이는 S + O + H_c에서 월 소모량 m을 하루씩 고르게 빼는 단순 추정이고, 발주 시 선은 공급사 LT90 날에 수량이 들어온다. 정비 확정 필요량은 넣지 않는다.
+- 구현: HTML → WeasyPrint, 그래프 matplotlib SVG. 서버 이미지에 pango와 `fonts-noto-cjk`를 설치한다. macOS 로컬은 `brew install pango` 후 `DYLD_FALLBACK_LIBRARY_PATH=/opt/homebrew/lib`가 필요하고, pango가 없으면 PDF 테스트는 건너뛴다.
+
+| 상황 | 응답 |
+| --- | --- |
+| 승인(`approved`) 전 | 409 `PDF_NOT_READY`, `detail.status` |
+| 없는 검토, 다른 회사 검토 | 404 `NOT_FOUND` |
+
+## REV-05 POST /api/v1/reviews/{id}/decision
+
+manager 이상. 헤더 `Idempotency-Key` 필수(없으면 400). 같은 키·같은 본문이면 처음 응답을 그대로 돌려준다.
+
+| `action` | 결과 | 필수 |
+| --- | --- | --- |
+| `approve_proposal` | 수정안으로 `approved` 발주, 201 | 수정안이 있고 `no_order`가 아님 |
+| `approve_original` | 원안으로 발주, 201 | |
+| `approve_edited` | 직접 수정 값으로 발주, 201 | `edited`, `recheck_hash`(REV-04와 같은 값) |
+| `approve_alternative` | 대안으로 발주, 201 | `alternative_id` |
+| `accept_no_order` | 검토 `closed`, 발주 없음, 200 | |
+| `reject` | 검토 `closed`, 200 | `reason`(없으면 422 `REASON_REQUIRED`) |
+
+- `snapshot_hash`는 선택. 보내면 현재 스냅샷과 대조해 다르면 409 `SNAPSHOT_REFRESHED`.
+- 결정 직전 스냅샷이 24시간을 넘었거나 검토 후 같은 부품(병합 포함) 입출고가 있으면 근거를 다시 모아 판정한다. 새 스냅샷 행은 항상 저장하고, 판정·수정안이 바뀌었으면 검토 결과·양식 의견서를 갱신한 뒤 409 `SNAPSHOT_REFRESHED`(`detail`: `verdict`, `flags`, `snapshot_hash`, `proposal`). 이때 결정은 하지 않는다.
+- 응답 `purchase_order`: `id`, `status: approved`, `part_id`, `qty`, `supplier {id, name}`, `unit_price`, `total`, `saving`(원안 총액 대비), `order_message`(필요 시점이 있으면 희망 납기 포함), `pdf_url`.
+- 기록: `reviews.decision`(행동·사유·스냅샷 해시·수정 값·대안·발주 ID), `decided_by`, `decided_at`. SSE `review.decided` 발행.
+- 요청자가 있으면 `decision_result` 알림(채널 `chat`, `in_app`). `requester_notified`는 알림을 만들었는지.
+- 오류: 403 `SELF_APPROVAL_NOT_ALLOWED`(사장님이 아닌 사람이 본인 요청을 결정), 409 `REVIEW_NOT_DECIDABLE`(`reviewed`가 아님, 발주할 줄이 없음), 409 `REVIEW_ALREADY_DECIDED`(`approved`·`closed`, 동시 결정의 두 번째 포함).
+- PDF 생성(REV-07)은 아직 없다. `pdf_url`만 돌려준다.

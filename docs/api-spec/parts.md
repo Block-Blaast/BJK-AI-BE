@@ -77,6 +77,13 @@
 
 - 현재 구현 범위: 발주 테이블 전이라 `stock.incoming`은 빈 목록, 실사 전이라 `last_counted_at`은 `null`, 장부 검증 전이라 `ledger_status`는 `normal`. 숨은 재고 부품 목록 `hidden.parts`는 빈 목록.
 
+## 재고 예측선 GET /api/v1/parts/{id}/forecast (명세 밖, #258)
+
+- 권한: 로그인한 모든 사용자. 부품 상세(W-05) 재고 추이 예측선용. 응답 모양은 검토 예측선([reviews.md](reviews.md))과 같다.
+- 시작 재고는 지금 원장 합계 S + 열린 발주 미입고 O + 확인된 숨은 재고 H_c, 하루 소모는 최신 새벽 계산 m ÷ 30.
+- `with_order`는 권장 발주량 R이 기본 공급사 LT90 날에 들어온다. `reorder_point`, `t_out`은 최신 새벽 계산값.
+- 새벽 계산 전이면 `computed_at: null`, `days: []`. 없는 부품·병합된 부품·다른 회사 부품은 404.
+
 ## LED-01 GET /api/v1/parts/{id}/movements
 
 - 권한: 로그인한 모든 사용자. 부품이 없거나 다른 회사 부품이면 404.

@@ -177,3 +177,32 @@ def answer_count(
     flag.updated_at = now
     db.flush()
     return CountAnswer(request, _diff_reply(diff, part.unit))
+
+
+def close_with_reason(
+    db: Session,
+    user: TokenClaims,
+    request_id: uuid.UUID,
+    reason: str,
+    note: str | None,
+    now: datetime,
+) -> tuple[CountRequest, AuditFlag]:
+    """AUD-04. 차이 사유를 받아 실사 요청과 의심 항목을 닫는다.
+
+    원장은 추가 전용이라 실사조정 행은 그대로 두고, 사유는 실사 요청에 남긴다.
+    """
+    request = own_delivered_request(db, user, request_id, now)
+    if request.status != "answered":
+        raise ApiError(
+            ErrorCode.ALREADY_CONFIRMED,
+            "차이가 확인된 응답에만 사유를 입력할 수 있습니다.",
+            {"status": request.status},
+        )
+    request.reason, request.note = reason, note
+    request.status, request.closed_at = "closed", now
+    flag = db.scalar(
+        select(AuditFlag).where(AuditFlag.id == request.audit_flag_id).with_for_update()
+    )
+    flag.status, flag.resolution, flag.closed_at, flag.updated_at = "closed", "adjusted", now, now
+    db.flush()
+    return request, flag

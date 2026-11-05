@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import case, select
 
 from bjk_server import clock
-from bjk_server.audit.counts import answer_count, request_count
+from bjk_server.audit.counts import answer_count, close_with_reason, request_count
 from bjk_server.auth import CurrentUser, TenantDB, require_role
 from bjk_server.db.models import AuditFlag, Part
 from bjk_server.domain.audit import Level, Rule
@@ -144,4 +144,26 @@ def answer_count_request(
         diff=request.diff,
         reason_required=request.status == "answered",
         reply=answer.reply,
+    )
+
+
+class CountReasonRequest(BaseModel):
+    reason: Literal["lost", "missing_record", "damaged", "other"]
+    note: str | None = Field(default=None, max_length=500)
+
+
+class CountReasonResponse(BaseModel):
+    count_request_id: uuid.UUID
+    status: Literal["closed"]
+    audit_flag_status: FlagStatus
+
+
+@router.patch("/count-requests/{request_id}", response_model=CountReasonResponse)
+def give_count_reason(
+    request_id: uuid.UUID, body: CountReasonRequest, user: CurrentUser, db: TenantDB
+) -> CountReasonResponse:
+    """AUD-04. 실사 차이 사유 입력. 실사 요청과 의심 항목을 함께 닫는다."""
+    request, flag = close_with_reason(db, user, request_id, body.reason, body.note, clock.utcnow())
+    return CountReasonResponse(
+        count_request_id=request.id, status=request.status, audit_flag_status=flag.status
     )

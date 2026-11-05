@@ -4,6 +4,7 @@ import uuid
 from datetime import date, datetime
 from typing import Any
 
+from bjk_contracts import EMBEDDING_DIM
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     ARRAY,
@@ -35,8 +36,7 @@ NAMING = {
     "pk": "pk_%(table_name)s",
 }
 
-# bjk_contracts.embedding.EMBEDDING_DIM과 같게 둔다.
-EMBEDDING_DIM = 1536
+# 임베딩 차원은 ai 계약(bjk_contracts.EMBEDDING_DIM, 1024)을 따른다. 마이그레이션 0019.
 # 모델이 다른 벡터끼리는 비교할 수 없어 벡터와 모델명을 함께 둔다.
 EMBEDDING_PAIR = "(embedding IS NULL) = (embedding_model IS NULL)"
 

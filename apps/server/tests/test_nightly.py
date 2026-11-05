@@ -58,6 +58,8 @@ def test_nightly_computes_every_part(nightly, demo_db):
         "parts_computed": len(PARTS),
         "audit_flags_created": len(PARTS),
         "indicators": 2,
+        "external_fetched": [],
+        "holidays_added": 0,
         "embeddings_filled": 0,
     }
     with Session(demo_db.admin) as s:

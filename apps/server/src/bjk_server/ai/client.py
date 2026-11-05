@@ -5,6 +5,7 @@ ai는 LLM이 실패해도 200과 대체 응답을 준다. 연결 거부·시간 
 """
 
 import uuid
+from collections.abc import Callable
 from functools import lru_cache
 from typing import Literal, TypeVar
 
@@ -21,6 +22,7 @@ from bjk_contracts import (
 )
 from pydantic import BaseModel, ValidationError
 
+from bjk_server.ai.quota import check_daily_quota
 from bjk_server.config import get_settings
 
 # 클라이언트 시간 제한은 ai 쪽 재시도 포함 예산(채팅 2.5초, 임베딩 10초)보다 조금 길게 둔다.
@@ -42,9 +44,14 @@ class AiUnavailable(Exception):
         self.reason = reason
 
 
+# 회사 ID → 일일 토큰 상한을 넘었는지 (bjk_server.ai.quota)
+QuotaCheck = Callable[[uuid.UUID], bool]
+
+
 class AiClient:
-    def __init__(self, http: httpx.Client) -> None:
+    def __init__(self, http: httpx.Client, over_quota: QuotaCheck | None = None) -> None:
         self._http = http
+        self._over_quota = over_quota
 
     def health(self) -> LlmStatus:
         """ai `/health`의 llm 값. 연결하지 못하면 error."""
@@ -76,6 +83,9 @@ class AiClient:
     def _post(
         self, path: str, body: BaseModel, response_model: type[Response], timeout: float
     ) -> Response:
+        company_id = getattr(body, "company_id", None)
+        if self._over_quota is not None and company_id is not None and self._over_quota(company_id):
+            raise AiUnavailable(FallbackReason.QUOTA_EXCEEDED)
         try:
             response = self._http.post(path, json=body.model_dump(mode="json"), timeout=timeout)
             response.raise_for_status()
@@ -97,4 +107,4 @@ def _http_client(base_url: str) -> httpx.Client:
 def get_ai_client() -> AiClient | None:
     """설정에 ai 주소가 없으면 None. 부르는 쪽은 ai 없이 대체 경로로 동작한다."""
     base_url = get_settings().ai_base_url
-    return AiClient(_http_client(base_url)) if base_url else None
+    return AiClient(_http_client(base_url), check_daily_quota) if base_url else None

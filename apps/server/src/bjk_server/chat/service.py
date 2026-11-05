@@ -58,11 +58,16 @@ def handle_message(
     else:
         intent = parsed.intent
         handler = HANDLERS.get(intent)
-        # 처리기가 없는 의도(PURCHASE_REQUEST·MAINTENANCE_DONE·COUNT 등)는 도움말로 답한다.
+        # 처리기가 없는 의도(PURCHASE_REQUEST 등)는 도움말로 답한다.
         result = handler(ctx, parsed) if handler else IntentResult(HELP_REPLY)
 
     db.get(ChatMessage, message_id).reply = result.reply
     db.flush()
     return MessageResponse(
-        message_id=message_id, intent=intent, reply=result.reply, cards=result.cards, ai=ai
+        message_id=message_id,
+        intent=intent,
+        reply=result.reply,
+        cards=result.cards,
+        ai=ai,
+        count_request_id=result.count_request_id,
     )

@@ -120,7 +120,7 @@
 - 이미 완료된 정비는 409 `ALREADY_CONFIRMED`(`detail.status: completed`). 없으면 404.
 - 완료 후 48시간 안의 같은 설비 출고는 이 정비에 연결되고(F-LEDGER-03), 완료 48시간이 지나도 필요 부품 출고가 절반 미만이면 장부 검증 `MAINTENANCE_OUT_MISMATCH`가 된다.
 - 정비 목록·상세 응답에 `completed_by`(사용자 ID)가 담긴다.
-- 현재 구현 범위: 채팅 정비 완료(의도 `MAINTENANCE_DONE`) 연결은 ai 해석 연동 후 추가한다.
+- 채팅 정비 완료(CHAT-01 의도 `MAINTENANCE_DONE` → CHAT-03 확정)도 같은 결과를 남긴다([chat.md](chat.md)).
 
 ## SET-11 연휴 캘린더
 

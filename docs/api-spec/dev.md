@@ -65,3 +65,25 @@
 | 없는 작업 이름 | 400 `VALIDATION_ERROR` |
 | owner 아님 | 403 `FORBIDDEN_ROLE` |
 | 개발 환경 아님 | 404 `NOT_FOUND` |
+
+## DEV-02 POST /api/v1/dev/scenarios/external-shock
+
+- 권한: owner
+- 동작: 기능명세서 F-EXT-03. 켜면 해상운임(`FREIGHT`) 위험도 r을 3으로 고정하고 이 회사의 근거 지표(`part_metrics`, `part_supplier_metrics`)를 오늘 날짜로 다시 계산한다. 끄면 실제 최신 위험도로 다시 계산한다.
+- 스위치는 회사 설정(`company_settings.scenarios.external_shock`)에 남아 이후 새벽 배치도 같은 값을 쓴다. 외부 지표 원본(`external_indicators`)은 바꾸지 않는다.
+
+```json
+// Request
+{ "enabled": true }
+
+// 200 Response
+{ "enabled": true, "indicator": "FREIGHT", "r": 3.0, "parts_computed": 6, "computed_at": "..." }
+```
+
+- `r`은 켜져 있으면 고정값 3, 꺼져 있으면 실제 최신 위험도다.
+- 수입 의존 부품의 납기는 기본 납기 × (1 + k × r_lead)라 운임에 연결된 카테고리(베어링, V벨트)의 LT·재주문점이 늘고 외부 위험 등급이 `high`가 된다.
+
+| 상황 | 응답 |
+| --- | --- |
+| owner 아님 | 403 `FORBIDDEN_ROLE` |
+| 개발 환경 아님 | 404 `NOT_FOUND` |

@@ -9,13 +9,14 @@ from collections import defaultdict
 from collections.abc import Sequence
 from datetime import datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from bjk_server.clock import KST
 from bjk_server.db.models import (
     AuditFlag,
     CompanySettings,
+    CountRequest,
     EquipmentPart,
     Maintenance,
     Movement,
@@ -185,6 +186,14 @@ def audit_company(db: Session, company_id: uuid.UUID, now: datetime) -> int:
         ).all()
     )
 
+    last_counted = dict(
+        db.execute(
+            select(CountRequest.part_id, func.max(CountRequest.answered_at))
+            .where(CountRequest.company_id == company_id, CountRequest.answered_at <= now)
+            .group_by(CountRequest.part_id)
+        ).all()
+    )
+
     hits: dict[uuid.UUID, list[Hit]] = defaultdict(list)
     per_maintenance = {
         (link.equipment_id, link.part_id): link.qty_per_maintenance
@@ -223,11 +232,13 @@ def audit_company(db: Session, company_id: uuid.UUID, now: datetime) -> int:
             if pattern:
                 hits[part.id].append(pattern)
         hits[part.id] += rules.spikes([r for r in rows if r.type == "OUT"], now - SPIKE_LOOKBACK)
-        # 실사 기록 기능 전이라 원장 첫 기록일부터 센다.
+        # 실사 기록이 없으면 원장 첫 기록일부터 센다.
+        counted_at = last_counted.get(part.id)
+        since = counted_at or rows[0].occurred_at
         overdue = rules.count_overdue(
-            None,
-            rows[0].occurred_at.astimezone(KST).date(),
-            sum(1 for r in rows[1:] if r.type in ("IN", "OUT")),
+            counted_at.astimezone(KST) if counted_at else None,
+            since.astimezone(KST).date(),
+            sum(1 for r in rows if r.type in ("IN", "OUT") and r.occurred_at > since),
             today,
         )
         if overdue:

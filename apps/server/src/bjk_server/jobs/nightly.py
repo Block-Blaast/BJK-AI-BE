@@ -7,6 +7,7 @@ import csv
 import math
 import uuid
 from collections import defaultdict
+from collections.abc import Collection
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -21,6 +22,7 @@ from bjk_server.audit.flags import audit_company
 from bjk_server.auth import set_tenant
 from bjk_server.clock import KST
 from bjk_server.db.models import (
+    CalendarEvent,
     Category,
     CompanySettings,
     Equipment,
@@ -36,7 +38,12 @@ from bjk_server.db.models import (
 )
 from bjk_server.defaults import default_settings
 from bjk_server.domain import analytics as an
-from bjk_server.domain.external import indicator_risk, risk_level
+from bjk_server.domain.external import (
+    apply_shock,
+    extend_for_holidays,
+    indicator_risk,
+    risk_level,
+)
 from bjk_server.jobs.runner import company_ids, job
 
 INDICATOR_CSV = Path(__file__).resolve().parents[1] / "seed" / "data" / "external_indicators.csv"
@@ -48,6 +55,10 @@ INDICATORS = {
 FALLBACK_LEAD_DAYS = 7  # 공급사도 기본 납기도 없을 때
 HISTORY_WEEKS = 52
 IMPORT_DEPENDENT = ("high", "medium")
+# 카테고리 납기 요인 → 연휴 캘린더 범위
+HOLIDAY_FACTORS = {"HOLIDAY_KR": "KR", "HOLIDAY_CN": "CN"}
+# 납기 계산에 읽어 둘 연휴 기간 (납기 최대 2배 + 다음 발주 기간보다 넉넉히)
+CALENDAR_HORIZON_DAYS = 365
 
 
 def load_indicators(session: Session, path: Path = INDICATOR_CSV) -> dict[str, float]:
@@ -88,12 +99,21 @@ def load_indicators(session: Session, path: Path = INDICATOR_CSV) -> dict[str, f
                         },
                     )
                 )
+    return latest_risks(session)
+
+
+def latest_risks(session: Session) -> dict[str, float]:
+    """지표별 최신 위험도 r."""
     latest = (
         select(ExternalIndicator.code, ExternalIndicator.r)
         .ext(distinct_on(ExternalIndicator.code))
         .order_by(ExternalIndicator.code, ExternalIndicator.as_of.desc())
     )
     return {code: r for code, r in session.execute(latest)}
+
+
+def shock_enabled(settings_row: CompanySettings | None) -> bool:
+    return bool(settings_row and settings_row.scenarios.get("external_shock"))
 
 
 @dataclass(frozen=True)
@@ -106,16 +126,22 @@ class SupplierTerms:
 
 
 def lead_time(
-    terms: SupplierTerms | None, import_dependent: bool, r_lead: float, k: float, today: date
+    terms: SupplierTerms | None,
+    import_dependent: bool,
+    r_lead: float,
+    k: float,
+    today: date,
+    holidays: Collection[date] = (),
 ) -> int:
     """납기 표본이 없을 때의 납기 (F-ANAL-04, F-EXT-02).
 
-    기본 납기 × (1 + k × r_lead, 수입 의존 부품만) + 납기 구간에 겹치는 공급사 휴무일.
+    기본 납기 × (1 + k × r_lead, 수입 의존 부품만)에 납기 구간과 겹치는 연휴를 더한다.
+    연휴는 공급사 휴무일과 holidays(카테고리 납기 요인의 명절 캘린더)를 합친다.
     """
     base = terms.base_lead_days if terms else FALLBACK_LEAD_DAYS
     days = math.ceil(base * (1 + k * r_lead) if import_dependent else base)
-    holidays = terms.holidays if terms else ()
-    return days + sum(1 for h in holidays if today < h <= today + timedelta(days=days))
+    off = {*holidays, *(terms.holidays if terms else ())}
+    return extend_for_holidays(today, days, off)
 
 
 def _weekly(outs: list[tuple[date, int]], start: date, today: date) -> np.ndarray:
@@ -139,6 +165,7 @@ def compute_company(
         if settings_row
         else default_settings()
     )
+    r_by_code = apply_shock(r_by_code, shock_enabled(settings_row))
     service_level = settings["review"]["service_level"]
     next_order_days = settings["review"]["next_order_weeks"] * 7
     k = settings["system"]["external_k"]
@@ -152,6 +179,25 @@ def compute_company(
     suppliers = {
         s.id: s for s in session.scalars(select(Supplier).where(Supplier.company_id == company_id))
     }
+    # 연휴 캘린더: 국내·중국 명절은 카테고리 납기 요인으로, 공급사 휴무는 그 공급사 납기에 반영
+    region_days: dict[str, set[date]] = defaultdict(set)
+    supplier_days: dict[uuid.UUID, set[date]] = defaultdict(set)
+    horizon = today + timedelta(days=CALENDAR_HORIZON_DAYS)
+    for event in session.scalars(
+        select(CalendarEvent).where(
+            CalendarEvent.company_id == company_id,
+            CalendarEvent.end_date > today,
+            CalendarEvent.start_date <= horizon,
+        )
+    ):
+        days = {
+            event.start_date + timedelta(days=i)
+            for i in range((event.end_date - event.start_date).days + 1)
+        }
+        if event.scope == "supplier":
+            supplier_days[event.supplier_id] |= days
+        else:
+            region_days[event.scope] |= days
     terms_by_part: dict[uuid.UUID, dict[uuid.UUID, SupplierTerms]] = defaultdict(dict)
     for sp in session.scalars(select(SupplierPart).where(SupplierPart.company_id == company_id)):
         supplier = suppliers[sp.supplier_id]
@@ -160,7 +206,7 @@ def compute_company(
             sp.unit_price,
             sp.moq,
             supplier.default_lead_time_days or FALLBACK_LEAD_DAYS,
-            tuple(supplier.holidays or ()),
+            tuple(sorted({*(supplier.holidays or ()), *supplier_days[sp.supplier_id]})),
         )
 
     stock = dict(
@@ -271,8 +317,14 @@ def compute_company(
             default=0.0,
         )
 
+        festive = {
+            day
+            for factor in (category.lead_factors if category else [])
+            if factor in HOLIDAY_FACTORS
+            for day in region_days[HOLIDAY_FACTORS[factor]]
+        }
         lead = {
-            sid: lead_time(t, import_dependent, r_lead, k, today)
+            sid: lead_time(t, import_dependent, r_lead, k, today, festive)
             for sid, t in terms_by_part[part.id].items()
         }
         for sid, t in terms_by_part[part.id].items():
@@ -294,7 +346,7 @@ def compute_company(
         lt = (
             lead[terms.supplier_id]
             if terms
-            else lead_time(None, import_dependent, r_lead, k, today)
+            else lead_time(None, import_dependent, r_lead, k, today, festive)
         )
         period = lt + next_order_days
 

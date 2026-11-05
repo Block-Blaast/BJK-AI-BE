@@ -4,6 +4,7 @@ AI·server 영역 작업 기록 색인. 작성 규칙은 [docs/ai-work-rules.md]
 
 | 날짜 | 파일 | 내용 |
 | --- | --- | --- |
+| 2026-11-05 | [2026-11-05-08-server-perf-1000-parts.md](2026-11-05-08-server-perf-1000-parts.md) | 부품 1,000종 nightly 4.0초·채팅 매칭 36ms 측정, compose 기동 확인 |
 | 2026-11-05 | [2026-11-05-07-server-todo.md](2026-11-05-07-server-todo.md) | server 스택 앞으로 할 일 31단계 (시연 경로 나머지, ai 연동, B 단계, 운영 준비) |
 | 2026-11-05 | [2026-11-05-06-server-deferred.md](2026-11-05-06-server-deferred.md) | server 스택 남겨둔 점 (ai 파트, 선행 기능 대기 항목, 미검증 항목) |
 | 2026-11-05 | [2026-11-05-05-server-considerations.md](2026-11-05-05-server-considerations.md) | server 스택 추가로 고려할 점 (스택 운영, 팀 작업 경계, 매칭, 환경, 보안·운영) |

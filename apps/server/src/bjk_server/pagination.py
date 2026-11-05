@@ -5,7 +5,7 @@ import json
 import uuid
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated, Any
 
 from fastapi import Query
@@ -42,6 +42,8 @@ def _encode_value(value: Any) -> list:
         return ["uuid", str(value)]
     if isinstance(value, datetime):
         return ["dt", value.isoformat()]
+    if isinstance(value, date):
+        return ["d", value.isoformat()]
     return ["raw", value]
 
 
@@ -51,6 +53,8 @@ def _decode_value(item: list) -> Any:
         return uuid.UUID(value)
     if kind == "dt":
         return datetime.fromisoformat(value)
+    if kind == "d":
+        return date.fromisoformat(value)
     return value
 
 

@@ -2,7 +2,7 @@
 
 - 날짜: 2026-11-05
 - 영역: AI (contracts 포함)
-- 관련: Issue #81, 브랜치 `feat/ai-import-suggest/#81`(#79 브랜치 위에 쌓음), F-SETUP-01·02, SET-01
+- 관련: Issue #81, Draft PR #82(→ #79 브랜치), 브랜치 `feat/ai-import-suggest/#81`(#79 브랜치 위에 쌓음), F-SETUP-01·02, SET-01
 
 ## 목적
 

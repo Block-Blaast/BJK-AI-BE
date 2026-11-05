@@ -10,6 +10,8 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
 
+from bjk_server.domain.matching import same_spec_key
+
 
 @dataclass(frozen=True)
 class HiddenPart:
@@ -41,8 +43,11 @@ def same_spec(
     other_category_id: uuid.UUID | None,
     other_spec: dict[str, Any] | None,
 ) -> bool:
-    """같은 카테고리에 같은 규격으로 등록됐는가. 규격이 없는 부품은 숨은 재고를 따지지 않는다."""
-    return bool(spec) and category_id == other_category_id and spec == other_spec
+    """같은 카테고리에 같은 규격으로 등록됐는가. 규격이 없는 부품은 숨은 재고를 따지지 않는다.
+
+    값 표기는 통일해서 비교한다(20과 "20"). 병합 후보(domain.merge)와 같은 규칙을 쓴다.
+    """
+    return category_id == other_category_id and same_spec_key(spec, other_spec)
 
 
 def is_confirmed(part: HiddenPart, now: datetime, count_days: int) -> bool:

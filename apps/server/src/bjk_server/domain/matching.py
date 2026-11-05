@@ -37,6 +37,25 @@ _SPEC_PATTERNS: tuple[tuple[str, re.Pattern[str], int], ...] = (
     ("length", re.compile(r"(?<![a-z\d])[a-e]\s*-?\s*(\d{2,3})(?!\d)"), 1),
     ("size", re.compile(r"(?<![a-z])(p\s*-?\s*\d{1,3})(?!\d)"), 1),
     ("volume_l", re.compile(r"(?<![\d.])(\d{1,3})\s*l(?![a-z])"), 1),
+    ("iso_vg", re.compile(r"(?<![a-z])vg\s*-?\s*(\d{1,4})(?!\d)"), 1),
+)
+
+# 품목 종류(`kind`). 치수만으로는 같은 M10의 너트와 와셔, 같은 20L의 유압유와 기어오일을 가르지
+# 못한다. 위에서부터 처음 맞는 것을 쓴다(불수용성이 수용성보다 먼저). 이름이 달라도 같은 품목인
+# 표현(육각볼트·헥사볼트)은 같은 값으로 묶고, 종류를 특정하지 않는 표현(그냥 "와셔")은 비워 둔다.
+_KIND_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    ("spring_washer", re.compile(r"스프링\s*와셔")),
+    ("flat_washer", re.compile(r"평\s*와셔")),
+    ("nut", re.compile(r"너트")),
+    ("hex_bolt", re.compile(r"(?:육각|헥사|hex)\s*볼트")),
+    ("socket_bolt", re.compile(r"(?:렌치|소켓)\s*볼트")),
+    ("hydraulic_oil", re.compile(r"유압유")),
+    ("slideway_oil", re.compile(r"습동면유")),
+    ("gear_oil", re.compile(r"기어\s*오일")),
+    ("spindle_oil", re.compile(r"스핀들\s*유")),
+    ("neat_cutting_oil", re.compile(r"불수용성")),
+    ("semi_synthetic_cutting_oil", re.compile(r"반합성")),
+    ("soluble_cutting_oil", re.compile(r"수용성")),
 )
 
 
@@ -88,7 +107,30 @@ def extract_spec(text: str) -> dict[str, str]:
         found = pattern.search(lowered)
         if found:
             spec[key] = _spec_value(found.group(group))
+    kind = next((k for k, pattern in _KIND_PATTERNS if pattern.search(lowered)), None)
+    if kind:
+        spec["kind"] = _spec_value(kind)
     return spec
+
+
+def spec_key(spec: Mapping[str, Any] | None) -> tuple[tuple[str, str], ...]:
+    """규격 비교 키. 값 표기(20과 "20", "P-20"과 "P20")를 통일하고 빈 값은 뺀다."""
+    return tuple(
+        sorted((k, _spec_value(v)) for k, v in (spec or {}).items() if v not in (None, ""))
+    )
+
+
+def split_kind(spec: Mapping[str, Any] | None) -> tuple[tuple[tuple[str, str], ...], str | None]:
+    """(종류를 뺀 규격 키, 종류). 직접 등록한 규격에는 종류가 없을 수 있다."""
+    key = dict(spec_key(spec))
+    kind = key.pop("kind", None)
+    return tuple(sorted(key.items())), kind
+
+
+def same_spec_key(spec: Mapping[str, Any] | None, other: Mapping[str, Any] | None) -> bool:
+    """치수·등급이 모두 같고, 종류는 양쪽에 다 있을 때만 같아야 한다(숨은 재고·병합 후보)."""
+    (base, kind), (other_base, other_kind) = split_kind(spec), split_kind(other)
+    return bool(base) and base == other_base and (None in (kind, other_kind) or kind == other_kind)
 
 
 def spec_relation(query_spec: Mapping[str, str], part_spec: Mapping[str, Any]) -> str:

@@ -105,7 +105,7 @@
 // 200 Response
 {
   "intent": "OUT",
-  "movement": { "id": "...", "type": "OUT", "part_id": "...", "qty": -2, "equipment_id": "...", "maintenance_id": null },
+  "movement": { "id": "...", "type": "OUT", "part_id": "...", "qty": -2, "equipment_id": "...", "maintenance_id": null, "po_id": null },
   "stock_after": 1,
   "reply": "출고 완료. 남은 재고 1개",
   "alias_learned": { "text": "베어링", "part_id": "..." },
@@ -122,9 +122,12 @@
 | 다른 사람의 카드, 없는 설비 | 404 `NOT_FOUND` |
 
 - `triggered.audit_flag_id`: 이 기록으로 재고가 0 이상에서 0 미만이 되면 만든(또는 묶은) 장부 의심 항목 ID ([audit.md](audit.md)).
+- `IN`은 같은 부품의 열린 발주와 대조한다(F-LEDGER-04, #164). 잔량이 입고 수량과 같은 발주를 먼저, 없으면 가장 오래된 승인을 고르고 원장 `movement.po_id`에 연결한다.
+  - `po_match`: `complete`(발주 수량 채움, `received`), `partial`(`partially_received`, 잔량 유지), `mismatch`(잔량보다 많이 들어옴, 입고는 반영하고 관리자·사장님에게 `receipt_check` 알림), `no_order`(열린 발주 없음). `OUT`은 `null`.
+  - `actual_lead_time_days`: 이번 입고로 발주를 채웠을 때 주문 완료 시각부터 입고까지 일수. 주문 완료 표시 없이 입고되면 서버가 `ordered`로 바꾸고(`implicit_order`) 납기 표본에서 빼서 `null`.
 - `MAINTENANCE_DONE` 카드 확정은 SET-09와 같이 완료자·완료 시각(확정 시각)을 남기고 `{ "intent": "MAINTENANCE_DONE", "maintenance_id", "equipment_id", "completed_at", "reply": "정비 완료로 기록했어요." }`를 돌려준다. 이미 완료된 정비는 409 `ALREADY_CONFIRMED`(`detail.status: completed`).
 - `PURCHASE_REQUEST` 카드 확정은 직원 요청 검토(`entry: staff_request`, 요청자 본인, 원본 메시지 연결)를 만들고 `{ "intent": "PURCHASE_REQUEST", "review_id", "status": "reviewing", "reply": "검토해서 사장님께 올렸어요." }`를 돌려준다. 검토는 커밋 뒤 실행된다(`review.progress` 이벤트). 요청에서 `part_id`(선택 카드), `qty`, `supplier_id`, `unit_price`를 바꿀 수 있다. 공급사가 비면 검토가 기본 공급사를, 단가가 비면 등록 단가를 쓴다. 선택 카드는 고른 부품의 기본 공급사를 쓴다. 없는 공급사는 404.
-- 현재 구현 범위: `OUT`·`IN`·`MAINTENANCE_DONE`·`PURCHASE_REQUEST`를 처리한다. `triggered.draft_review_id`(재고 부족 초안), `IN`의 `po_match`·`actual_lead_time_days`는 검토·발주 기능에서 채운다.
+- 현재 구현 범위: `OUT`·`IN`·`MAINTENANCE_DONE`·`PURCHASE_REQUEST`를 처리한다. `triggered.draft_review_id`(재고 부족 초안)는 검토 기능에서 채운다. `IN`은 열린 발주와 대조해 `po_match`·`actual_lead_time_days`를 채우고, 확인 카드(CHAT-01)의 `po_match` 미리 보기는 아직 붙이지 않았다.
 - 확인 카드 확정과 폼 입력은 같은 회사·부품의 원장 추가와 재고 합산을 트랜잭션 단위로 직렬화한다. `stock_after`는 해당 요청이 반영된 시점의 합산값이며, 이후 다른 요청이 재고를 바꿀 수 있다.
 
 ### 재고 동시성 검증 (#69)

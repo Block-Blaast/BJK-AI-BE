@@ -21,6 +21,9 @@ from bjk_server.errors import ApiError, ErrorCode
 from bjk_server.inventory import stock_of
 from bjk_server.security import TokenClaims
 
+# 다른 부품으로 확정된 횟수가 이만큼 쌓이면 모호 별칭 (F-MATCH-02)
+AMBIGUOUS_OTHER_CONFIRMATIONS = 2
+
 
 class MovementOut(BaseModel):
     id: uuid.UUID
@@ -69,9 +72,10 @@ def resolve_equipment(db: Session, equipment_id: uuid.UUID | None) -> uuid.UUID 
 
 
 def learn_alias(db: Session, text: str | None, part: Part) -> AliasLearned | None:
-    """사용자가 확정한 표현을 별칭으로 남긴다.
+    """사용자가 확정한 표현을 별칭으로 남긴다 (F-MATCH-02).
 
-    같은 표현이 여러 부품에 쓰이면 모두 모호(ambiguous)로 표시해 자동 확정에서 뺀다.
+    같은 표현이 가장 많이 확정된 부품이 아닌 다른 부품으로 2회 이상 확정되면, 그 표현의 별칭을
+    모두 모호(ambiguous)로 표시해 자동 확정에서 빼고 항상 선택 카드를 띄운다.
     """
     if not text or not text.strip() or text.strip().lower() == part.name.lower():
         return None
@@ -82,9 +86,11 @@ def learn_alias(db: Session, text: str | None, part: Part) -> AliasLearned | Non
         own = PartAlias(company_id=part.company_id, part_id=part.id, text=text, confirmed_count=0)
         db.add(own)
     own.confirmed_count += 1
-    others = [a for a in aliases if a.part_id != part.id]
-    for alias in [own, *others]:
-        alias.ambiguous = bool(others)
+    group = [own, *(a for a in aliases if a.part_id != part.id)]
+    counts = [a.confirmed_count for a in group]
+    ambiguous = sum(counts) - max(counts) >= AMBIGUOUS_OTHER_CONFIRMATIONS
+    for alias in group:
+        alias.ambiguous = ambiguous
     return AliasLearned(text=text, part_id=part.id)
 
 

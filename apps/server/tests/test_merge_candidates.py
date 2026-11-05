@@ -62,7 +62,8 @@ def _decide(client, cid, user="manager", **body):
 
 
 def _stock(client, part_id):
-    return client.get(f"/api/v1/parts/{part_id}", headers=auth_header("manager")).json()["stock"]["S"]
+    res = client.get(f"/api/v1/parts/{part_id}", headers=auth_header("manager"))
+    return res.json()["stock"]["S"]
 
 
 def test_weekly_merge_finds_same_spec_pair_once(client, demo_db, hex_bolt):

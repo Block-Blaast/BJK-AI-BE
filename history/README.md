@@ -4,6 +4,7 @@ AI·server 영역 작업 기록 색인. 작성 규칙은 [docs/ai-work-rules.md]
 
 | 날짜 | 파일 | 내용 |
 | --- | --- | --- |
+| 2026-11-05 | [2026-11-05-57-review-snapshot-merged-stock.md](2026-11-05-57-review-snapshot-merged-stock.md) | 검토 스냅샷 사용 기록·숨은 재고에 병합 부품 원장 합산, DB 포함 876개 통과 |
 | 2026-11-05 | [2026-11-05-56-nightly-orders-lead-time.md](2026-11-05-56-nightly-orders-lead-time.md) | 새벽 배치 실제 납기 LT50·LT90와 입고 예정 O 반영, DB 포함 832개 통과 |
 | 2026-11-05 | [2026-11-05-55-chat-po-match-preview.md](2026-11-05-55-chat-po-match-preview.md) | 입고 확인 카드 `po_match` 미리 보기(#164 후속), 827개 통과 |
 | 2026-11-05 | [2026-11-05-54-push-subscriptions.md](2026-11-05-54-push-subscriptions.md) | 웹 푸시 구독 저장·조회·해지와 VAPID 설정(#184 1단계), 마이그레이션 0028 |

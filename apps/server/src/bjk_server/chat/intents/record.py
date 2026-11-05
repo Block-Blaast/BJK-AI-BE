@@ -1,6 +1,7 @@
 """출고·입고(OUT·IN) 의도: 부품 매칭 → 확인 카드 (API 명세서 CHAT-01)."""
 
 from bjk_server.chat.intents.base import IntentContext, IntentResult, equipment_ref
+from bjk_server.chat.intents.po_preview import preview_po_match
 from bjk_server.chat.interpreter import Interpretation
 from bjk_server.chat.matching import Candidate, find_candidates, find_equipment, is_unusual_qty
 from bjk_server.chat.records import to_base_qty
@@ -81,6 +82,7 @@ def _item(ctx: IntentContext, parsed: Interpretation) -> IntentResult:
         name=part.name,
         stock=part.stock,
         unit=part.unit,
+        po_match=preview_po_match(db, part.part_id, base_qty) if parsed.intent == "IN" else None,
         **common,
     )
     return IntentResult(reply, [card])

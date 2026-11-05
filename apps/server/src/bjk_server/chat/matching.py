@@ -30,6 +30,7 @@ class Candidate:
     unit: str
     stock: int
     reason: Literal["alias", "equipment_part", "name"]
+    pack_qty: int | None = None
 
 
 @dataclass(frozen=True)
@@ -53,7 +54,12 @@ def find_candidates(db: Session, part_text: str | None, equipment_id: uuid.UUID 
     stock = stock_subquery()
     rows = db.execute(
         select(
-            Part.id, Part.name, Part.unit, Part.spec, func.coalesce(stock.c.stock, 0).label("stock")
+            Part.id,
+            Part.name,
+            Part.unit,
+            Part.spec,
+            Part.pack_qty,
+            func.coalesce(stock.c.stock, 0).label("stock"),
         )
         .outerjoin(stock, stock.c.part_id == Part.id)
         .where(Part.merged_into.is_(None))
@@ -82,7 +88,7 @@ def find_candidates(db: Session, part_text: str | None, equipment_id: uuid.UUID 
     def candidate(part_id: uuid.UUID, by_alias: bool = False) -> Candidate:
         r = by_id[part_id]
         reason = "alias" if by_alias else "equipment_part" if part_id in linked else "name"
-        return Candidate(r.id, r.name, r.unit, r.stock, reason)
+        return Candidate(r.id, r.name, r.unit, r.stock, reason, r.pack_qty)
 
     ordered = sorted(
         result.ranked, key=lambda m: m.part_id not in linked

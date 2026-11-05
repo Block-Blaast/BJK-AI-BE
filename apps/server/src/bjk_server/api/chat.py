@@ -22,6 +22,7 @@ from bjk_server.chat.records import (
     record_movement,
     resolve_equipment,
     resolve_part,
+    to_base_qty,
 )
 from bjk_server.chat.schemas import MessageRequest, MessageResponse
 from bjk_server.chat.service import handle_message
@@ -106,7 +107,7 @@ def confirm_entry(
     ):
         raise ApiError(ErrorCode.PART_NOT_RESOLVED, "후보 중에서 골라 주세요.")
     part = resolve_part(db, part_id)
-    qty = body.qty or payload.get("qty")
+    qty = body.qty or to_base_qty(payload.get("qty"), payload.get("unit"), part.pack_qty)
     if not qty:
         raise ApiError(ErrorCode.VALIDATION_ERROR, "수량을 입력해 주세요.", {"field": "qty"})
     equipment_id = resolve_equipment(db, body.equipment_id or _uuid(payload.get("equipment_id")))

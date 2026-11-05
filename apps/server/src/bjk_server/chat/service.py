@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from bjk_server import clock
 from bjk_server.chat.interpreter import Interpretation, Interpreter, InterpreterUnavailable
 from bjk_server.chat.matching import Candidate, find_candidates, find_equipment, is_unusual_qty
+from bjk_server.chat.records import to_base_qty
 from bjk_server.chat.schemas import (
     AiStatus,
     CandidateOut,
@@ -74,9 +75,11 @@ def _record_card(
         "qty": parsed.qty,
         "equipment": _equipment_ref(equipment),
     }
+    # 부품을 고르기 전에는 원문 단위를 남겨 두고 확정할 때 그 부품의 입수량으로 바꾼다.
     payload = {
         "part_text": parsed.part_text,
         "qty": parsed.qty,
+        "unit": parsed.unit,
         "equipment_id": str(equipment.id) if equipment else None,
         "source_text": text,
     }
@@ -103,12 +106,14 @@ def _record_card(
         return f"어떤 {parsed.part_text}인가요?", card
 
     part = matched.confirmed
-    payload["part_id"] = str(part.part_id)
-    unusual = parsed.qty is not None and is_unusual_qty(db, part.part_id, parsed.intent, parsed.qty)
+    base_qty = to_base_qty(parsed.qty, parsed.unit, part.pack_qty)
+    payload.update(part_id=str(part.part_id), qty=base_qty, unit=None)
+    common["qty"] = base_qty
+    unusual = base_qty is not None and is_unusual_qty(db, part.part_id, parsed.intent, base_qty)
     type_: CardType = "warning" if unusual else "confirm"
     entry = _add_entry(db, user, message_id, type_, parsed.intent, payload, now)
     action = "출고" if parsed.intent == "OUT" else "입고"
-    qty = f" {parsed.qty}{part.unit}" if parsed.qty is not None else ""
+    qty = f" {base_qty}{part.unit}" if base_qty is not None else ""
     reply = (
         f"{part.name}{qty} 맞나요? 평소보다 훨씬 많아요."
         if unusual

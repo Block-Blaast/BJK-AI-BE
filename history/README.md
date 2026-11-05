@@ -4,6 +4,7 @@ AI·server 영역 작업 기록 색인. 작성 규칙은 [docs/ai-work-rules.md]
 
 | 날짜 | 파일 | 내용 |
 | --- | --- | --- |
+| 2026-11-05 | [2026-11-05-27-purchase-orders.md](2026-11-05-27-purchase-orders.md) | 발주 테이블(0025)과 열린 발주·최근 단가 조회 함수, DB 포함 694개 통과 |
 | 2026-11-05 | [2026-11-05-26-part-excel-import.md](2026-11-05-26-part-excel-import.md) | 부품 엑셀 이관 SET-01·02, ai 제안과 정규식 대체 경로, DB 포함 588개 통과 |
 | 2026-11-05 | [2026-11-05-25-expired-rows-cleanup.md](2026-11-05-25-expired-rows-cleanup.md) | `cleanup` 배치(#185), 호출 제한·PIN 잠금·멱등 키 만료 행 삭제 |
 | 2026-11-05 | [2026-11-05-24-part-detail-dev-merge.md](2026-11-05-24-part-detail-dev-merge.md) | #137 dev 반영, 충돌 양쪽 유지, 마이그레이션 0021~0023으로 변경 |

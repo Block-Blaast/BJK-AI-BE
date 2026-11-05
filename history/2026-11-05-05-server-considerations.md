@@ -1,4 +1,12 @@
-# 추가로 고려할 점 (2026-11-05)
+# server 스택에서 추가로 고려할 점
+
+- 날짜: 2026-11-05
+- 영역: server
+- 관련: `2026-11-05-04-server-progress.md`의 스택
+
+## 목적
+
+- 지금 동작은 하지만 다음 작업이나 운영 전에 판단이 필요한 것을 남긴다
 
 지금 구현이 동작은 하지만, 다음 작업이나 운영 전에 판단이 필요한 것들이다.
 
@@ -11,7 +19,7 @@
 ## 팀원 작업과의 경계
 
 - 팀원 PR #63(`feat: ai-contracts-chat-embedding/#61`, `dev` 대상)이 `packages/contracts`에 채팅 해석·임베딩 계약을 추가한다. server의 해석 포트(`bjk_server.chat.interpreter`)를 이 계약에 맞춰 연결해야 한다.
-- #63은 저장소 루트에 `history/`를 만든다. 이 문서는 `docs/history/`에 있어 기록 위치가 둘이 된다. 한 곳으로 합칠지 정해야 한다.
+- #63은 저장소 루트에 `history/`를 만든다. server 기록도 같은 규칙(`docs/ai-work-rules.md` 3장)으로 `history/`에 남긴다. 두 PR이 모두 `history/README.md`를 만들어 머지 때 색인을 합쳐야 한다.
 - Issue #65(부품·별칭 임베딩 열, pgvector)는 마이그레이션 0012로 이 스택의 0011 위에 쌓인다. CI·compose DB 이미지를 `pgvector/pgvector:pg16`으로 바꾸면 로케일 기본값도 다시 확인해야 한다.
 
 ## 매칭과 채팅

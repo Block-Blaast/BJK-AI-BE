@@ -30,7 +30,7 @@ server에서 AI 기능(ai 서비스 HTTP 엔드포인트 4개, 검토 엔진 `bj
 
 ```json
 "ai": { "used": true, "fallback": false, "reason": null },
-"usage": { "purpose": "chat_parse", "model": "anthropic.claude-haiku-4-5", "input_tokens": 450,
+"usage": { "purpose": "chat_parse", "model": "global.anthropic.claude-haiku-4-5-20251001-v1:0", "input_tokens": 450,
            "output_tokens": 60, "latency_ms": 980, "attempts": 1, "success": true }
 ```
 

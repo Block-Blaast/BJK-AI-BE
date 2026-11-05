@@ -4,7 +4,7 @@ import json
 from types import SimpleNamespace
 
 import pytest
-from bjk_ai.config import Settings
+from bjk_ai.config import HAIKU_4_5, Settings
 from bjk_ai.gateway import (
     BedrockGateway,
     GeminiGateway,
@@ -17,9 +17,9 @@ from bjk_contracts import EmbedTask, LlmPurpose
 from pydantic import BaseModel
 
 MODELS = {
-    LlmPurpose.CHAT_PARSE: "anthropic.claude-haiku-4-5",
-    LlmPurpose.OPINION: "anthropic.claude-haiku-4-5",
-    LlmPurpose.IMPORT_SUGGEST: "anthropic.claude-haiku-4-5",
+    LlmPurpose.CHAT_PARSE: HAIKU_4_5,
+    LlmPurpose.OPINION: HAIKU_4_5,
+    LlmPurpose.IMPORT_SUGGEST: HAIKU_4_5,
 }
 
 
@@ -83,13 +83,13 @@ def test_bedrock_generate_uses_structured_output():
     result = generate(bedrock(messages))
 
     [call] = messages.calls
-    assert call["model"] == "anthropic.claude-haiku-4-5"
+    assert call["model"] == HAIKU_4_5
     assert call["output_format"] is Output
     assert call["system"] == "sys"
     assert call["messages"] == [{"role": "user", "content": "3호기 베어링 두 개 씀"}]
     assert "output_config" not in call
     assert (result.text, result.input_tokens, result.output_tokens) == ('{"intent": "OUT"}', 12, 7)
-    assert result.model == "anthropic.claude-haiku-4-5"
+    assert result.model == HAIKU_4_5
 
 
 def test_bedrock_effort_is_sent_only_when_set():
@@ -97,6 +97,27 @@ def test_bedrock_effort_is_sent_only_when_set():
     generate(bedrock(messages, effort="low"))
 
     assert messages.calls[0]["output_config"] == {"effort": "low"}
+
+
+def test_bedrock_claude_uses_runtime_endpoint_in_region(monkeypatch):
+    # 오사카에는 Mantle 엔드포인트가 없어 Claude도 bedrock-runtime InvokeModel로 부른다.
+    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "test")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "test")
+    gateway = BedrockGateway(
+        region="ap-northeast-3",
+        models=MODELS,
+        embedding_model="amazon.titan-embed-text-v2:0",
+        runtime_client=FakeRuntime(),
+    )
+
+    async def current_client():
+        return gateway._claude.get()
+
+    client = asyncio.run(current_client())
+
+    assert str(client.base_url) == "https://bedrock-runtime.ap-northeast-3.amazonaws.com"
+    assert Settings(_env_file=None).bedrock_chat_model == HAIKU_4_5
+    assert HAIKU_4_5.startswith("global.anthropic.")
 
 
 @pytest.mark.parametrize("stop_reason", ["refusal", "max_tokens"])

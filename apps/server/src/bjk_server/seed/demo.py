@@ -36,7 +36,8 @@ from bjk_server.db.models import (
 from bjk_server.defaults import DEFAULT_CATEGORIES, default_settings
 from bjk_server.security import hash_secret
 
-SCENARIOS = ("demo_v1",)
+# demo_v2는 demo_v1 위에 가상 공장 부품 100종·52주 이력을 더한다(seed/demo_v2.py)
+SCENARIOS = ("demo_v1", "demo_v2")
 HISTORY_WEEKS = 12
 _NAMESPACE = uuid.UUID("6f1c2d1e-5b0a-4c8e-9a51-0b6a1f3c2d10")
 
@@ -316,6 +317,12 @@ def seed_demo(session: Session, scenario: str = "demo_v1", today: date | None = 
     if scenario not in SCENARIOS:
         raise ValueError(f"unknown scenario: {scenario}")
     today = today or datetime.now(KST).date()
+    if scenario == "demo_v2":
+        from bjk_server.seed.demo_v2 import extend_v2
+
+        seed_demo(session, "demo_v1", today)
+        extend_v2(session, today)
+        return
 
     def sid(kind: str, key: str) -> uuid.UUID:
         return demo_id(kind, key, scenario)

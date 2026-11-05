@@ -18,6 +18,7 @@ from bjk_server.api import (
     merge_candidates,
     notifications,
     parts,
+    purchase_orders,
     review_actions,
     review_questions,
     settings,
@@ -33,6 +34,7 @@ api_router.include_router(users.router)
 api_router.include_router(parts.router)
 api_router.include_router(merge_candidates.router)
 api_router.include_router(imports.router)
+api_router.include_router(purchase_orders.router)
 api_router.include_router(ledger.router)
 api_router.include_router(categories.router)
 api_router.include_router(suppliers.router)

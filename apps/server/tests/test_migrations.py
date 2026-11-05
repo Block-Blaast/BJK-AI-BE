@@ -21,6 +21,7 @@ TABLES = {
     "maintenance",
     "movements",
     "idempotency_keys",
+    "invites",
 }
 
 

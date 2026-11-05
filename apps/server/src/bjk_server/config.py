@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     # 배치 예약 스케줄러 동시 실행 작업 수. DB 연결 풀도 같은 크기로 잡는다.
     scheduler_workers: int = 2
 
+    # 초대 QR의 가입 주소(join_url)를 만드는 웹 앱 주소
+    web_base_url: str = "https://app.baljukok.kr"
+
     jwt_secret: str = DEV_JWT_SECRET
     access_token_minutes: int = 15
     refresh_token_days: int = 14

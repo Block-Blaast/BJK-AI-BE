@@ -82,6 +82,26 @@ class User(Base):
     created_at: Mapped[datetime] = _created_at()
 
 
+class Invite(Base):
+    """직원 초대 (API 명세서 AUTH-06·07). 일회용, 72시간. 토큰은 해시만 저장한다."""
+
+    __tablename__ = "invites"
+    __table_args__ = (
+        CheckConstraint("role IN ('worker', 'manager')", name="role"),
+        CheckConstraint("(used_at IS NULL) = (used_by IS NULL)", name="used_pair"),
+    )
+
+    id: Mapped[uuid.UUID] = _id()
+    company_id: Mapped[uuid.UUID] = _company_id()
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    role: Mapped[str] = mapped_column(String(16))
+    created_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    used_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = _created_at()
+
+
 class CompanySettings(Base):
     __tablename__ = "company_settings"
 

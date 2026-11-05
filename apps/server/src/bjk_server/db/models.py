@@ -431,6 +431,49 @@ class PartMetrics(Base):
     external_level: Mapped[str] = mapped_column(String(8))
 
 
+class AuditFlag(Base):
+    """장부 의심 항목 (F-AUDIT). 같은 부품의 열린 항목은 하나로 묶는다."""
+
+    __tablename__ = "audit_flags"
+    __table_args__ = (
+        CheckConstraint(
+            "rule IN ('NEGATIVE_STOCK', 'MAINTENANCE_OUT_MISMATCH', 'PATTERN_DEVIATION', "
+            "'SPIKE', 'COUNT_OVERDUE')",
+            name="rule",
+        ),
+        CheckConstraint("level IN ('high', 'medium', 'low')", name="level"),
+        CheckConstraint("status IN ('open', 'count_requested', 'closed')", name="status"),
+        Index(
+            "uq_audit_flags_open_part",
+            "company_id",
+            "part_id",
+            unique=True,
+            postgresql_where=sql_text("status <> 'closed'"),
+        ),
+        Index("ix_audit_flags_company_created", "company_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = _id()
+    company_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("companies.id", ondelete="CASCADE"))
+    part_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("parts.id", ondelete="CASCADE"))
+    # 대표 규칙(등급이 가장 높은 것)과 근거. 함께 걸린 규칙은 related에 둔다.
+    rule: Mapped[str] = mapped_column(String(32))
+    level: Mapped[str] = mapped_column(String(8))
+    status: Mapped[str] = mapped_column(String(16), server_default="open")
+    evidence: Mapped[dict[str, Any]]
+    # [{"rule": ..., "level": ..., "evidence": {...}}]
+    related: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, server_default=sql_text("'[]'::jsonb")
+    )
+    # 이 항목에 담긴 규칙의 중복 판단 키 (bjk_server.domain.audit.Hit.key)
+    keys: Mapped[list[str]] = mapped_column(ARRAY(Text))
+    # 종료 사유. 실사 기능에서 채운다.
+    resolution: Mapped[str | None] = mapped_column(String(16))
+    created_at: Mapped[datetime] = _created_at()
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class PartSupplierMetrics(Base):
     """부품×공급사별 납기 (F-ANAL-04, 외부 요인·휴무일 반영 후)."""
 

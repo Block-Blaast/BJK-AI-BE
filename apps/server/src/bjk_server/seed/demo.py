@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from bjk_server.clock import KST
 from bjk_server.db.models import (
     Base,
+    CalendarEvent,
     Category,
     Company,
     CompanySettings,
@@ -189,6 +190,12 @@ COMPLETED_MAINTENANCE = (("eq3", 3, 15, [("p20", 100)]),)
 
 ALIASES = (("베어링 작은 거", "6205", 3),)
 
+# 연휴 캘린더 (이름, 시작, 종료, 범위). 2027년 춘절·설날 연휴.
+HOLIDAYS = (
+    ("춘절", date(2027, 2, 5), date(2027, 2, 13), "CN"),
+    ("설날 연휴", date(2027, 2, 6), date(2027, 2, 9), "KR"),
+)
+
 
 def demo_id(kind: str, key: str, scenario: str = "demo_v1") -> uuid.UUID:
     return uuid.uuid5(_NAMESPACE, f"{scenario}:{kind}:{key}")
@@ -345,6 +352,17 @@ def seed_demo(session: Session, scenario: str = "demo_v1", today: date | None = 
                     for part_key, qty in required
                 ],
                 completed_at=_at(day, hour),
+            )
+        )
+    for name, start_day, end_day, scope in HOLIDAYS:
+        session.add(
+            CalendarEvent(
+                id=sid("calendar", name),
+                company_id=company_id,
+                name=name,
+                start_date=start_day,
+                end_date=end_day,
+                scope=scope,
             )
         )
     for alias, part_key, count in ALIASES:

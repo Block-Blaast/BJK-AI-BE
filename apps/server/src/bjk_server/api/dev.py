@@ -29,7 +29,7 @@ Owner = Annotated[TokenClaims, Depends(require_role("owner"))]
 
 
 class SeedResetRequest(BaseModel):
-    scenario: Literal["demo_v1"] = "demo_v1"
+    scenario: Literal["demo_v1", "demo_v2"] = "demo_v1"
 
 
 class SeedResetResponse(BaseModel):

@@ -6,6 +6,8 @@
 
 - 권한: owner
 - 동작: 모든 앱 테이블을 비우고 시연 시드(`demo_v1`)를 다시 넣는다. 소유자 DB 계정(`ADMIN_DATABASE_URL`)으로 실행한다.
+- `scenario`: `demo_v1`(기본, 부품 6종·12주 이력) 또는 `demo_v2`(demo_v1 + 가상 공장 부품 100종·52주 이력·발주 입고, #285). demo_v2도 ID가 demo_v1과 같다.
+- 근거 지표·검토는 넣지 않는다. demo_v2를 바로 쓰려면 시드 CLI(`python -m bjk_server.seed --scenario demo_v2`)를 쓴다. CLI는 시드 뒤 새벽 배치·병합 후보·놓친 발주 스캔·브리핑과 예시 직원 요청 5건 검토를 이어서 돌린다.
 - 시드 ID가 고정이라 초기화 전에 받은 시연 계정 토큰을 그대로 쓸 수 있다.
 
 ```json

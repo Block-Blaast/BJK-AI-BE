@@ -7,6 +7,7 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, Query, Response
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import exists, select
+from sqlalchemy.orm import Session
 
 from bjk_server import clock
 from bjk_server.auth import CurrentUser, TenantDB, require_role
@@ -263,10 +264,18 @@ def complete_maintenance(
             "미래 시각으로 완료할 수 없습니다.",
             {"field": "completed_at"},
         )
+    m = mark_completed(db, user, maintenance_id, completed_at)
+    return CompleteResponse(maintenance_id=m.id, completed_at=completed_at)
+
+
+def mark_completed(
+    db: Session, user: TokenClaims, maintenance_id: uuid.UUID, completed_at: datetime
+) -> Maintenance:
+    """완료자·완료 시각 기록. SET-09와 채팅 정비 완료(F-CHAT-06)가 함께 쓴다."""
     m = db.scalar(select(Maintenance).where(Maintenance.id == maintenance_id).with_for_update())
     if m is None:
         raise ApiError(ErrorCode.NOT_FOUND, "정비 일정을 찾을 수 없습니다.")
     _not_completed(m)
     m.completed_at, m.completed_by = completed_at, user.user_id
     db.flush()
-    return CompleteResponse(maintenance_id=m.id, completed_at=completed_at)
+    return m

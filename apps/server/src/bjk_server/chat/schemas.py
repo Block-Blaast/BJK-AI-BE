@@ -1,7 +1,7 @@
 """채팅 API 요청·응답 스키마 (API 명세서 CHAT)."""
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -20,6 +20,11 @@ class AiStatus(BaseModel):
 class EquipmentRef(BaseModel):
     id: uuid.UUID
     name: str
+
+
+class MaintenanceRef(BaseModel):
+    id: uuid.UUID
+    scheduled_date: date
 
 
 class CandidateOut(BaseModel):
@@ -43,6 +48,8 @@ class Card(BaseModel):
     unit: str | None = None
     # select: 고를 후보
     candidates: list[CandidateOut] = Field(default_factory=list)
+    # MAINTENANCE_DONE confirm: 완료할 정비
+    maintenance: MaintenanceRef | None = None
     expires_at: datetime
 
 

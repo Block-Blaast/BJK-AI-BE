@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from bjk_server import clock, idempotency, ratelimit
+from bjk_server.api.maintenance import mark_completed
 from bjk_server.audit.flags import check_after_record
 from bjk_server.auth import CurrentUser, TenantDB
 from bjk_server.chat.interpreter import Interpreter, get_interpreter
@@ -88,15 +89,25 @@ def _uuid(value: str | None) -> uuid.UUID | None:
     return uuid.UUID(value) if value else None
 
 
-@router.post("/entries/{entry_id}/confirm", response_model=RecordResponse)
+class MaintenanceDoneResponse(BaseModel):
+    intent: Literal["MAINTENANCE_DONE"]
+    maintenance_id: uuid.UUID
+    equipment_id: uuid.UUID
+    completed_at: datetime
+    reply: str
+
+
+@router.post("/entries/{entry_id}/confirm", response_model=RecordResponse | MaintenanceDoneResponse)
 def confirm_entry(
     entry_id: uuid.UUID, body: ConfirmRequest, user: CurrentUser, db: TenantDB
-) -> RecordResponse:
-    """CHAT-03. 확인 카드 확정 → 의도별 처리 (현재 OUT·IN)."""
+) -> RecordResponse | MaintenanceDoneResponse:
+    """CHAT-03. 확인 카드 확정 → 의도별 처리 (OUT·IN 기록, MAINTENANCE_DONE 정비 완료)."""
     now = clock.utcnow()
     entry = _own_entry(db, user, entry_id)
     if entry.expires_at <= now:
         raise ApiError(ErrorCode.ENTRY_EXPIRED, "다시 보내 주세요.")
+    if entry.intent == "MAINTENANCE_DONE":
+        return _confirm_maintenance(db, user, entry, now)
     if entry.type == "form" or entry.intent not in ("OUT", "IN"):
         raise ApiError(
             ErrorCode.VALIDATION_ERROR, "이 카드는 폼 입력으로 기록해 주세요.", {"type": entry.type}
@@ -127,6 +138,23 @@ def confirm_entry(
         reply=reply,
         alias_learned=learn_alias(db, payload.get("part_text"), part),
         triggered=Triggered(audit_flag_id=check_after_record(db, part, movement, stock)),
+    )
+    entry.status, entry.decided_at = "confirmed", now
+    entry.result = result.model_dump(mode="json")
+    return result
+
+
+def _confirm_maintenance(
+    db: Session, user: TokenClaims, entry: ChatEntry, now: datetime
+) -> MaintenanceDoneResponse:
+    """F-CHAT-06. 정비 완료(SET-09)와 같은 결과를 남긴다."""
+    m = mark_completed(db, user, uuid.UUID(entry.payload["maintenance_id"]), now)
+    result = MaintenanceDoneResponse(
+        intent="MAINTENANCE_DONE",
+        maintenance_id=m.id,
+        equipment_id=m.equipment_id,
+        completed_at=now,
+        reply="정비 완료로 기록했어요.",
     )
     entry.status, entry.decided_at = "confirmed", now
     entry.result = result.model_dump(mode="json")

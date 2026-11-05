@@ -14,6 +14,7 @@ from bjk_server import clock, idempotency, ratelimit
 from bjk_server.audit.flags import check_after_record
 from bjk_server.auth import CurrentUser, TenantDB
 from bjk_server.chat.interpreter import Interpreter, get_interpreter
+from bjk_server.chat.matching import QueryEmbedder, get_query_embedder
 from bjk_server.chat.records import (
     RecordResponse,
     Triggered,
@@ -42,13 +43,16 @@ def post_message(
     user: CurrentUser,
     db: TenantDB,
     interpreter: Annotated[Interpreter, Depends(get_interpreter)],
+    embedder: Annotated[QueryEmbedder | None, Depends(get_query_embedder)],
 ):
     """CHAT-01. 메시지 → 추출 결과·확인 카드. 해석 실패 시 폼 입력 카드로 대체."""
     ratelimit.hit(db.get_bind(), f"chat:{user.user_id}", MESSAGES_PER_MINUTE, 60)
     stored = idempotency.claim(db, user.company_id, "chat_message", body.client_message_id)
     if stored:
         return JSONResponse(stored.body, stored.status_code)
-    result = handle_message(db, user, body.client_message_id, body.text, interpreter)
+    result = handle_message(
+        db, user, body.client_message_id, body.text, interpreter, embedder=embedder
+    )
     idempotency.complete(
         db,
         user.company_id,

@@ -33,6 +33,8 @@ WORKER = demo_id("user", "worker")
 @pytest.fixture
 def fresh(demo_db):
     demo_db.reseed()
+    # 명세 예시(F-REVIEW-10) 숫자를 확인하므로 시드 발주 이력 없이 기본 납기로 계산한다
+    demo_db.clear_orders()
     result = run_job(demo_db.app, "nightly", "manual", now=NIGHTLY_AT)
     assert result.status == "ok", result.error
     yield demo_db

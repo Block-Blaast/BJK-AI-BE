@@ -12,12 +12,13 @@ from alembic.config import Config
 from bjk_server import ratelimit
 from bjk_server.ai.client import get_ai_client
 from bjk_server.chat.interpreter import get_interpreter
+from bjk_server.db.models import PurchaseOrder
 from bjk_server.db.session import get_admin_db, get_db, get_session_scope
 from bjk_server.main import create_app
 from bjk_server.security import create_access_token
 from bjk_server.seed.demo import COMPANY_CODE, USERS, demo_id, seed_demo
 from fastapi.testclient import TestClient
-from sqlalchemy import Engine, create_engine, text
+from sqlalchemy import Engine, create_engine, delete, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -124,6 +125,15 @@ class DemoDB:
     def reseed(self) -> None:
         with Session(self.admin) as s, s.begin():
             seed_demo(s, today=DEMO_TODAY)
+
+    def clear_orders(self) -> None:
+        """시드의 과거 입고 완료 발주(#12)를 지운다.
+
+        납기 표본이 없을 때의 기본 납기 계산이나 명세 예시 숫자를 확인하는 테스트가
+        nightly 전에 부른다.
+        """
+        with Session(self.admin) as s, s.begin():
+            s.execute(delete(PurchaseOrder))
 
 
 @pytest.fixture(scope="module")

@@ -27,6 +27,7 @@ COMPANY = demo_id("company", COMPANY_CODE)
 @pytest.fixture
 def nightly(demo_db):
     demo_db.reseed()
+    demo_db.clear_orders()
 
     def run():
         result = run_job(demo_db.app, "nightly", "manual", now=NOW)

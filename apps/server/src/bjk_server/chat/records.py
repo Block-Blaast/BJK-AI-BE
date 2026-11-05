@@ -90,6 +90,17 @@ def record_movement(
 ) -> tuple[Movement, int, str]:
     if qty <= 0:
         raise ApiError(ErrorCode.VALIDATION_ERROR, "수량은 1 이상이어야 합니다.", {"qty": qty})
+
+    # 같은 부품의 원장 추가와 잔량 조회를 커밋까지 직렬화한다.
+    # NO KEY UPDATE는 원장 외래 키 확인에 필요한 KEY SHARE와 충돌하지 않는다.
+    locked_part_id = db.scalar(
+        select(Part.id)
+        .where(Part.id == part.id, Part.company_id == user.company_id, Part.merged_into.is_(None))
+        .with_for_update(key_share=True)
+    )
+    if locked_part_id is None:
+        raise ApiError(ErrorCode.PART_NOT_RESOLVED, "기록할 부품을 골라 주세요.")
+
     movement = Movement(
         id=uuid.uuid4(),
         company_id=user.company_id,

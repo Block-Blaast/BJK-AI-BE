@@ -4,6 +4,7 @@ AI·server 영역 작업 기록 색인. 작성 규칙은 [docs/ai-work-rules.md]
 
 | 날짜 | 파일 | 내용 |
 | --- | --- | --- |
+| 2026-11-05 | [2026-11-05-41-chat-po-match-preview.md](2026-11-05-41-chat-po-match-preview.md) | 입고 확인 카드 `po_match` 미리 보기(#164 후속), 827개 통과 |
 | 2026-11-05 | [2026-11-05-48-chat-query-incoming.md](2026-11-05-48-chat-query-incoming.md) | 채팅 재고 조회 답변에 입고 예정 추가(#22), 792개 통과 |
 | 2026-11-05 | [2026-11-05-47-review-decision.md](2026-11-05-47-review-decision.md) | 검토 결정 REV-05와 발주 생성, 결정 직전 스냅샷 갱신, DB 포함 802개 통과 |
 | 2026-11-05 | [2026-11-05-46-review-pdf.md](2026-11-05-46-review-pdf.md) | 결재용 PDF API(REV-07), WeasyPrint·한글 글꼴 |

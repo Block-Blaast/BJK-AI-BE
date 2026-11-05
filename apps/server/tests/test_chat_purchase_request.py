@@ -1,11 +1,12 @@
 from concurrent.futures import Executor, Future
+from datetime import UTC, datetime
 
 import pytest
 from bjk_server.chat.interpreter import Interpretation
-from bjk_server.db.models import ChatEntry, Review
+from bjk_server.db.models import ChatEntry, Part, PurchaseOrder, Review
 from bjk_server.reviews.service import ReviewRunner, get_review_runner
 from bjk_server.seed.demo import demo_id
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from .chat_fakes import PARSED
@@ -62,7 +63,9 @@ def _review(demo_db, review_id) -> Review:
         return s.get(Review, review_id)
 
 
-def test_card_resolves_last_order_expression_to_default_supplier(chat):
+def test_last_order_expression_without_history_uses_default_supplier(chat, demo_db):
+    with Session(demo_db.admin) as s, s.begin():
+        s.execute(delete(PurchaseOrder))
     body = chat("V벨트 30개 시켜주세요, 저번 데서요").json()
     assert body["intent"] == "PURCHASE_REQUEST"
     [card] = body["cards"]
@@ -143,3 +146,32 @@ def test_form_purchase_request_is_idempotent(client, demo_db, reviews):
     missing = dict(form, client_message_id="f-pr-2", supplier_id=str(A42))
     res = client.post("/api/v1/chat/entries", json=missing, headers=auth_header("worker"))
     assert res.status_code == 404
+
+
+def test_last_order_expression_uses_latest_ordered_supplier(chat, demo_db):
+    with Session(demo_db.admin) as s, s.begin():
+        s.execute(delete(PurchaseOrder))
+        company_id = s.get(Part, A42).company_id
+        for supplier, day, status in (
+            (SUPPLIER_A, 1, "received"),
+            (SUPPLIER_B, 2, "received"),
+            (SUPPLIER_A, 3, "cancelled"),
+        ):
+            s.add(
+                PurchaseOrder(
+                    company_id=company_id,
+                    part_id=A42,
+                    supplier_id=supplier,
+                    qty=10,
+                    unit_price=18000,
+                    status=status,
+                    approved_at=datetime(2026, 10, day, tzinfo=UTC),
+                )
+            )
+    card = chat("V벨트 30개 시켜주세요, 저번 데서요").json()["cards"][0]
+    assert card["supplier_resolution"] == {
+        "text": "저번 데",
+        "supplier_id": str(SUPPLIER_B),
+        "name": "공급사 B",
+        "method": "last_order",
+    }

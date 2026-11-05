@@ -74,8 +74,7 @@
 | `COUNT` | 카드 없음. 담당자 본인의 응답 대기 실사 요청에 AUD-03과 같은 처리. 응답의 `count_request_id`로 차이 사유(AUD-04)를 보낸다 |
 | `PURCHASE_REQUEST` | 부품이 확정되면 `confirm` 카드(`part_id`, `qty`, `unit_price`, `supplier_resolution`), 후보만 있으면 `select` 카드, 없으면 카드 없이 미등록 안내 |
 
-- `PURCHASE_REQUEST` 공급사 해석 `supplier_resolution: { text, supplier_id, name, method }`: 공급사 이름이 표현을 포함하면(또는 그 반대) `named`(이 부품을 파는 곳 먼저), 표현이 없거나 "저번 데"·"늘 사던 곳"처럼 최근 발주처를 가리키면 기본 공급사 `default`, 해석하지 못하면 `none`.
-- 현재 구현 범위: 최근 발주 공급사(`last_order`)는 발주 기록(#161) 반영 후 채운다. 그전에는 최근 발주처 표현도 기본 공급사(`default`)로 해석한다.
+- `PURCHASE_REQUEST` 공급사 해석 `supplier_resolution: { text, supplier_id, name, method }`: 공급사 이름이 표현을 포함하면(또는 그 반대) `named`(이 부품을 파는 곳 먼저), "저번 데"·"늘 사던 곳"처럼 최근 발주처를 가리키면 이 부품을 가장 최근에 승인한 발주(취소 제외)의 공급사 `last_order`, 발주 이력이 없거나 표현이 없으면 기본 공급사 `default`, 해석하지 못하면 `none`.
 - 답변 예: "V벨트 A-42 30개, 공급사 A로 요청하셨나요?"
 
 - `COUNT`: 응답 대기 요청이 없으면 "답할 실사 요청이 없어요.", 수량이 없으면 "센 수량을 숫자로 알려 주세요.". 요청이 여럿이면 부품 표현으로 고르고, 고르지 못하면 후보 이름을 되묻는다. 응답 전에는 원장을 바꾸지 않는다.

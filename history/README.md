@@ -5,6 +5,7 @@ AI·server 영역 작업 기록 색인. 작성 규칙은 [docs/ai-work-rules.md]
 | 날짜 | 파일 | 내용 |
 | --- | --- | --- |
 | 2026-11-06 | [2026-11-06-01-web-push-send.md](2026-11-06-01-web-push-send.md) | 웹 푸시 발송(NOT-04), 만료 구독 정리, push 배치 |
+| 2026-11-05 | [2026-11-05-59-chat-last-order-supplier.md](2026-11-05-59-chat-last-order-supplier.md) | 채팅 발주 요청 "저번 데"를 최근 발주 공급사로 해석(#238), 875개 통과 |
 | 2026-11-05 | [2026-11-05-58-snapshot-merged-stock.md](2026-11-05-58-snapshot-merged-stock.md) | 검토 스냅샷 S·H에 병합 부품 재고 연결(#209 후속), 845개 통과 |
 | 2026-11-05 | [2026-11-05-57-purchase-order-detail.md](2026-11-05-57-purchase-order-detail.md) | 발주 상세(문자 문구)·주문 완료 표시 API(PO-02·03) |
 | 2026-11-05 | [2026-11-05-56-nightly-orders-lead-time.md](2026-11-05-56-nightly-orders-lead-time.md) | 새벽 배치 실제 납기 LT50·LT90와 입고 예정 O 반영, DB 포함 832개 통과 |

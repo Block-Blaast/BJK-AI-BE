@@ -10,7 +10,7 @@
 
 ## 한 일
 
-- `part_imports` 테이블·RLS(마이그레이션 0021), `PartImport` 모델
+- `part_imports` 테이블·RLS(마이그레이션 0024), `PartImport` 모델
 - `imports/parse.py`: xlsx·csv 읽기, 열 이름 후보, 줄 오류 코드
 - `imports/service.py`: 제안 목록(정규식 + ai 규격 병합, 카테고리 제안, 기존 부품, 중복 의심), 확정(`stock_mode` 4종, 별칭, 공급사 단가, 임베딩)
 - `api/imports.py` 라우터, `ai/client.py`에 `suggest_import` 추가(기존 메서드는 그대로)
@@ -34,5 +34,5 @@
 
 ## 남은 일·확인 필요
 
-- 마이그레이션은 dev의 0020(#68) 다음 0021로 확정. A의 #137(0020~0022)이 나중에 머지하면 번호 조정 필요
+- 마이그레이션은 dev의 0023(#137) 다음 0024로 확정
 - `warnings` 필드와 재이관 판정 기준을 Notion API 명세서에 반영할지 확인 필요

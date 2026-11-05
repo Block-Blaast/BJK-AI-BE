@@ -118,9 +118,11 @@ def test_reused_message_id_rejects_changed_request_or_user(chat, demo_db, other_
     assert response.status_code == 409
     assert response.json()["code"] == "IDEMPOTENCY_CONFLICT"
     with Session(demo_db.admin) as session:
-        count = session.scalar(select(func.count()).select_from(ChatMessage).where(
-            ChatMessage.client_message_id == "message-conflict"
-        ))
+        count = session.scalar(
+            select(func.count())
+            .select_from(ChatMessage)
+            .where(ChatMessage.client_message_id == "message-conflict")
+        )
     assert count == 1
 
 

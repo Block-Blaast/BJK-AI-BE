@@ -42,8 +42,10 @@ def test_simultaneous_requests_do_not_duplicate_or_leak(
         model = ChatMessage
     else:
         first_body = {
-            "client_message_id": "concurrent-key", "type": "IN",
-            "part_id": str(demo_id("part", "6205")), "qty": 2,
+            "client_message_id": "concurrent-key",
+            "type": "IN",
+            "part_id": str(demo_id("part", "6205")),
+            "qty": 2,
         }
         second_body = first_body | ({"qty": 3} if case == "different-body" else {})
         model = Movement

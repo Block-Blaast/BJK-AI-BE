@@ -180,3 +180,29 @@ def test_embeddings_without_api_key_skips_llm(make_client, embed):
 
     assert body["ai"]["fallback"] is True
     assert body["usage"] is None
+
+
+class WarmGateway:
+    def __init__(self, error=None):
+        self.warmed = 0
+        self.error = error
+
+    async def warm_up(self):
+        self.warmed += 1
+        if self.error:
+            raise self.error
+
+
+@pytest.mark.parametrize("error", [None, RuntimeError("bedrock down")])
+def test_startup_warms_gateway_and_serves_even_if_warm_up_fails(make_client, error):
+    gateway = WarmGateway(error)
+    with make_client(gateway) as client:
+        assert client.get("/health").json() == {"status": "ok", "llm": "ok"}
+    assert gateway.warmed == 1
+
+
+def test_warm_up_can_be_turned_off(make_client):
+    gateway = WarmGateway()
+    with make_client(gateway, warm_up=False) as client:
+        client.get("/health")
+    assert gateway.warmed == 0

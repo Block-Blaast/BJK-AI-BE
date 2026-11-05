@@ -32,6 +32,10 @@ class FakeMessages:
         self.calls = []
         self.stop_reason = stop_reason
 
+    async def create(self, **kwargs):
+        self.calls.append(kwargs)
+        return SimpleNamespace(stop_reason="max_tokens")
+
     async def parse(self, **kwargs):
         self.calls.append(kwargs)
         return SimpleNamespace(
@@ -223,3 +227,28 @@ def test_build_gateway_checks_configured_region():
     build_gateway(settings(aws_region="ap-northeast-1"), aws_available=seen.append)
 
     assert seen == ["ap-northeast-1"]
+
+
+def test_bedrock_warm_up_calls_claude_once_and_titan_once():
+    messages, runtime = FakeMessages(), FakeRuntime()
+    asyncio.run(bedrock(messages, runtime).warm_up())
+
+    [claude] = messages.calls
+    assert (claude["model"], claude["max_tokens"]) == (HAIKU_4_5, 1)
+    [titan] = runtime.calls
+    assert titan["modelId"] == "amazon.titan-embed-text-v2:0"
+
+
+def test_routed_gateway_warms_each_provider_once():
+    class Warmable:
+        def __init__(self):
+            self.warmed = 0
+
+        async def warm_up(self):
+            self.warmed += 1
+
+    shared, plain = Warmable(), SimpleNamespace()
+    asyncio.run(RoutedGateway(llm=shared, embedder=shared, llm_fallback=plain).warm_up())
+    asyncio.run(RoutedGateway(llm=plain, embedder=None).warm_up())
+
+    assert shared.warmed == 1

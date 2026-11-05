@@ -36,6 +36,34 @@ def test_upgrade_creates_all_tables_and_downgrade_removes_them(empty_db_url):
     engine.dispose()
 
 
+def test_upgrade_preserves_legacy_idempotency_records_without_assigning_an_owner(empty_db_url):
+    config = alembic_config(empty_db_url)
+    command.upgrade(config, "0007")
+    engine = create_engine(empty_db_url)
+    with engine.begin() as conn:
+        company = conn.scalar(
+            text("INSERT INTO companies (name, code) VALUES ('legacy', 'legacy') RETURNING id")
+        )
+        conn.execute(
+            text(
+                "INSERT INTO idempotency_keys (company_id, scope, key, status_code, response) "
+                "VALUES (:company, 'chat_entry', 'legacy-key', 200, '{}'::jsonb)"
+            ),
+            {"company": company},
+        )
+
+    command.upgrade(config, "head")
+    with engine.connect() as conn:
+        row = conn.execute(
+            text(
+                "SELECT user_id, request_hash, status_code FROM idempotency_keys "
+                "WHERE key = 'legacy-key'"
+            )
+        ).one()
+    assert row == (None, None, 200)
+    engine.dispose()
+
+
 @pytest.fixture
 def movement_id(migrated_db_url):
     engine = create_engine(migrated_db_url)

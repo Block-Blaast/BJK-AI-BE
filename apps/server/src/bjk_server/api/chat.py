@@ -47,7 +47,10 @@ def post_message(
 ):
     """CHAT-01. 메시지 → 추출 결과·확인 카드. 해석 실패 시 폼 입력 카드로 대체."""
     ratelimit.hit(db.get_bind(), f"chat:{user.user_id}", MESSAGES_PER_MINUTE, 60)
-    stored = idempotency.claim(db, user.company_id, "chat_message", body.client_message_id)
+    stored = idempotency.claim(
+        db, user.company_id, "chat_message", body.client_message_id, user.user_id,
+        body.model_dump(mode="json"),
+    )
     if stored:
         return JSONResponse(stored.body, stored.status_code)
     result = handle_message(
@@ -157,7 +160,10 @@ class FormEntryRequest(BaseModel):
 @router.post("/entries", response_model=RecordResponse)
 def form_entry(body: FormEntryRequest, user: CurrentUser, db: TenantDB):
     """CHAT-05. 폼 입력. 확인 카드 없이 바로 기록한다(ai 실패 시 대체 경로)."""
-    stored = idempotency.claim(db, user.company_id, "chat_entry", body.client_message_id)
+    stored = idempotency.claim(
+        db, user.company_id, "chat_entry", body.client_message_id, user.user_id,
+        body.model_dump(mode="json"),
+    )
     if stored:
         return JSONResponse(stored.body, stored.status_code)
 

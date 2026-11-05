@@ -106,6 +106,24 @@ def test_same_client_message_id_returns_first_result(chat, demo_db):
     assert count == 1
 
 
+@pytest.mark.parametrize("other_user", [False, True], ids=["different-body", "different-user"])
+def test_reused_message_id_rejects_changed_request_or_user(chat, demo_db, other_user):
+    first = chat("베어링 작은 거 2개 씀", client_message_id="message-conflict")
+    assert first.status_code == 200
+    response = chat(
+        "베어링 작은 거 2개 씀" if other_user else "베어링 작은 거 3개 씀",
+        user="worker2" if other_user else "worker",
+        client_message_id="message-conflict",
+    )
+    assert response.status_code == 409
+    assert response.json()["code"] == "IDEMPOTENCY_CONFLICT"
+    with Session(demo_db.admin) as session:
+        count = session.scalar(select(func.count()).select_from(ChatMessage).where(
+            ChatMessage.client_message_id == "message-conflict"
+        ))
+    assert count == 1
+
+
 def test_text_over_500_chars_is_400(chat):
     res = chat("가" * 501)
     assert res.status_code == 400

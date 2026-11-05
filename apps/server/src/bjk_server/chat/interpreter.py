@@ -30,6 +30,8 @@ class Interpretation:
     supplier_text: str | None = None
     # 원문 단위 표기("개", "박스"). 부품 기본 단위로 바꾸는 일은 server가 한다.
     unit: str | None = None
+    # 원문 단가(발주 요청). 없으면 검토가 등록 단가를 쓴다.
+    unit_price: int | None = None
     # 두 번째 품목부터. 같은 의도의 품목별 해석("볼트 200개, 너트 200개 씀")
     more: tuple["Interpretation", ...] = ()
 
@@ -81,6 +83,7 @@ class AiInterpreter:
                 equipment_text=item.equipment_text,
                 supplier_text=item.supplier_text,
                 unit=item.unit,
+                unit_price=item.unit_price,
             )
             for item in parsed.items
         ]

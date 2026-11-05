@@ -27,6 +27,15 @@ class MaintenanceRef(BaseModel):
     scheduled_date: date
 
 
+class SupplierResolution(BaseModel):
+    """발주 요청의 공급사 표현 해석 (CHAT-01). method: last_order·default·named·none."""
+
+    text: str | None = None
+    supplier_id: uuid.UUID | None = None
+    name: str | None = None
+    method: Literal["last_order", "default", "named", "none"]
+
+
 class CandidateOut(BaseModel):
     part_id: uuid.UUID
     name: str
@@ -48,6 +57,9 @@ class Card(BaseModel):
     unit: str | None = None
     # select: 고를 후보
     candidates: list[CandidateOut] = Field(default_factory=list)
+    # PURCHASE_REQUEST: 요청 단가와 공급사 해석
+    unit_price: int | None = None
+    supplier_resolution: SupplierResolution | None = None
     # MAINTENANCE_DONE confirm: 완료할 정비
     maintenance: MaintenanceRef | None = None
     expires_at: datetime

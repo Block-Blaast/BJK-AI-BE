@@ -1,7 +1,7 @@
 """검토 근거 스냅샷 수집 (F-REVIEW-02, docs/ai-integration.md 5-2).
 
 항목별 수집 함수가 스냅샷 필드 일부를 dict로 돌려주고, 이를 합쳐 `bjk_review.ReviewSnapshot`을
-만든다. 아직 비어 있는 근거(열린 발주 O, 단가 통계, 병합 부품 재고)는 수집 함수를 `COLLECTORS`에
+만든다. 아직 비어 있는 근거(병합 부품 재고)는 수집 함수를 `COLLECTORS`에
 더해 붙인다. 비어 있는 값은 오류가 아니라 해당 체크를 건너뛰는 쪽으로 동작한다.
 """
 
@@ -11,7 +11,15 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from typing import Any
 
-from bjk_review import HiddenStock, OpenRequest, OrderRequest, ReviewSnapshot, SupplierOffer
+from bjk_review import (
+    HiddenStock,
+    OpenOrder,
+    OpenRequest,
+    OrderRequest,
+    PriceStats,
+    ReviewSnapshot,
+    SupplierOffer,
+)
 from sqlalchemy import exists, func, select
 from sqlalchemy.orm import Session
 
@@ -34,6 +42,7 @@ from bjk_server.db.models import (
 from bjk_server.domain import hidden_stock as hs
 from bjk_server.inventory import stock_of
 from bjk_server.jobs.nightly import FALLBACK_LEAD_DAYS, HOLIDAY_FACTORS, IMPORT_DEPENDENT
+from bjk_server.purchasing.orders import open_orders, recent_price_stats, remaining_qty
 
 # 다른 열린 요청 P (F-LEDGER-03: 검토중·검토완료·보류)
 OPEN_REVIEW_STATUSES = ("reviewing", "reviewed", "held")
@@ -231,6 +240,40 @@ def _open_requests(src: SnapshotSource) -> dict[str, Any]:
     return {"open_requests": requests}
 
 
+def _orders(src: SnapshotSource) -> dict[str, Any]:
+    """열린 발주(C-03), 그중 필요 시점 전 도착분 O, 최근 구매 단가 p̄·σ_p·n (#161).
+
+    같은 부품과 이 부품으로 병합된 부품을 함께 본다. 도착 예정일은 주문 완료 시각(없으면 승인
+    시각) + 그 공급사 LT50, 공급사별 새벽 계산 전이면 공급사 기본 납기다.
+    필요 시점(t_out)이 없으면 열린 발주 잔량을 모두 O로 본다.
+    """
+    db, part = src.db, src.part
+    ids = [part.id, *db.scalars(select(Part.id).where(Part.merged_into == part.id))]
+    lt50 = dict(
+        db.execute(
+            select(PartSupplierMetrics.supplier_id, PartSupplierMetrics.lt50)
+            .where(PartSupplierMetrics.part_id == part.id)
+            .order_by(PartSupplierMetrics.computed_on)
+        ).all()
+    )
+    t_need = src.metrics.t_out if src.metrics else None
+    orders, incoming = [], 0
+    for po in open_orders(db, ids):
+        if po.supplier_id in lt50:
+            days = lt50[po.supplier_id]
+        else:
+            supplier = db.get(Supplier, po.supplier_id)
+            days = (supplier.default_lead_time_days if supplier else None) or FALLBACK_LEAD_DAYS
+        eta = ((po.ordered_at or po.approved_at) + timedelta(days=days)).astimezone(KST).date()
+        qty = remaining_qty(po)
+        orders.append(OpenOrder(qty=qty, eta=eta))
+        if t_need is None or eta <= t_need:
+            incoming += qty
+    stats = recent_price_stats(db, ids, src.now)
+    price = PriceStats(mean=stats.mean, sigma=stats.std or 0.0, n=stats.n)
+    return {"open_orders": orders, "incoming": incoming, "price_stats": price}
+
+
 def _external(src: SnapshotSource) -> dict[str, Any]:
     """수입 의존 여부와 기본 공급사 납기 구간(오늘 ~ 오늘 + LT90)에 겹치는 연휴 이름 (F-EXT)."""
     category = src.category
@@ -259,6 +302,7 @@ COLLECTORS: tuple[Collector, ...] = (
     _suppliers,
     _hidden,
     _open_requests,
+    _orders,
     _external,
 )
 

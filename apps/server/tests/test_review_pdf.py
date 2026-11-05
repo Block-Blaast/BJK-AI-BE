@@ -77,3 +77,21 @@ def test_projection_adds_order_on_lead_day(fresh):  # noqa: F811
     assert without[0] == snapshot.stock
     assert with_order[7] == without[7]
     assert with_order[8] == without[8] + 10
+
+
+def test_pdf_bytes_do_not_depend_on_render_time(monkeypatch):
+    """부분 글꼴 수정 시각이 렌더링 시각을 따르면 다른 초에 받은 PDF가 달라진다 (#266).
+
+    리눅스(Noto Sans CJK)에서만 글꼴 head가 다시 쓰여 바이트 비교만으로는 맥에서 재현되지 않아,
+    fontTools가 쓸 시각이 고정됐는지도 함께 본다.
+    """
+    from bjk_server.reviews.pdf import FONT_TIMESTAMP, render_pdf
+    from fontTools.misc import timeTools
+    from fontTools.ttLib.tables import _h_e_a_d
+
+    html = '<html><body><p style="font-family: sans-serif">발주 검토 결재</p></body></html>'
+    monkeypatch.setattr(timeTools.time, "time", lambda: 1_800_000_000.0)
+    first = render_pdf(html)
+    monkeypatch.setattr(timeTools.time, "time", lambda: 1_800_000_100.0)
+    assert render_pdf(html) == first
+    assert _h_e_a_d.timestampNow() == FONT_TIMESTAMP

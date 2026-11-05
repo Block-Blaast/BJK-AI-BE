@@ -11,7 +11,7 @@ from bjk_server.clock import KST
 from bjk_server.db.models import AuditFlag, CompanySettings, CountRequest, Movement, Part, User
 from bjk_server.defaults import DEFAULT_SETTINGS
 from bjk_server.errors import ApiError, ErrorCode
-from bjk_server.inventory import stock_of
+from bjk_server.inventory import lock_part_stock, stock_of
 from bjk_server.security import TokenClaims
 
 # 실사조정 원장 기록의 사유. 차이 사유(AUD-04)는 실사 요청에 남긴다.
@@ -146,6 +146,8 @@ def answer_count(
             ErrorCode.ALREADY_CONFIRMED, "이미 응답한 실사 요청입니다.", {"status": request.status}
         )
     part = db.get(Part, request.part_id)
+    # 센 수량과 장부 차이를 구하는 사이 다른 입출고가 끼지 않게 한다 (#69).
+    lock_part_stock(db, request.company_id, part.id)
     book = stock_of(db, part.id)
     diff = counted_qty - book
     if diff:

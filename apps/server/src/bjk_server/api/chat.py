@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from bjk_server import clock, idempotency, ratelimit
+from bjk_server.api.maintenance import mark_completed
 from bjk_server.audit.flags import check_after_record
 from bjk_server.auth import CurrentUser, TenantDB
 from bjk_server.chat.interpreter import Interpreter, get_interpreter
@@ -47,7 +48,14 @@ def post_message(
 ):
     """CHAT-01. 메시지 → 추출 결과·확인 카드. 해석 실패 시 폼 입력 카드로 대체."""
     ratelimit.hit(db.get_bind(), f"chat:{user.user_id}", MESSAGES_PER_MINUTE, 60)
-    stored = idempotency.claim(db, user.company_id, "chat_message", body.client_message_id)
+    stored = idempotency.claim(
+        db,
+        user.company_id,
+        "chat_message",
+        body.client_message_id,
+        user.user_id,
+        body.model_dump(mode="json"),
+    )
     if stored:
         return JSONResponse(stored.body, stored.status_code)
     result = handle_message(
@@ -88,15 +96,25 @@ def _uuid(value: str | None) -> uuid.UUID | None:
     return uuid.UUID(value) if value else None
 
 
-@router.post("/entries/{entry_id}/confirm", response_model=RecordResponse)
+class MaintenanceDoneResponse(BaseModel):
+    intent: Literal["MAINTENANCE_DONE"]
+    maintenance_id: uuid.UUID
+    equipment_id: uuid.UUID
+    completed_at: datetime
+    reply: str
+
+
+@router.post("/entries/{entry_id}/confirm", response_model=RecordResponse | MaintenanceDoneResponse)
 def confirm_entry(
     entry_id: uuid.UUID, body: ConfirmRequest, user: CurrentUser, db: TenantDB
-) -> RecordResponse:
-    """CHAT-03. 확인 카드 확정 → 의도별 처리 (현재 OUT·IN)."""
+) -> RecordResponse | MaintenanceDoneResponse:
+    """CHAT-03. 확인 카드 확정 → 의도별 처리 (OUT·IN 기록, MAINTENANCE_DONE 정비 완료)."""
     now = clock.utcnow()
     entry = _own_entry(db, user, entry_id)
     if entry.expires_at <= now:
         raise ApiError(ErrorCode.ENTRY_EXPIRED, "다시 보내 주세요.")
+    if entry.intent == "MAINTENANCE_DONE":
+        return _confirm_maintenance(db, user, entry, now)
     if entry.type == "form" or entry.intent not in ("OUT", "IN"):
         raise ApiError(
             ErrorCode.VALIDATION_ERROR, "이 카드는 폼 입력으로 기록해 주세요.", {"type": entry.type}
@@ -133,6 +151,23 @@ def confirm_entry(
     return result
 
 
+def _confirm_maintenance(
+    db: Session, user: TokenClaims, entry: ChatEntry, now: datetime
+) -> MaintenanceDoneResponse:
+    """F-CHAT-06. 정비 완료(SET-09)와 같은 결과를 남긴다."""
+    m = mark_completed(db, user, uuid.UUID(entry.payload["maintenance_id"]), now)
+    result = MaintenanceDoneResponse(
+        intent="MAINTENANCE_DONE",
+        maintenance_id=m.id,
+        equipment_id=m.equipment_id,
+        completed_at=now,
+        reply="정비 완료로 기록했어요.",
+    )
+    entry.status, entry.decided_at = "confirmed", now
+    entry.result = result.model_dump(mode="json")
+    return result
+
+
 class CancelResponse(BaseModel):
     entry_id: uuid.UUID
     status: Literal["cancelled"]
@@ -157,7 +192,14 @@ class FormEntryRequest(BaseModel):
 @router.post("/entries", response_model=RecordResponse)
 def form_entry(body: FormEntryRequest, user: CurrentUser, db: TenantDB):
     """CHAT-05. 폼 입력. 확인 카드 없이 바로 기록한다(ai 실패 시 대체 경로)."""
-    stored = idempotency.claim(db, user.company_id, "chat_entry", body.client_message_id)
+    stored = idempotency.claim(
+        db,
+        user.company_id,
+        "chat_entry",
+        body.client_message_id,
+        user.user_id,
+        body.model_dump(mode="json"),
+    )
     if stored:
         return JSONResponse(stored.body, stored.status_code)
 

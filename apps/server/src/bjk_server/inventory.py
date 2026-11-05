@@ -6,7 +6,7 @@ from sqlalchemy import Subquery, func, select
 from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.orm import Session
 
-from bjk_server.db.models import Movement, PartMetrics
+from bjk_server.db.models import Movement, Part, PartMetrics
 
 
 def stock_subquery() -> Subquery:
@@ -21,6 +21,21 @@ def stock_subquery() -> Subquery:
 def stock_of(session: Session, part_id: uuid.UUID) -> int:
     total = session.scalar(select(func.sum(Movement.qty)).where(Movement.part_id == part_id))
     return int(total or 0)
+
+
+def lock_part_stock(session: Session, company_id: uuid.UUID, part_id: uuid.UUID) -> bool:
+    """재고를 바꾸는 모든 경로가 원장 추가 전에 잡는 부품 행 잠금 (#69).
+
+    같은 부품의 원장 추가와 잔량 조회를 커밋까지 직렬화한다. 다른 부품은 막지 않는다.
+    NO KEY UPDATE는 원장 외래 키 확인에 필요한 KEY SHARE와 충돌하지 않는다.
+    병합됐거나 다른 회사 부품이면 False.
+    """
+    locked = session.scalar(
+        select(Part.id)
+        .where(Part.id == part_id, Part.company_id == company_id, Part.merged_into.is_(None))
+        .with_for_update(key_share=True)
+    )
+    return locked is not None
 
 
 def latest_metrics_subquery() -> Subquery:

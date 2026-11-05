@@ -36,7 +36,7 @@ def run(session: Session, now: datetime) -> dict[str, Any]:
                 )
             )
         )
-        for po in _not_ordered(session, company_id, now):
+        for po in not_ordered(session, company_id, now):
             part = session.get(Part, po.part_id)
             to = [po.approved_by] if po.approved_by else managers
             title = f"{part.name} {po.qty}{part.unit} 발주를 주문하셨나요?"
@@ -52,9 +52,7 @@ def run(session: Session, now: datetime) -> dict[str, Any]:
                     dedupe_key=f"order_check:{po.id}",
                 )
             )
-        for po in _ordered(session, company_id):
-            if now <= po.ordered_at + timedelta(days=lt90(session, po)):
-                continue
+        for po in overdue_receipts(session, company_id, now):
             part = session.get(Part, po.part_id)
             title = f"{part.name} 입고 확인이 필요해요. 납기가 지났어요."
             receipt_check += len(
@@ -73,11 +71,17 @@ def run(session: Session, now: datetime) -> dict[str, Any]:
     return {"order_check": order_check, "receipt_check": receipt_check}
 
 
-def _not_ordered(session: Session, company_id: uuid.UUID, now: datetime) -> list[PurchaseOrder]:
+def not_ordered(
+    session: Session, company_id: uuid.UUID | None, now: datetime
+) -> list[PurchaseOrder]:
+    """승인 후 24시간이 지나도 주문 완료 표시가 없는 발주.
+
+    company_id가 없으면 현재 테넌트(RLS) 전체.
+    """
     return list(
         session.scalars(
             select(PurchaseOrder).where(
-                PurchaseOrder.company_id == company_id,
+                *_of(company_id),
                 PurchaseOrder.status == "approved",
                 PurchaseOrder.ordered_at.is_(None),
                 PurchaseOrder.approved_at <= now - ORDER_CONFIRM_AFTER,
@@ -86,16 +90,31 @@ def _not_ordered(session: Session, company_id: uuid.UUID, now: datetime) -> list
     )
 
 
-def _ordered(session: Session, company_id: uuid.UUID) -> list[PurchaseOrder]:
+def _ordered(session: Session, company_id: uuid.UUID | None) -> list[PurchaseOrder]:
     return list(
         session.scalars(
             select(PurchaseOrder).where(
-                PurchaseOrder.company_id == company_id,
+                *_of(company_id),
                 PurchaseOrder.status.in_(("ordered", "partially_received")),
                 PurchaseOrder.ordered_at.is_not(None),
             )
         )
     )
+
+
+def overdue_receipts(
+    session: Session, company_id: uuid.UUID | None, now: datetime
+) -> list[PurchaseOrder]:
+    """주문 후 기본 공급사 LT90을 넘겨도 다 들어오지 않은 발주. 아침 브리핑도 같은 기준을 쓴다."""
+    return [
+        po
+        for po in _ordered(session, company_id)
+        if now > po.ordered_at + timedelta(days=lt90(session, po))
+    ]
+
+
+def _of(company_id: uuid.UUID | None) -> list:
+    return [PurchaseOrder.company_id == company_id] if company_id else []
 
 
 def lt90(session: Session, po: PurchaseOrder) -> int:

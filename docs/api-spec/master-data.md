@@ -76,3 +76,71 @@
 - `parts`: 정비 1회당 부품·수량(1 이상). 같은 부품 두 번은 400, 없거나 병합된 부품은 404. 정비 일정에 필요 부품이 없으면 이 수량을 확정 필요량 F로 쓴다.
 - 채팅이 설비를 이름(대소문자 무시)으로 찾으므로 이름은 회사 안에서 대소문자 무시 유일이다(409 `NAME_TAKEN`).
 - PATCH에서 `null`은 400. 설비는 출고·정비 원장에 연결되어 삭제 API를 두지 않는다.
+
+## SET-08 정비 일정
+
+| API | 설명 |
+| --- | --- |
+| `GET /api/v1/maintenance` | 목록. 예정일 순, 커서 목록. Query `from`, `to`(예정일 범위), `equipment_id`, `completed`(true·false) |
+| `GET /api/v1/maintenance/{id}` | 상세 |
+| `POST /api/v1/maintenance` | 등록. 201 |
+| `PATCH /api/v1/maintenance/{id}` | 보낸 항목만 수정 |
+| `DELETE /api/v1/maintenance/{id}` | 취소한 일정 삭제. 204 |
+
+```json
+// POST Request (required_parts를 비우면 설비의 정비 1회당 부품·수량을 쓴다)
+{ "equipment_id": "...", "scheduled_date": "2026-11-20", "required_parts": [ { "part_id": "...", "qty": 4 } ] }
+
+// 201 Response
+{
+  "id": "...", "equipment": { "id": "...", "name": "3호기" }, "scheduled_date": "2026-11-20",
+  "required_parts": [ { "part_id": "...", "qty": 4 } ],
+  "parts": [ { "part_id": "...", "name": "볼베어링 6205ZZ", "qty": 4 } ], "parts_source": "schedule",
+  "completed_at": null
+}
+```
+
+- `parts`는 확정 필요량 F에 실제로 쓰는 부품이다. 정비 일정의 `required_parts`가 있으면 그것(`parts_source: schedule`), 없으면 설비 기준(`equipment`). 둘을 더하지 않는다.
+- `required_parts`의 같은 부품 두 번·수량 0 이하는 400, 없거나 병합된 부품은 404. PATCH에서 `required_parts: null`이면 설비 기준으로 돌아간다. `equipment_id`·`scheduled_date`에 `null`은 400.
+- 완료된 정비는 수정·삭제할 수 없다(409 `ALREADY_CONFIRMED`, `detail.status: completed`). 출고가 연결된 정비도 삭제할 수 없다(`detail.status: linked`).
+
+## SET-09 POST /api/v1/maintenance/{id}/complete
+
+- 권한: 로그인한 모든 사용자(작업자 포함). 완료자(`completed_by`)와 완료 시각을 남긴다.
+
+```json
+// Request (본문 생략 가능. 비우면 지금)
+{ "completed_at": "2026-11-20T10:00:00+09:00" }
+
+// 200 Response
+{ "maintenance_id": "...", "completed_at": "2026-11-20T01:00:00Z" }
+```
+
+- `completed_at`은 시간대를 포함해야 하고 미래 시각은 400.
+- 이미 완료된 정비는 409 `ALREADY_CONFIRMED`(`detail.status: completed`). 없으면 404.
+- 완료 후 48시간 안의 같은 설비 출고는 이 정비에 연결되고(F-LEDGER-03), 완료 48시간이 지나도 필요 부품 출고가 절반 미만이면 장부 검증 `MAINTENANCE_OUT_MISMATCH`가 된다.
+- 정비 목록·상세 응답에 `completed_by`(사용자 ID)가 담긴다.
+- 현재 구현 범위: 채팅 정비 완료(의도 `MAINTENANCE_DONE`) 연결은 ai 해석 연동 후 추가한다.
+
+## SET-11 연휴 캘린더
+
+| API | 설명 |
+| --- | --- |
+| `GET /api/v1/calendar` | 목록. 시작일 순, 커서 목록. Query `from`·`to`(기간과 겹치는 일정), `scope` |
+| `POST /api/v1/calendar` | 등록. 201 |
+| `PATCH /api/v1/calendar/{id}` | 보낸 항목만 수정 |
+| `DELETE /api/v1/calendar/{id}` | 삭제. 204 |
+
+```json
+// POST Request
+{ "name": "춘절", "start": "2027-02-05", "end": "2027-02-13", "scope": "CN" }
+
+// 201 Response
+{ "id": "...", "name": "춘절", "start": "2027-02-05", "end": "2027-02-13", "scope": "CN", "supplier_id": null }
+```
+
+- `scope`: `KR`(국내 명절), `CN`(중국, 춘절 등), `supplier`(특정 공급사 휴무, `supplier_id` 필수). `supplier`가 아닌데 `supplier_id`가 있거나, `supplier`인데 없으면 400. 없는 공급사는 404.
+- `end`가 `start`보다 빠르면 400(수정 후 값으로도 검사). `name`·`start`·`end`·`scope`에 `null`은 400.
+- 시연 시드에 2027년 춘절(CN)·설날 연휴(KR)가 들어 있다.
+- 새벽 배치가 납기 구간과 겹치는 연휴만큼 납기를 늘린다([jobs.md](jobs.md) nightly). `KR`·`CN`은 카테고리 납기 요인(`HOLIDAY_KR`·`HOLIDAY_CN`)이 있는 부품에, `supplier`는 그 공급사 납기에 적용한다. 공급사 상세의 `holidays`(날짜 목록)도 함께 쓴다.
+- 외부 요인 현황(DSH-03)의 `upcoming_holidays`에 90일 안 일정이 나온다.

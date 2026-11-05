@@ -22,4 +22,4 @@
 - `categories`: 이름순. `r_lead`·`r_price`는 카테고리 납기·가격 요인 지표 r의 최대값, 등급은 둘 중 큰 값 기준.
 - 외부 충격(DEV-02)이 켜져 있으면 해상운임 r과 이를 쓰는 카테고리 위험도가 고정값 3으로 나온다.
 - `updated_at`은 외부 지표 마지막 갱신 시각, 24시간을 넘기면 `stale: true`(지표가 없을 때도 `true`).
-- 현재 구현 범위: 연휴 캘린더(SET-11) 전이라 `upcoming_holidays`는 오늘부터 90일 안의 공급사 휴무일(`scope: supplier`)만 담는다.
+- `upcoming_holidays`: 오늘부터 90일 안에 걸치는 연휴 캘린더(SET-11) 일정과 공급사 휴무일(`scope: supplier`, 이름 `<공급사> 휴무`). 시작일 순.

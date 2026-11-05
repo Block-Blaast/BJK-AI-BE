@@ -4,13 +4,15 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, StringConstraints
 from sqlalchemy import select, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from bjk_server import pin_lock, ratelimit
 from bjk_server.api.schemas import TokenPair, UserBrief
 from bjk_server.auth import set_tenant
+from bjk_server.company import create_company
 from bjk_server.db.models import User
 from bjk_server.db.session import get_db
 from bjk_server.errors import ApiError, ErrorCode
@@ -56,6 +58,68 @@ def login(body: LoginRequest, db: DB) -> LoginResponse:
     tokens = TokenPair.issue(user.id, user.company_id, user.role)
     return LoginResponse(
         **tokens.model_dump(), user=UserBrief(id=user.id, name=user.name, role=user.role)
+    )
+
+
+SIGNUPS_PER_HOUR = 10
+
+
+class SignupRequest(BaseModel):
+    company_name: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)
+    ]
+    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=50)]
+    email: str = Field(max_length=255, pattern=r"^\s*[^@\s]+@[^@\s]+\.[^@\s]+\s*$")
+    password: str = Field(min_length=8, max_length=128)
+
+
+class CompanyBrief(BaseModel):
+    id: uuid.UUID
+    name: str
+    code: str
+
+
+class SignupResponse(LoginResponse):
+    company: CompanyBrief
+
+
+def _email_taken() -> ApiError:
+    return ApiError(ErrorCode.EMAIL_TAKEN, "이미 가입된 이메일입니다.")
+
+
+@router.post("/owner/signup", response_model=SignupResponse, status_code=201)
+def owner_signup(body: SignupRequest, request: Request, db: DB) -> SignupResponse:
+    """AUTH-01. 사장님 가입. 회사·기본 설정·기본 카테고리·사장님 계정을 만든다."""
+    client_ip = request.client.host if request.client else "unknown"
+    ratelimit.hit(db.get_bind(), f"signup:{client_ip}", SIGNUPS_PER_HOUR, 3600)
+    # 로그인과 같이 앞뒤 공백을 지우고, 대소문자 구분 없이 하나로 본다.
+    email = body.email.strip().lower()
+    taken = db.execute(
+        text("SELECT user_id FROM auth_lookup_by_email(:email)"), {"email": email}
+    ).first()
+    if taken is not None:
+        raise _email_taken()
+
+    company = create_company(db, body.company_name)
+    owner = User(
+        company_id=company.id,
+        name=body.name,
+        role="owner",
+        email=email,
+        password_hash=hash_secret(body.password),
+    )
+    db.add(owner)
+    try:
+        db.flush()
+    except IntegrityError as exc:
+        # 동시에 같은 이메일로 가입했거나 비활성 계정이 이메일을 쓰고 있다.
+        raise _email_taken() from exc
+
+    tokens = TokenPair.issue(owner.id, company.id, "owner")
+    return SignupResponse(
+        **tokens.model_dump(),
+        user=UserBrief(id=owner.id, name=owner.name, role="owner"),
+        company=CompanyBrief(id=company.id, name=company.name, code=company.code),
     )
 
 

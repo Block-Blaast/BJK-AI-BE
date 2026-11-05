@@ -8,7 +8,15 @@ from bjk_server.chat.schemas import CandidateOut, Card, CardType
 
 
 def handle(ctx: IntentContext, parsed: Interpretation) -> IntentResult:
-    """출고·입고 메시지의 확인 카드와 답변."""
+    """출고·입고 메시지의 확인 카드와 답변. 여러 품목이면 품목마다 카드 하나, 답변은 줄로 잇는다."""
+    results = [_item(ctx, item) for item in (parsed, *parsed.more)]
+    if len(results) == 1:
+        return results[0]
+    reply = "\n".join(r.reply for r in results)
+    return IntentResult(reply, [card for r in results for card in r.cards])
+
+
+def _item(ctx: IntentContext, parsed: Interpretation) -> IntentResult:
     db = ctx.db
     equipment = find_equipment(db, parsed.equipment_text)
     matched = find_candidates(

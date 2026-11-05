@@ -7,16 +7,17 @@ manager 이상은 회사 전체, worker는 본인이 올린 요청만 본다. �
 
 import uuid
 from datetime import datetime
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import case, select
 
 from bjk_server.auth import CurrentUser, TenantDB
 from bjk_server.clock import KST
 from bjk_server.db.models import Part, Review, ReviewSnapshot, User
 from bjk_server.errors import ApiError, ErrorCode
+from bjk_server.pagination import Page, PageParams, keyset_page, page_params
 from bjk_server.security import TokenClaims
 
 router = APIRouter(prefix="/reviews", tags=["reviews"])
@@ -143,6 +144,64 @@ def snapshot_values(values: dict[str, Any], request_qty: int | None) -> dict[str
         "MOQ": default["moq"] if default else None,
         "p_mean": values.get("price_stats", {}).get("mean"),
     }
+
+
+class ReviewListItem(BaseModel):
+    id: uuid.UUID
+    entry: Entry
+    part: str | None
+    status: Status
+    verdict: Verdict | None
+    flags: list[str]
+    original_total: int | None
+    saving: int
+    created_at: datetime
+
+
+@router.get("", response_model=Page[ReviewListItem])
+def list_reviews(
+    user: CurrentUser,
+    db: TenantDB,
+    params: Annotated[PageParams, Depends(page_params)],
+    status: Status | None = None,
+    verdict: Verdict | None = None,
+    urgent: bool | None = None,
+    entry: Entry | None = None,
+    mine: bool | None = None,
+) -> Page[ReviewListItem]:
+    """REV-01. 긴급 먼저, 그다음 예상 손실(미발주 시 손실)이 큰 순, 최근 생성 순."""
+    is_urgent = case((Review.flags.any_() == "urgent", 1), else_=0)
+    stmt = visible_reviews(user).add_columns(is_urgent.label("is_urgent"), Part.name)
+    stmt = stmt.outerjoin(Part, Part.id == Review.part_id)
+    if status is not None:
+        stmt = stmt.where(Review.status == status)
+    if verdict is not None:
+        stmt = stmt.where(Review.verdict == verdict)
+    if urgent is not None:
+        stmt = stmt.where(is_urgent == (1 if urgent else 0))
+    if entry is not None:
+        stmt = stmt.where(Review.entry == entry)
+    if mine:
+        stmt = stmt.where(Review.requested_by == user.user_id)
+    return keyset_page(
+        db,
+        stmt,
+        [is_urgent, Review.loss, Review.created_at, Review.id],
+        params,
+        to_item=lambda r: ReviewListItem(
+            id=r.Review.id,
+            entry=r.Review.entry,
+            part=r.name,
+            status=r.Review.status,
+            verdict=r.Review.verdict,
+            flags=r.Review.flags,
+            original_total=r.Review.original_total,
+            saving=r.Review.saving,
+            created_at=r.Review.created_at.astimezone(KST),
+        ),
+        cursor_of=lambda r: [r.is_urgent, r.Review.loss, r.Review.created_at, r.Review.id],
+        descending=True,
+    )
 
 
 @router.get("/{review_id}", response_model=ReviewDetail)

@@ -26,6 +26,7 @@ TABLES = {
     "reviews",
     "review_snapshots",
     "part_imports",
+    "purchase_orders",
 }
 
 

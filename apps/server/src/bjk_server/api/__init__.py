@@ -6,6 +6,7 @@ from bjk_server.api import (
     calendar,
     categories,
     chat,
+    dashboard,
     equipment,
     events,
     external,
@@ -14,8 +15,11 @@ from bjk_server.api import (
     invites,
     ledger,
     maintenance,
+    merge_candidates,
     notifications,
     parts,
+    purchase_orders,
+    review_actions,
     review_pdf,
     review_questions,
     settings,
@@ -29,7 +33,9 @@ api_router.include_router(auth.router)
 api_router.include_router(invites.router)
 api_router.include_router(users.router)
 api_router.include_router(parts.router)
+api_router.include_router(merge_candidates.router)
 api_router.include_router(imports.router)
+api_router.include_router(purchase_orders.router)
 api_router.include_router(ledger.router)
 api_router.include_router(categories.router)
 api_router.include_router(suppliers.router)
@@ -37,6 +43,7 @@ api_router.include_router(equipment.router)
 api_router.include_router(maintenance.router)
 api_router.include_router(calendar.router)
 api_router.include_router(chat.router)
+api_router.include_router(review_actions.router)
 api_router.include_router(review_pdf.router)
 api_router.include_router(review_questions.router)
 api_router.include_router(events.router)
@@ -44,4 +51,5 @@ api_router.include_router(settings.router)
 api_router.include_router(audit.router)
 api_router.include_router(external.router)
 api_router.include_router(health.router)
+api_router.include_router(dashboard.router)
 api_router.include_router(notifications.router)

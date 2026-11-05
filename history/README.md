@@ -4,10 +4,19 @@ AI·server 영역 작업 기록 색인. 작성 규칙은 [docs/ai-work-rules.md]
 
 | 날짜 | 파일 | 내용 |
 | --- | --- | --- |
-| 2026-11-05 | [2026-11-05-41-review-pdf.md](2026-11-05-41-review-pdf.md) | 결재용 PDF API(REV-07), WeasyPrint·한글 글꼴 |
+| 2026-11-05 | [2026-11-05-46-review-pdf.md](2026-11-05-46-review-pdf.md) | 결재용 PDF API(REV-07), WeasyPrint·한글 글꼴 |
+| 2026-11-05 | [2026-11-05-45-purchase-order-list-cancel.md](2026-11-05-45-purchase-order-list-cancel.md) | 발주 목록·주문 취소 API(PO-01·04), DB 포함 724개 통과 |
+| 2026-11-05 | [2026-11-05-44-receipt-po-match.md](2026-11-05-44-receipt-po-match.md) | 입고와 발주 대조(`po_match`, 실제 납기, `po_id`), DB 포함 753개 통과 |
+| 2026-11-05 | [2026-11-05-43-chat-purchase-request.md](2026-11-05-43-chat-purchase-request.md) | 채팅·폼 발주 요청으로 직원 요청 검토 생성(#153), 공급사 표현 해석, 742개 통과 |
+| 2026-11-05 | [2026-11-05-42-review-questions.md](2026-11-05-42-review-questions.md) | 검토 후속 질문 API(REV-06), 양식 답변 |
+| 2026-11-05 | [2026-11-05-41-missed-scan.md](2026-11-05-41-missed-scan.md) | 놓친 발주 스캔 배치(F-MISSED-01), 중복 방지 |
+| 2026-11-05 | [2026-11-05-40-review-clarify.md](2026-11-05-40-review-clarify.md) | 보류 검토 보완 API(REV-03), 같은 검토 재실행 |
+| 2026-11-05 | [2026-11-05-39-dashboard-summary.md](2026-11-05-39-dashboard-summary.md) | 대시보드 요약 DSH-02(#180), 묶인 재고 180일 미출고 기준, 주문 대기는 발주 연결 전 0 |
+| 2026-11-05 | [2026-11-05-38-part-merge.md](2026-11-05-38-part-merge.md) | 중복 부품 후보 탐지 `weekly-merge`, MAT-01·02 병합, 병합 재고 합산(#209), 714개 통과 |
 | 2026-11-05 | [2026-11-05-37-policy-main-only.md](2026-11-05-37-policy-main-only.md) | dev 대상 PR 협업 정책 검사 중단, main·Issue 검사 유지 |
 | 2026-11-05 | [2026-11-05-36-ci-main-only.md](2026-11-05-36-ci-main-only.md) | dev CI 실행 중단(main 대상 PR만 CI), main 배포 유지 |
-| 2026-11-05 | [2026-11-05-40-review-questions.md](2026-11-05-40-review-questions.md) | 검토 후속 질문 API(REV-06), 양식 답변 |
+| 2026-11-05 | [2026-11-05-35-review-recheck.md](2026-11-05-35-review-recheck.md) | 재검토 미리 보기 API(REV-04), 같은 수정 값이면 같은 해시 |
+| 2026-11-05 | [2026-11-05-34-purchase-orders.md](2026-11-05-34-purchase-orders.md) | 발주 테이블(0026)과 열린 발주·최근 단가 조회 함수, DB 포함 705개 통과 |
 | 2026-11-05 | [2026-11-05-33-review-run.md](2026-11-05-33-review-run.md) | 검토 실행·저장 서비스, 스냅샷 수집, 의견서 ai 호출 |
 | 2026-11-05 | [2026-11-05-32-hidden-stock-confirmed.md](2026-11-05-32-hidden-stock-confirmed.md) | nightly H_c·H_u 분리, 최근 실사·의심 여부 판정 순수 함수 |
 | 2026-11-05 | [2026-11-05-31-lane-c-chat-batch.md](2026-11-05-31-lane-c-chat-batch.md) | 레인 C 채팅 기능(#179·#186·#192) 통합 브랜치로 묶어 dev 반영(#200) |

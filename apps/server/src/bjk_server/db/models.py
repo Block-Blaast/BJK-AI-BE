@@ -815,3 +815,25 @@ class PurchaseOrder(Base):
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     cancel_reason: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = _created_at()
+
+
+class PushSubscription(Base):
+    """웹 푸시 구독 (API 명세서 NOT-04, Web Push VAPID). 브라우저 하나에 한 줄.
+
+    같은 회사에서 같은 endpoint를 다시 등록하면 키와 사용자를 새 값으로 바꾼다.
+    """
+
+    __tablename__ = "push_subscriptions"
+    __table_args__ = (
+        UniqueConstraint("company_id", "endpoint", name="uq_push_subscriptions_company_endpoint"),
+        Index("ix_push_subscriptions_user", "user_id"),
+    )
+
+    id: Mapped[uuid.UUID] = _id()
+    company_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("companies.id", ondelete="CASCADE"))
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    endpoint: Mapped[str] = mapped_column(Text)
+    p256dh: Mapped[str] = mapped_column(String(200))
+    auth: Mapped[str] = mapped_column(String(100))
+    created_at: Mapped[datetime] = _created_at()
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

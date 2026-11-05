@@ -7,7 +7,7 @@ from bjk_server.auth import set_tenant
 from bjk_server.db.models import PurchaseOrder
 from bjk_server.purchasing.orders import open_orders, open_qty, recent_price_stats
 from bjk_server.seed.demo import COMPANY_CODE, demo_id
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -22,6 +22,9 @@ NOW = datetime(2026, 11, 4, 3, tzinfo=UTC)
 @pytest.fixture
 def fresh(demo_db):
     demo_db.reseed()
+    # 시드의 과거 입고 완료 발주(#12)를 지우고 이 테스트의 발주만 둔다
+    with Session(demo_db.admin) as s, s.begin():
+        s.execute(delete(PurchaseOrder))
     yield demo_db
     demo_db.reseed()
 

@@ -6,10 +6,10 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
-from sqlalchemy import exists, false, func, or_, select
+from sqlalchemy import exists, func, or_, select
 
 from bjk_server.auth import CurrentUser, TenantDB
-from bjk_server.db.models import Category, Part, PartAlias
+from bjk_server.db.models import AuditFlag, Category, Part, PartAlias
 from bjk_server.inventory import latest_metrics_subquery, stock_subquery
 from bjk_server.pagination import Page, PageParams, keyset_page, page_params
 
@@ -56,6 +56,8 @@ def list_parts(
     """
     stock = stock_subquery()
     metrics = latest_metrics_subquery()
+    # 열린 의심 항목(F-AUDIT)이 있으면 장부 의심
+    suspect = exists().where(AuditFlag.part_id == Part.id, AuditFlag.status != "closed")
     stmt = (
         select(
             Part.id,
@@ -69,6 +71,7 @@ def list_parts(
             metrics.c.p_out,
             metrics.c.external_level,
             metrics.c.computed_at,
+            suspect.label("suspect"),
         )
         .outerjoin(Category, Category.id == Part.category_id)
         .outerjoin(stock, stock.c.part_id == Part.id)
@@ -92,9 +95,8 @@ def list_parts(
         stmt = stmt.where(metrics.c.demand_class == demand_class)
     if risk:
         stmt = stmt.where(metrics.c.external_level == risk)
-    # 장부 검증 결과가 아직 없어 모든 부품이 normal이다.
-    if ledger_status == "suspect":
-        stmt = stmt.where(false())
+    if ledger_status:
+        stmt = stmt.where(suspect if ledger_status == "suspect" else ~suspect)
 
     return keyset_page(
         db,
@@ -109,6 +111,7 @@ def list_parts(
             stock=r.stock,
             abc=r.abc,
             demand_class=r.demand_class,
+            ledger_status="suspect" if r.suspect else "normal",
             t_out=r.t_out,
             p_out=r.p_out,
             risk_level=r.external_level,

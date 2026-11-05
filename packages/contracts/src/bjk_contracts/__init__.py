@@ -16,6 +16,15 @@ from bjk_contracts.embedding import (
     EmbedResponse,
     EmbedTask,
 )
+from bjk_contracts.import_suggest import (
+    IMPORT_MAX_ROWS,
+    SPEC_KEYS,
+    CategoryOption,
+    ImportRow,
+    ImportSuggestRequest,
+    ImportSuggestResponse,
+    RowSuggestion,
+)
 from bjk_contracts.opinion import (
     Alternative,
     CheckCode,
@@ -36,8 +45,11 @@ __all__ = [
     "EMBED_MAX_TEXTS",
     "EMBED_TEXT_MAX_LEN",
     "EMBEDDING_DIM",
+    "IMPORT_MAX_ROWS",
+    "SPEC_KEYS",
     "AiMeta",
     "Alternative",
+    "CategoryOption",
     "ChatIntent",
     "CheckCode",
     "CheckFacts",
@@ -50,6 +62,9 @@ __all__ = [
     "FallbackReason",
     "Flag",
     "HoldReason",
+    "ImportRow",
+    "ImportSuggestRequest",
+    "ImportSuggestResponse",
     "LlmPurpose",
     "LlmUsage",
     "OpinionRequest",
@@ -58,5 +73,6 @@ __all__ = [
     "ParsedItem",
     "Proposal",
     "Risk",
+    "RowSuggestion",
     "Verdict",
 ]

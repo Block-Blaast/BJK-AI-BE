@@ -1,0 +1,2251 @@
+{
+ "suppliers": [
+  {
+   "key": "f-bearing-shop",
+   "name": "○○베어링상사",
+   "contact": null,
+   "lead_days": 7
+  },
+  {
+   "key": "f-a",
+   "name": "대명동력",
+   "contact": "031-000-0001",
+   "lead_days": 3
+  },
+  {
+   "key": "f-b",
+   "name": "신흥베어링",
+   "contact": "031-000-0002",
+   "lead_days": 5
+  },
+  {
+   "key": "f-bolt",
+   "name": "삼정볼트",
+   "contact": "031-000-0003",
+   "lead_days": 2
+  },
+  {
+   "key": "f-pneu",
+   "name": "한울유공압",
+   "contact": "031-000-0004",
+   "lead_days": 5
+  },
+  {
+   "key": "f-tool",
+   "name": "정우툴링",
+   "contact": "031-000-0005",
+   "lead_days": 3
+  },
+  {
+   "key": "f-oil",
+   "name": "서해오일",
+   "contact": "031-000-0006",
+   "lead_days": 3
+  }
+ ],
+ "parts": [
+  {
+   "key": "bearing-6206zz",
+   "name": "볼베어링 6206ZZ",
+   "category": "bearing",
+   "unit": "개",
+   "stock": 6,
+   "monthly": 2.5,
+   "pattern": "intermittent",
+   "supplier": "f-b",
+   "unit_price": 9800,
+   "moq": 1,
+   "lt50": 7,
+   "lt90": 12,
+   "place": [
+    "B-01",
+    2,
+    3
+   ]
+  },
+  {
+   "key": "bearing-6305zz",
+   "name": "볼베어링 6305ZZ",
+   "category": "bearing",
+   "unit": "개",
+   "stock": 2,
+   "monthly": 1.2,
+   "pattern": "lumpy",
+   "supplier": "f-bearing-shop",
+   "unit_price": 14500,
+   "moq": 4,
+   "lt50": 10,
+   "lt90": 16,
+   "place": [
+    "B-01",
+    3,
+    1
+   ]
+  },
+  {
+   "key": "bearing-6001zz",
+   "name": "볼베어링 6001ZZ",
+   "category": "bearing",
+   "unit": "개",
+   "stock": 14,
+   "monthly": 3,
+   "pattern": "intermittent",
+   "supplier": "f-b",
+   "unit_price": 3200,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "B-01",
+    1,
+    1
+   ]
+  },
+  {
+   "key": "pillow-ucp205",
+   "name": "필로우블록 UCP205",
+   "category": "bearing",
+   "unit": "개",
+   "stock": 4,
+   "monthly": 0.8,
+   "pattern": "intermittent",
+   "supplier": "f-b",
+   "unit_price": 28000,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "B-01",
+    1,
+    4
+   ]
+  },
+  {
+   "key": "vbelt-b50",
+   "name": "V벨트 B-50",
+   "category": "belt",
+   "unit": "개",
+   "stock": 3,
+   "monthly": 1,
+   "pattern": "intermittent",
+   "supplier": "f-a",
+   "unit_price": 16500,
+   "moq": 1,
+   "lt50": 3,
+   "lt90": 6,
+   "place": [
+    "A-01",
+    1,
+    2
+   ]
+  },
+  {
+   "key": "belt-b50-old",
+   "name": "전동벨트 B-50",
+   "category": "belt",
+   "unit": "개",
+   "stock": 5,
+   "monthly": null,
+   "pattern": null,
+   "supplier": null,
+   "unit_price": null,
+   "moq": 1,
+   "lt50": null,
+   "lt90": null,
+   "place": [
+    "A-01",
+    4,
+    4
+   ]
+  },
+  {
+   "key": "timing-htd",
+   "name": "타이밍벨트 HTD 5M-450",
+   "category": "belt",
+   "unit": "개",
+   "stock": 1,
+   "monthly": 0.5,
+   "pattern": "lumpy",
+   "supplier": "f-a",
+   "unit_price": 32000,
+   "moq": 1,
+   "lt50": 14,
+   "lt90": 25,
+   "place": [
+    "A-01",
+    1,
+    3
+   ]
+  },
+  {
+   "key": "fitting-pc8",
+   "name": "원터치 피팅 PC8-02",
+   "category": "pneumatic",
+   "unit": "개",
+   "stock": 35,
+   "monthly": 12,
+   "pattern": "erratic",
+   "supplier": "f-pneu",
+   "unit_price": 1800,
+   "moq": 1,
+   "lt50": 3,
+   "lt90": 6,
+   "place": [
+    "A-01",
+    2,
+    1
+   ]
+  },
+  {
+   "key": "air-hose-8",
+   "name": "우레탄 에어호스 Ø8",
+   "category": "pneumatic",
+   "unit": "m",
+   "stock": 40,
+   "monthly": 15,
+   "pattern": "smooth",
+   "supplier": "f-pneu",
+   "unit_price": 1200,
+   "moq": 1,
+   "lt50": 3,
+   "lt90": 6,
+   "place": [
+    "A-01",
+    2,
+    2
+   ]
+  },
+  {
+   "key": "solenoid-5p",
+   "name": "솔레노이드 밸브 5포트",
+   "category": "pneumatic",
+   "unit": "개",
+   "stock": 1,
+   "monthly": 0.3,
+   "pattern": "lumpy",
+   "supplier": "f-pneu",
+   "unit_price": 85000,
+   "moq": 1,
+   "lt50": 7,
+   "lt90": 14,
+   "place": [
+    "A-01",
+    3,
+    1
+   ]
+  },
+  {
+   "key": "cyl-seal-kit",
+   "name": "에어 실린더 씰 키트 Ø40",
+   "category": "pneumatic",
+   "unit": "세트",
+   "stock": 2,
+   "monthly": 0.6,
+   "pattern": "lumpy",
+   "supplier": "f-pneu",
+   "unit_price": 38000,
+   "moq": 1,
+   "lt50": 7,
+   "lt90": 14,
+   "place": [
+    "A-01",
+    3,
+    2
+   ]
+  },
+  {
+   "key": "frl-unit",
+   "name": "에어 필터 레귤레이터",
+   "category": "pneumatic",
+   "unit": "개",
+   "stock": 1,
+   "monthly": 0.2,
+   "pattern": "intermittent",
+   "supplier": "f-pneu",
+   "unit_price": 62000,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 10,
+   "place": [
+    "A-01",
+    3,
+    3
+   ]
+  },
+  {
+   "key": "hyd-packing",
+   "name": "유압 실린더 패킹 세트 Ø63",
+   "category": "pneumatic",
+   "unit": "세트",
+   "stock": 1,
+   "monthly": 0.4,
+   "pattern": "lumpy",
+   "supplier": "f-pneu",
+   "unit_price": 45000,
+   "moq": 1,
+   "lt50": 10,
+   "lt90": 18,
+   "place": [
+    "A-01",
+    3,
+    4
+   ]
+  },
+  {
+   "key": "bolt-m10x30",
+   "name": "육각볼트 M10×30",
+   "category": "bolt",
+   "unit": "개",
+   "stock": 160,
+   "monthly": 90,
+   "pattern": "smooth",
+   "supplier": "f-bolt",
+   "unit_price": 150,
+   "moq": 100,
+   "lt50": 2,
+   "lt90": 4,
+   "place": [
+    "B-02",
+    1,
+    2
+   ]
+  },
+  {
+   "key": "capscrew-m6x15",
+   "name": "렌치볼트 M6×15",
+   "category": "bolt",
+   "unit": "개",
+   "stock": 240,
+   "monthly": 120,
+   "pattern": "smooth",
+   "supplier": "f-bolt",
+   "unit_price": 80,
+   "moq": 100,
+   "lt50": 2,
+   "lt90": 4,
+   "place": [
+    "B-02",
+    1,
+    3
+   ]
+  },
+  {
+   "key": "nut-m8",
+   "name": "육각너트 M8",
+   "category": "bolt",
+   "unit": "개",
+   "stock": 300,
+   "monthly": 150,
+   "pattern": "smooth",
+   "supplier": "f-bolt",
+   "unit_price": 40,
+   "moq": 200,
+   "lt50": 2,
+   "lt90": 4,
+   "place": [
+    "B-02",
+    1,
+    4
+   ]
+  },
+  {
+   "key": "washer-m8",
+   "name": "평와셔 M8",
+   "category": "bolt",
+   "unit": "개",
+   "stock": 500,
+   "monthly": 160,
+   "pattern": "smooth",
+   "supplier": "f-bolt",
+   "unit_price": 20,
+   "moq": 200,
+   "lt50": 2,
+   "lt90": 4,
+   "place": [
+    "B-02",
+    2,
+    2
+   ]
+  },
+  {
+   "key": "nut-m10",
+   "name": "육각너트 M10",
+   "category": "bolt",
+   "unit": "개",
+   "stock": 30,
+   "monthly": 80,
+   "pattern": "smooth",
+   "supplier": "f-bolt",
+   "unit_price": 60,
+   "moq": 100,
+   "lt50": 2,
+   "lt90": 4,
+   "place": [
+    "B-02",
+    2,
+    1
+   ]
+  },
+  {
+   "key": "oring-p30",
+   "name": "오링 P-30",
+   "category": "seal",
+   "unit": "개",
+   "stock": 18,
+   "monthly": 6,
+   "pattern": "intermittent",
+   "supplier": "f-pneu",
+   "unit_price": 350,
+   "moq": 1,
+   "lt50": 3,
+   "lt90": 6,
+   "place": [
+    "B-03",
+    1,
+    2
+   ]
+  },
+  {
+   "key": "oilseal-tc30",
+   "name": "오일씰 TC 30×47×7",
+   "category": "seal",
+   "unit": "개",
+   "stock": 4,
+   "monthly": 1.5,
+   "pattern": "intermittent",
+   "supplier": "f-pneu",
+   "unit_price": 2500,
+   "moq": 1,
+   "lt50": 3,
+   "lt90": 6,
+   "place": [
+    "B-03",
+    1,
+    3
+   ]
+  },
+  {
+   "key": "endmill-10",
+   "name": "초경 엔드밀 Ø10 4날",
+   "category": "tool",
+   "unit": "개",
+   "stock": 2,
+   "monthly": 4,
+   "pattern": "erratic",
+   "supplier": "f-tool",
+   "unit_price": 42000,
+   "moq": 1,
+   "lt50": 3,
+   "lt90": 6,
+   "place": [
+    "B-04",
+    1,
+    1
+   ]
+  },
+  {
+   "key": "insert-cnmg",
+   "name": "선삭 인서트 CNMG120408",
+   "category": "tool",
+   "unit": "개",
+   "stock": 12,
+   "monthly": 30,
+   "pattern": "smooth",
+   "supplier": "f-tool",
+   "unit_price": 9500,
+   "moq": 10,
+   "lt50": 4,
+   "lt90": 8,
+   "place": [
+    "B-04",
+    1,
+    2
+   ]
+  },
+  {
+   "key": "drill-85",
+   "name": "HSS 드릴 Ø8.5",
+   "category": "tool",
+   "unit": "개",
+   "stock": 6,
+   "monthly": 3,
+   "pattern": "erratic",
+   "supplier": "f-tool",
+   "unit_price": 6500,
+   "moq": 1,
+   "lt50": 3,
+   "lt90": 6,
+   "place": [
+    "B-04",
+    1,
+    3
+   ]
+  },
+  {
+   "key": "tap-m10",
+   "name": "핸드탭 M10×1.5",
+   "category": "tool",
+   "unit": "개",
+   "stock": 4,
+   "monthly": 1,
+   "pattern": "intermittent",
+   "supplier": "f-tool",
+   "unit_price": 12000,
+   "moq": 1,
+   "lt50": 3,
+   "lt90": 6,
+   "place": [
+    "B-04",
+    1,
+    4
+   ]
+  },
+  {
+   "key": "filter-intake",
+   "name": "컴프레서 흡입필터",
+   "category": "filter",
+   "unit": "개",
+   "stock": 2,
+   "monthly": 0.5,
+   "pattern": "intermittent",
+   "supplier": "f-pneu",
+   "unit_price": 18000,
+   "moq": 1,
+   "lt50": 3,
+   "lt90": 7,
+   "place": [
+    "C-01",
+    1,
+    1
+   ]
+  },
+  {
+   "key": "filter-oil",
+   "name": "컴프레서 오일필터",
+   "category": "filter",
+   "unit": "개",
+   "stock": 1,
+   "monthly": 0.3,
+   "pattern": "intermittent",
+   "supplier": "f-pneu",
+   "unit_price": 22000,
+   "moq": 1,
+   "lt50": 3,
+   "lt90": 7,
+   "place": [
+    "C-01",
+    1,
+    2
+   ]
+  },
+  {
+   "key": "filter-return",
+   "name": "유압 리턴필터 10μm",
+   "category": "filter",
+   "unit": "개",
+   "stock": 1,
+   "monthly": 0.4,
+   "pattern": "intermittent",
+   "supplier": "f-pneu",
+   "unit_price": 48000,
+   "moq": 1,
+   "lt50": 7,
+   "lt90": 12,
+   "place": [
+    "C-02",
+    1,
+    1
+   ]
+  },
+  {
+   "key": "filter-bag",
+   "name": "절삭유 필터백 25μm",
+   "category": "filter",
+   "unit": "개",
+   "stock": 12,
+   "monthly": 6,
+   "pattern": "smooth",
+   "supplier": "f-pneu",
+   "unit_price": 7000,
+   "moq": 1,
+   "lt50": 3,
+   "lt90": 7,
+   "place": [
+    "C-02",
+    1,
+    2
+   ]
+  },
+  {
+   "key": "hydoil-vg46",
+   "name": "유압유 ISO VG46 20L",
+   "category": "oil",
+   "unit": "통",
+   "stock": 2,
+   "monthly": 0.7,
+   "pattern": "intermittent",
+   "supplier": "f-oil",
+   "unit_price": 75000,
+   "moq": 1,
+   "lt50": 3,
+   "lt90": 5,
+   "place": [
+    "A-02",
+    1,
+    2
+   ]
+  },
+  {
+   "key": "grease-2",
+   "name": "그리스 #2 400g",
+   "category": "oil",
+   "unit": "개",
+   "stock": 10,
+   "monthly": 4,
+   "pattern": "smooth",
+   "supplier": "f-oil",
+   "unit_price": 5500,
+   "moq": 1,
+   "lt50": 3,
+   "lt90": 5,
+   "place": [
+    "A-02",
+    1,
+    3
+   ]
+  },
+  {
+   "key": "slideway-68",
+   "name": "습동면유 ISO VG68 20L",
+   "category": "oil",
+   "unit": "통",
+   "stock": 1,
+   "monthly": 0.4,
+   "pattern": "intermittent",
+   "supplier": "f-oil",
+   "unit_price": 88000,
+   "moq": 1,
+   "lt50": 3,
+   "lt90": 5,
+   "place": [
+    "A-02",
+    1,
+    4
+   ]
+  },
+  {
+   "key": "vbelt-a38",
+   "name": "V벨트 A-38",
+   "category": "belt",
+   "unit": "개",
+   "stock": 6,
+   "monthly": 1,
+   "pattern": "smooth",
+   "supplier": "f-a",
+   "unit_price": 7200,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "A-01",
+    1,
+    4
+   ]
+  },
+  {
+   "key": "vbelt-a45",
+   "name": "V벨트 A-45",
+   "category": "belt",
+   "unit": "개",
+   "stock": 5,
+   "monthly": 1,
+   "pattern": "smooth",
+   "supplier": "f-a",
+   "unit_price": 7800,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "A-01",
+    2,
+    3
+   ]
+  },
+  {
+   "key": "vbelt-b46",
+   "name": "V벨트 B-46",
+   "category": "belt",
+   "unit": "개",
+   "stock": 4,
+   "monthly": 0.8,
+   "pattern": "smooth",
+   "supplier": "f-a",
+   "unit_price": 9200,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "A-01",
+    2,
+    4
+   ]
+  },
+  {
+   "key": "timing-htd375",
+   "name": "타이밍벨트 HTD 5M-375",
+   "category": "belt",
+   "unit": "개",
+   "stock": 3,
+   "monthly": 0.4,
+   "pattern": "smooth",
+   "supplier": "f-a",
+   "unit_price": 21000,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "A-01",
+    4,
+    1
+   ]
+  },
+  {
+   "key": "fitting-pc6",
+   "name": "원터치 피팅 PC6-01",
+   "category": "pneumatic",
+   "unit": "개",
+   "stock": 40,
+   "monthly": 8,
+   "pattern": "smooth",
+   "supplier": "f-pneu",
+   "unit_price": 1300,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "A-01",
+    4,
+    2
+   ]
+  },
+  {
+   "key": "air-hose-6",
+   "name": "우레탄 에어호스 Ø6",
+   "category": "pneumatic",
+   "unit": "m",
+   "stock": 60,
+   "monthly": 12,
+   "pattern": "smooth",
+   "supplier": "f-pneu",
+   "unit_price": 900,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "A-01",
+    4,
+    3
+   ]
+  },
+  {
+   "key": "coolant-semi-20l",
+   "name": "반합성 절삭유 20L",
+   "category": "oil",
+   "unit": "통",
+   "stock": 4,
+   "monthly": 1,
+   "pattern": "smooth",
+   "supplier": "f-oil",
+   "unit_price": 98000,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "A-02",
+    2,
+    1
+   ]
+  },
+  {
+   "key": "hydoil-vg32",
+   "name": "유압유 ISO VG32 20L",
+   "category": "oil",
+   "unit": "통",
+   "stock": 3,
+   "monthly": 0.6,
+   "pattern": "smooth",
+   "supplier": "f-oil",
+   "unit_price": 72000,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "A-02",
+    2,
+    2
+   ]
+  },
+  {
+   "key": "hydoil-vg68",
+   "name": "유압유 ISO VG68 20L",
+   "category": "oil",
+   "unit": "통",
+   "stock": 3,
+   "monthly": 0.5,
+   "pattern": "smooth",
+   "supplier": "f-oil",
+   "unit_price": 76000,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "A-02",
+    2,
+    3
+   ]
+  },
+  {
+   "key": "gearoil-220",
+   "name": "기어오일 ISO VG220 20L",
+   "category": "oil",
+   "unit": "통",
+   "stock": 2,
+   "monthly": 0.3,
+   "pattern": "smooth",
+   "supplier": "f-oil",
+   "unit_price": 88000,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "A-02",
+    2,
+    4
+   ]
+  },
+  {
+   "key": "spindleoil-10",
+   "name": "스핀들유 ISO VG10 4L",
+   "category": "oil",
+   "unit": "통",
+   "stock": 5,
+   "monthly": 0.8,
+   "pattern": "smooth",
+   "supplier": "f-oil",
+   "unit_price": 24000,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "A-02",
+    3,
+    1
+   ]
+  },
+  {
+   "key": "grease-ep2",
+   "name": "EP 그리스 #2 400g",
+   "category": "oil",
+   "unit": "개",
+   "stock": 14,
+   "monthly": 3,
+   "pattern": "smooth",
+   "supplier": "f-oil",
+   "unit_price": 6200,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "A-02",
+    3,
+    2
+   ]
+  },
+  {
+   "key": "grease-moly",
+   "name": "몰리 그리스 400g",
+   "category": "oil",
+   "unit": "개",
+   "stock": 10,
+   "monthly": 2,
+   "pattern": "smooth",
+   "supplier": "f-oil",
+   "unit_price": 7400,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "A-02",
+    3,
+    3
+   ]
+  },
+  {
+   "key": "coolant-oil-18l",
+   "name": "불수용성 절삭유 18L",
+   "category": "oil",
+   "unit": "통",
+   "stock": 3,
+   "monthly": 0.6,
+   "pattern": "smooth",
+   "supplier": "f-oil",
+   "unit_price": 91000,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "A-02",
+    3,
+    4
+   ]
+  },
+  {
+   "key": "slideway-32",
+   "name": "습동면유 ISO VG32 20L",
+   "category": "oil",
+   "unit": "통",
+   "stock": 2,
+   "monthly": 0.3,
+   "pattern": "smooth",
+   "supplier": "f-oil",
+   "unit_price": 79000,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "A-02",
+    4,
+    1
+   ]
+  },
+  {
+   "key": "grease-hightemp",
+   "name": "고온 그리스 400g",
+   "category": "oil",
+   "unit": "개",
+   "stock": 8,
+   "monthly": 1.5,
+   "pattern": "smooth",
+   "supplier": "f-oil",
+   "unit_price": 9800,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "A-02",
+    4,
+    2
+   ]
+  },
+  {
+   "key": "bearing-6200zz",
+   "name": "볼베어링 6200ZZ",
+   "category": "bearing",
+   "unit": "개",
+   "stock": 16,
+   "monthly": 3,
+   "pattern": "smooth",
+   "supplier": "f-b",
+   "unit_price": 2400,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "B-01",
+    1,
+    2
+   ]
+  },
+  {
+   "key": "bearing-6201zz",
+   "name": "볼베어링 6201ZZ",
+   "category": "bearing",
+   "unit": "개",
+   "stock": 14,
+   "monthly": 3,
+   "pattern": "smooth",
+   "supplier": "f-b",
+   "unit_price": 2600,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "B-01",
+    1,
+    3
+   ]
+  },
+  {
+   "key": "bearing-6202zz",
+   "name": "볼베어링 6202ZZ",
+   "category": "bearing",
+   "unit": "개",
+   "stock": 12,
+   "monthly": 2.5,
+   "pattern": "smooth",
+   "supplier": "f-b",
+   "unit_price": 2900,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "B-01",
+    2,
+    4
+   ]
+  },
+  {
+   "key": "bearing-6203zz",
+   "name": "볼베어링 6203ZZ",
+   "category": "bearing",
+   "unit": "개",
+   "stock": 12,
+   "monthly": 2.5,
+   "pattern": "smooth",
+   "supplier": "f-b",
+   "unit_price": 3300,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "B-01",
+    3,
+    2
+   ]
+  },
+  {
+   "key": "bearing-6207zz",
+   "name": "볼베어링 6207ZZ",
+   "category": "bearing",
+   "unit": "개",
+   "stock": 6,
+   "monthly": 1,
+   "pattern": "smooth",
+   "supplier": "f-bearing-shop",
+   "unit_price": 12800,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "B-01",
+    3,
+    3
+   ]
+  },
+  {
+   "key": "bearing-6208zz",
+   "name": "볼베어링 6208ZZ",
+   "category": "bearing",
+   "unit": "개",
+   "stock": 4,
+   "monthly": 0.6,
+   "pattern": "smooth",
+   "supplier": "f-bearing-shop",
+   "unit_price": 15900,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "B-01",
+    3,
+    4
+   ]
+  },
+  {
+   "key": "bearing-6304zz",
+   "name": "볼베어링 6304ZZ",
+   "category": "bearing",
+   "unit": "개",
+   "stock": 6,
+   "monthly": 1,
+   "pattern": "smooth",
+   "supplier": "f-bearing-shop",
+   "unit_price": 9800,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "B-01",
+    4,
+    1
+   ]
+  },
+  {
+   "key": "bearing-6306zz",
+   "name": "볼베어링 6306ZZ",
+   "category": "bearing",
+   "unit": "개",
+   "stock": 4,
+   "monthly": 0.5,
+   "pattern": "smooth",
+   "supplier": "f-bearing-shop",
+   "unit_price": 18500,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "B-01",
+    4,
+    2
+   ]
+  },
+  {
+   "key": "pillow-ucp204",
+   "name": "필로우블록 UCP204",
+   "category": "bearing",
+   "unit": "개",
+   "stock": 4,
+   "monthly": 0.5,
+   "pattern": "smooth",
+   "supplier": "f-b",
+   "unit_price": 24000,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "B-01",
+    4,
+    3
+   ]
+  },
+  {
+   "key": "pillow-ucf205",
+   "name": "플랜지 유닛 UCF205",
+   "category": "bearing",
+   "unit": "개",
+   "stock": 3,
+   "monthly": 0.4,
+   "pattern": "smooth",
+   "supplier": "f-b",
+   "unit_price": 29000,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "B-01",
+    4,
+    4
+   ]
+  },
+  {
+   "key": "bolt-m12x40",
+   "name": "육각볼트 M12×40",
+   "category": "bolt",
+   "unit": "개",
+   "stock": 180,
+   "monthly": 30,
+   "pattern": "smooth",
+   "supplier": "f-bolt",
+   "unit_price": 260,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "B-02",
+    2,
+    3
+   ]
+  },
+  {
+   "key": "bolt-m6x20",
+   "name": "육각볼트 M6×20",
+   "category": "bolt",
+   "unit": "개",
+   "stock": 300,
+   "monthly": 50,
+   "pattern": "smooth",
+   "supplier": "f-bolt",
+   "unit_price": 60,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "B-02",
+    2,
+    4
+   ]
+  },
+  {
+   "key": "capscrew-m8x25",
+   "name": "렌치볼트 M8×25",
+   "category": "bolt",
+   "unit": "개",
+   "stock": 200,
+   "monthly": 30,
+   "pattern": "smooth",
+   "supplier": "f-bolt",
+   "unit_price": 140,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "B-02",
+    3,
+    1
+   ]
+  },
+  {
+   "key": "capscrew-m10x25",
+   "name": "렌치볼트 M10×25",
+   "category": "bolt",
+   "unit": "개",
+   "stock": 150,
+   "monthly": 20,
+   "pattern": "smooth",
+   "supplier": "f-bolt",
+   "unit_price": 210,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "B-02",
+    3,
+    2
+   ]
+  },
+  {
+   "key": "nut-m6",
+   "name": "육각너트 M6",
+   "category": "bolt",
+   "unit": "개",
+   "stock": 400,
+   "monthly": 60,
+   "pattern": "smooth",
+   "supplier": "f-bolt",
+   "unit_price": 20,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "B-02",
+    3,
+    3
+   ]
+  },
+  {
+   "key": "nut-m12",
+   "name": "육각너트 M12",
+   "category": "bolt",
+   "unit": "개",
+   "stock": 200,
+   "monthly": 25,
+   "pattern": "smooth",
+   "supplier": "f-bolt",
+   "unit_price": 70,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "B-02",
+    3,
+    4
+   ]
+  },
+  {
+   "key": "washer-m10",
+   "name": "평와셔 M10",
+   "category": "bolt",
+   "unit": "개",
+   "stock": 300,
+   "monthly": 40,
+   "pattern": "smooth",
+   "supplier": "f-bolt",
+   "unit_price": 25,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "B-02",
+    4,
+    1
+   ]
+  },
+  {
+   "key": "washer-spring-m8",
+   "name": "스프링와셔 M8",
+   "category": "bolt",
+   "unit": "개",
+   "stock": 300,
+   "monthly": 40,
+   "pattern": "smooth",
+   "supplier": "f-bolt",
+   "unit_price": 20,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "B-02",
+    4,
+    2
+   ]
+  },
+  {
+   "key": "washer-m6",
+   "name": "평와셔 M6",
+   "category": "bolt",
+   "unit": "개",
+   "stock": 400,
+   "monthly": 50,
+   "pattern": "smooth",
+   "supplier": "f-bolt",
+   "unit_price": 15,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "B-02",
+    4,
+    3
+   ]
+  },
+  {
+   "key": "oring-p10",
+   "name": "오링 P-10",
+   "category": "seal",
+   "unit": "개",
+   "stock": 80,
+   "monthly": 10,
+   "pattern": "smooth",
+   "supplier": "f-pneu",
+   "unit_price": 150,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "B-03",
+    1,
+    4
+   ]
+  },
+  {
+   "key": "oring-p16",
+   "name": "오링 P-16",
+   "category": "seal",
+   "unit": "개",
+   "stock": 80,
+   "monthly": 10,
+   "pattern": "smooth",
+   "supplier": "f-pneu",
+   "unit_price": 180,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "B-03",
+    2,
+    1
+   ]
+  },
+  {
+   "key": "oring-p25",
+   "name": "오링 P-25",
+   "category": "seal",
+   "unit": "개",
+   "stock": 60,
+   "monthly": 8,
+   "pattern": "smooth",
+   "supplier": "f-pneu",
+   "unit_price": 220,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "B-03",
+    2,
+    2
+   ]
+  },
+  {
+   "key": "oring-p40",
+   "name": "오링 P-40",
+   "category": "seal",
+   "unit": "개",
+   "stock": 40,
+   "monthly": 5,
+   "pattern": "smooth",
+   "supplier": "f-pneu",
+   "unit_price": 320,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "B-03",
+    2,
+    3
+   ]
+  },
+  {
+   "key": "oring-g50",
+   "name": "오링 G-50",
+   "category": "seal",
+   "unit": "개",
+   "stock": 30,
+   "monthly": 4,
+   "pattern": "smooth",
+   "supplier": "f-pneu",
+   "unit_price": 380,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "B-03",
+    2,
+    4
+   ]
+  },
+  {
+   "key": "oring-p12",
+   "name": "오링 P-12",
+   "category": "seal",
+   "unit": "개",
+   "stock": 80,
+   "monthly": 10,
+   "pattern": "smooth",
+   "supplier": "f-pneu",
+   "unit_price": 160,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "B-03",
+    3,
+    1
+   ]
+  },
+  {
+   "key": "oilseal-tc25",
+   "name": "오일씰 TC 25×40×7",
+   "category": "seal",
+   "unit": "개",
+   "stock": 12,
+   "monthly": 2,
+   "pattern": "smooth",
+   "supplier": "f-pneu",
+   "unit_price": 2100,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "B-03",
+    3,
+    2
+   ]
+  },
+  {
+   "key": "oilseal-tc35",
+   "name": "오일씰 TC 35×52×7",
+   "category": "seal",
+   "unit": "개",
+   "stock": 10,
+   "monthly": 1.5,
+   "pattern": "smooth",
+   "supplier": "f-pneu",
+   "unit_price": 2600,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "B-03",
+    3,
+    3
+   ]
+  },
+  {
+   "key": "oilseal-tc40",
+   "name": "오일씰 TC 40×62×8",
+   "category": "seal",
+   "unit": "개",
+   "stock": 8,
+   "monthly": 1,
+   "pattern": "smooth",
+   "supplier": "f-pneu",
+   "unit_price": 3100,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "B-03",
+    3,
+    4
+   ]
+  },
+  {
+   "key": "oring-s30",
+   "name": "오링 S-30",
+   "category": "seal",
+   "unit": "개",
+   "stock": 50,
+   "monthly": 6,
+   "pattern": "smooth",
+   "supplier": "f-pneu",
+   "unit_price": 200,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "B-03",
+    4,
+    1
+   ]
+  },
+  {
+   "key": "endmill-6",
+   "name": "초경 엔드밀 Ø6 4날",
+   "category": "tool",
+   "unit": "개",
+   "stock": 8,
+   "monthly": 2,
+   "pattern": "smooth",
+   "supplier": "f-tool",
+   "unit_price": 21000,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "B-04",
+    2,
+    1
+   ]
+  },
+  {
+   "key": "endmill-8",
+   "name": "초경 엔드밀 Ø8 4날",
+   "category": "tool",
+   "unit": "개",
+   "stock": 8,
+   "monthly": 2,
+   "pattern": "smooth",
+   "supplier": "f-tool",
+   "unit_price": 26000,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "B-04",
+    2,
+    2
+   ]
+  },
+  {
+   "key": "endmill-12",
+   "name": "초경 엔드밀 Ø12 4날",
+   "category": "tool",
+   "unit": "개",
+   "stock": 5,
+   "monthly": 1,
+   "pattern": "smooth",
+   "supplier": "f-tool",
+   "unit_price": 42000,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "B-04",
+    2,
+    3
+   ]
+  },
+  {
+   "key": "drill-50",
+   "name": "HSS 드릴 Ø5.0",
+   "category": "tool",
+   "unit": "개",
+   "stock": 20,
+   "monthly": 4,
+   "pattern": "smooth",
+   "supplier": "f-tool",
+   "unit_price": 2400,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "B-04",
+    2,
+    4
+   ]
+  },
+  {
+   "key": "drill-68",
+   "name": "HSS 드릴 Ø6.8",
+   "category": "tool",
+   "unit": "개",
+   "stock": 20,
+   "monthly": 4,
+   "pattern": "smooth",
+   "supplier": "f-tool",
+   "unit_price": 2900,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "B-04",
+    3,
+    1
+   ]
+  },
+  {
+   "key": "drill-102",
+   "name": "HSS 드릴 Ø10.2",
+   "category": "tool",
+   "unit": "개",
+   "stock": 12,
+   "monthly": 2,
+   "pattern": "smooth",
+   "supplier": "f-tool",
+   "unit_price": 4600,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "B-04",
+    3,
+    2
+   ]
+  },
+  {
+   "key": "insert-tnmg",
+   "name": "선삭 인서트 TNMG160404",
+   "category": "tool",
+   "unit": "개",
+   "stock": 40,
+   "monthly": 10,
+   "pattern": "smooth",
+   "supplier": "f-tool",
+   "unit_price": 6800,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "B-04",
+    3,
+    3
+   ]
+  },
+  {
+   "key": "insert-dnmg",
+   "name": "선삭 인서트 DNMG150608",
+   "category": "tool",
+   "unit": "개",
+   "stock": 30,
+   "monthly": 8,
+   "pattern": "smooth",
+   "supplier": "f-tool",
+   "unit_price": 7400,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "B-04",
+    3,
+    4
+   ]
+  },
+  {
+   "key": "tap-m6",
+   "name": "핸드탭 M6×1.0",
+   "category": "tool",
+   "unit": "개",
+   "stock": 10,
+   "monthly": 1.5,
+   "pattern": "smooth",
+   "supplier": "f-tool",
+   "unit_price": 8200,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "B-04",
+    4,
+    1
+   ]
+  },
+  {
+   "key": "tap-m8",
+   "name": "핸드탭 M8×1.25",
+   "category": "tool",
+   "unit": "개",
+   "stock": 10,
+   "monthly": 1.5,
+   "pattern": "smooth",
+   "supplier": "f-tool",
+   "unit_price": 9400,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "B-04",
+    4,
+    2
+   ]
+  },
+  {
+   "key": "tap-m12",
+   "name": "핸드탭 M12×1.75",
+   "category": "tool",
+   "unit": "개",
+   "stock": 6,
+   "monthly": 0.8,
+   "pattern": "smooth",
+   "supplier": "f-tool",
+   "unit_price": 14800,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "B-04",
+    4,
+    3
+   ]
+  },
+  {
+   "key": "filter-intake-l",
+   "name": "컴프레서 흡입필터 (대)",
+   "category": "filter",
+   "unit": "개",
+   "stock": 3,
+   "monthly": 0.3,
+   "pattern": "smooth",
+   "supplier": "f-pneu",
+   "unit_price": 36000,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "C-01",
+    1,
+    3
+   ]
+  },
+  {
+   "key": "filter-oil-l",
+   "name": "컴프레서 오일필터 (대)",
+   "category": "filter",
+   "unit": "개",
+   "stock": 3,
+   "monthly": 0.3,
+   "pattern": "smooth",
+   "supplier": "f-pneu",
+   "unit_price": 29000,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "C-01",
+    1,
+    4
+   ]
+  },
+  {
+   "key": "filter-return-25",
+   "name": "유압 리턴필터 25μm",
+   "category": "filter",
+   "unit": "개",
+   "stock": 4,
+   "monthly": 0.4,
+   "pattern": "smooth",
+   "supplier": "f-pneu",
+   "unit_price": 33000,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "C-01",
+    2,
+    1
+   ]
+  },
+  {
+   "key": "filter-suction",
+   "name": "유압 석션 스트레이너",
+   "category": "filter",
+   "unit": "개",
+   "stock": 3,
+   "monthly": 0.3,
+   "pattern": "smooth",
+   "supplier": "f-pneu",
+   "unit_price": 27000,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "C-01",
+    2,
+    2
+   ]
+  },
+  {
+   "key": "filter-air-elem",
+   "name": "에어필터 엘리먼트 5μm",
+   "category": "filter",
+   "unit": "개",
+   "stock": 6,
+   "monthly": 0.8,
+   "pattern": "smooth",
+   "supplier": "f-pneu",
+   "unit_price": 12000,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "C-01",
+    2,
+    3
+   ]
+  },
+  {
+   "key": "filter-bag-50",
+   "name": "절삭유 필터백 50μm",
+   "category": "filter",
+   "unit": "개",
+   "stock": 12,
+   "monthly": 2,
+   "pattern": "smooth",
+   "supplier": "f-pneu",
+   "unit_price": 4800,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "C-01",
+    2,
+    4
+   ]
+  },
+  {
+   "key": "filter-mist",
+   "name": "오일 미스트 필터",
+   "category": "filter",
+   "unit": "개",
+   "stock": 4,
+   "monthly": 0.4,
+   "pattern": "smooth",
+   "supplier": "f-pneu",
+   "unit_price": 41000,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "C-01",
+    3,
+    1
+   ]
+  },
+  {
+   "key": "filter-line",
+   "name": "유압 라인필터 10μm",
+   "category": "filter",
+   "unit": "개",
+   "stock": 4,
+   "monthly": 0.4,
+   "pattern": "smooth",
+   "supplier": "f-pneu",
+   "unit_price": 38000,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "C-01",
+    3,
+    2
+   ]
+  },
+  {
+   "key": "vbelt-b60",
+   "name": "V벨트 B-60 (예비)",
+   "category": "belt",
+   "unit": "개",
+   "stock": 4,
+   "monthly": 0.4,
+   "pattern": "smooth",
+   "supplier": "f-a",
+   "unit_price": 10800,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "C-02",
+    1,
+    3
+   ]
+  },
+  {
+   "key": "vbelt-a50",
+   "name": "V벨트 A-50 (예비)",
+   "category": "belt",
+   "unit": "개",
+   "stock": 4,
+   "monthly": 0.4,
+   "pattern": "smooth",
+   "supplier": "f-a",
+   "unit_price": 8400,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "C-02",
+    1,
+    4
+   ]
+  },
+  {
+   "key": "bearing-6309zz",
+   "name": "볼베어링 6309ZZ (예비)",
+   "category": "bearing",
+   "unit": "개",
+   "stock": 2,
+   "monthly": 0.2,
+   "pattern": "smooth",
+   "supplier": "f-bearing-shop",
+   "unit_price": 32000,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "C-02",
+    2,
+    1
+   ]
+  },
+  {
+   "key": "oilseal-tc50",
+   "name": "오일씰 TC 50×72×8 (예비)",
+   "category": "seal",
+   "unit": "개",
+   "stock": 6,
+   "monthly": 0.5,
+   "pattern": "smooth",
+   "supplier": "f-pneu",
+   "unit_price": 3800,
+   "moq": 1,
+   "lt50": 5,
+   "lt90": 9,
+   "place": [
+    "C-02",
+    2,
+    2
+   ]
+  },
+  {
+   "key": "hexbolt-m8x20",
+   "name": "헥사볼트 M8x20",
+   "category": "bolt",
+   "unit": "개",
+   "stock": 800,
+   "monthly": null,
+   "pattern": null,
+   "supplier": null,
+   "unit_price": null,
+   "moq": 1,
+   "lt50": null,
+   "lt90": null,
+   "place": [
+    "B-02",
+    4,
+    4
+   ]
+  }
+ ],
+ "v1_places": {
+  "oil": [
+   "A-02",
+   1,
+   1
+  ],
+  "a42": [
+   "A-01",
+   1,
+   1
+  ],
+  "m820": [
+   "B-02",
+   1,
+   1
+  ],
+  "6205": [
+   "B-01",
+   2,
+   2
+  ],
+  "6204": [
+   "B-01",
+   2,
+   1
+  ],
+  "p20": [
+   "B-03",
+   1,
+   1
+  ]
+ },
+ "equipment": [
+  {
+   "key": "eq1",
+   "reuse": true,
+   "name": "CNC 선반 1호기",
+   "kind": "lathe",
+   "loss": 80000,
+   "hours": 8,
+   "x": 6.6,
+   "z": -4,
+   "parts": [
+    [
+     "6205",
+     2
+    ],
+    [
+     "a42",
+     2
+    ],
+    [
+     "insert-cnmg",
+     4
+    ],
+    [
+     "oil",
+     1
+    ]
+   ]
+  },
+  {
+   "key": "eq2",
+   "reuse": true,
+   "name": "CNC 선반 2호기",
+   "kind": "lathe",
+   "loss": 80000,
+   "hours": 8,
+   "x": 6.6,
+   "z": 0,
+   "parts": [
+    [
+     "bearing-6206zz",
+     2
+    ],
+    [
+     "vbelt-b50",
+     2
+    ],
+    [
+     "insert-cnmg",
+     4
+    ],
+    [
+     "oilseal-tc30",
+     2
+    ]
+   ]
+  },
+  {
+   "key": "eq3",
+   "reuse": true,
+   "name": "머시닝센터 3호기",
+   "kind": "mill",
+   "loss": 120000,
+   "hours": 10,
+   "x": 6.6,
+   "z": 4,
+   "parts": [
+    [
+     "endmill-10",
+     1
+    ],
+    [
+     "timing-htd",
+     1
+    ],
+    [
+     "bearing-6305zz",
+     2
+    ],
+    [
+     "slideway-68",
+     1
+    ]
+   ]
+  },
+  {
+   "key": "eq4",
+   "reuse": false,
+   "name": "유압 프레스 P-80",
+   "kind": "press",
+   "loss": 60000,
+   "hours": 8,
+   "x": 2.6,
+   "z": -1,
+   "parts": [
+    [
+     "hyd-packing",
+     1
+    ],
+    [
+     "hydoil-vg46",
+     2
+    ],
+    [
+     "filter-return",
+     1
+    ],
+    [
+     "p20",
+     4
+    ]
+   ]
+  },
+  {
+   "key": "eq5",
+   "reuse": false,
+   "name": "공기압축기 22kW",
+   "kind": "compressor",
+   "loss": null,
+   "hours": null,
+   "x": 2.6,
+   "z": -6,
+   "parts": [
+    [
+     "filter-intake",
+     1
+    ],
+    [
+     "filter-oil",
+     1
+    ],
+    [
+     "frl-unit",
+     1
+    ]
+   ]
+  },
+  {
+   "key": "eq6",
+   "reuse": false,
+   "name": "이송 컨베이어 1라인",
+   "kind": "conveyor",
+   "loss": 40000,
+   "hours": 8,
+   "x": 3,
+   "z": 5,
+   "parts": [
+    [
+     "pillow-ucp205",
+     4
+    ],
+    [
+     "6204",
+     2
+    ],
+    [
+     "solenoid-5p",
+     1
+    ]
+   ]
+  }
+ ],
+ "maintenance": [
+  {
+   "equipment": "eq1",
+   "days": 15,
+   "completed": false,
+   "parts": [
+    [
+     "6205",
+     4
+    ],
+    [
+     "a42",
+     2
+    ]
+   ]
+  },
+  {
+   "equipment": "eq4",
+   "days": 21,
+   "completed": false,
+   "parts": [
+    [
+     "hyd-packing",
+     1
+    ],
+    [
+     "filter-return",
+     1
+    ]
+   ]
+  },
+  {
+   "equipment": "eq2",
+   "days": -6,
+   "completed": true,
+   "parts": [
+    [
+     "oilseal-tc30",
+     2
+    ]
+   ]
+  }
+ ],
+ "racks": [
+  [
+   "A-01",
+   4,
+   4,
+   -7,
+   -2,
+   "벨트·공압"
+  ],
+  [
+   "A-02",
+   4,
+   4,
+   -7,
+   2,
+   "유류·윤활"
+  ],
+  [
+   "B-01",
+   4,
+   4,
+   -1.6,
+   -2,
+   "베어링"
+  ],
+  [
+   "B-02",
+   4,
+   4,
+   -1.6,
+   2,
+   "볼트·너트"
+  ],
+  [
+   "B-03",
+   4,
+   4,
+   2.2,
+   -2,
+   "씰·오링"
+  ],
+  [
+   "B-04",
+   4,
+   4,
+   2.2,
+   2,
+   "절삭공구"
+  ],
+  [
+   "C-01",
+   3,
+   4,
+   7,
+   -2,
+   "필터"
+  ],
+  [
+   "C-02",
+   3,
+   4,
+   7,
+   2,
+   "예비"
+  ]
+ ]
+}

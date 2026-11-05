@@ -4,6 +4,7 @@ AI·server 영역 작업 기록 색인. 작성 규칙은 [docs/ai-work-rules.md]
 
 | 날짜 | 파일 | 내용 |
 | --- | --- | --- |
+| 2026-11-05 | [2026-11-05-16-ai-integration-doc.md](2026-11-05-16-ai-integration-doc.md) | server ↔ AI 연동 안내 문서, 예시 코드 실행 확인 |
 | 2026-11-05 | [2026-11-05-15-stack-sync-dev.md](2026-11-05-15-stack-sync-dev.md) | AI PR 스택을 최신 dev에 맞춤(merge), compose ai 설정, DB 포함 385개 통과 |
 | 2026-11-05 | [2026-11-05-14-bedrock-provider.md](2026-11-05-14-bedrock-provider.md) | LLM·임베딩 Bedrock 전환(Claude Mantle, Titan V2 1024차원), Gemini는 LLM 폴백 |
 | 2026-11-05 | [2026-11-05-13-bedrock-feasibility.md](2026-11-05-13-bedrock-feasibility.md) | Bedrock(Anthropic) 전환 가능성 검토: 구조·작업량·임베딩 문제 |

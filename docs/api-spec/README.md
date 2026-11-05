@@ -17,5 +17,6 @@ Notion「API 명세서」가 정본이고, 이 디렉터리는 저장소에 구�
 | [external.md](external.md) | 외부 요인 현황 (DSH-03) |
 | [notifications.md](notifications.md) | 알림 목록·읽음 (NOT-01·02) |
 | [system.md](system.md) | 설정·시스템 (SYS) |
+| [review-queries.md](review-queries.md) | 발주 검토 조회 (REV-01·02) |
 | [dev.md](dev.md) | 개발·시연 전용 API (DEV) |
 | [jobs.md](jobs.md) | 배치 실행과 예약 |

@@ -4,6 +4,7 @@ AI·server 영역 작업 기록 색인. 작성 규칙은 [docs/ai-work-rules.md]
 
 | 날짜 | 파일 | 내용 |
 | --- | --- | --- |
+| 2026-11-05 | [2026-11-05-42-demo-order-history.md](2026-11-05-42-demo-order-history.md) | 시연 시드 입고 완료 발주 이력·납기 표본(#12), V벨트 단가 예시 맞춤 |
 | 2026-11-05 | [2026-11-05-53-review-list.md](2026-11-05-53-review-list.md) | 검토 목록 API(REV-01), 긴급·손실 순 커서 목록 |
 | 2026-11-05 | [2026-11-05-52-review-detail.md](2026-11-05-52-review-detail.md) | 검토 상세 REV-02(#147), #206 저장 구조 기준, worker 본인 요청만 |
 | 2026-11-05 | [2026-11-05-51-order-check.md](2026-11-05-51-order-check.md) | order-check 주문·입고 확인 알림 배치(#226), 812개 통과 |

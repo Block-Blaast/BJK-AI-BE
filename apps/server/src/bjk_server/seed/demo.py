@@ -27,6 +27,7 @@ from bjk_server.db.models import (
     Part,
     PartAlias,
     PurchaseOrder,
+    SimReport,
     Supplier,
     SupplierPart,
     User,
@@ -193,6 +194,13 @@ MAINTENANCE = (("eq3", 16), ("eq2", 30))
 COMPLETED_MAINTENANCE = (("eq3", 3, 15, [("p20", 100)]),)
 
 ALIASES = (("베어링 작은 거", "6205", 3),)
+
+# 검증 리포트 더미 (제목, 오늘부터 며칠 전). 검증 하네스(F-SIM)가 없어 W-09 화면 연결용으로만
+# 넣는다(#260). 결과 수치는 넣지 않는다(F-SIM: 리포트에는 실제 실행한 값만).
+SIM_REPORTS = (
+    ("[시연용] 검토 기준값 탐지율 평가 (합성 데이터 18개월)", 7),
+    ("[시연용] 현장 방식 대비 정책 재생 (결품·재고 금액)", 1),
+)
 
 # 연휴 캘린더 (이름, 시작, 종료, 범위). 2027년 춘절·설날 연휴.
 HOLIDAYS = (
@@ -411,6 +419,16 @@ def seed_demo(session: Session, scenario: str = "demo_v1", today: date | None = 
                 start_date=start_day,
                 end_date=end_day,
                 scope=scope,
+            )
+        )
+    for title, days_ago in SIM_REPORTS:
+        session.add(
+            SimReport(
+                id=sid("sim_report", title),
+                company_id=company_id,
+                title=title,
+                source="sample",
+                created_at=_at(today - timedelta(days=days_ago)),
             )
         )
     for alias, part_key, count in ALIASES:

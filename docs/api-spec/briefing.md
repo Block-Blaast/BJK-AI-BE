@@ -5,6 +5,7 @@ API 명세서 10장·14장, 기능명세서 F-NOTI-02, F-MISSED-02, F-SETUP-04, 
 ## DSH-01 `GET /briefing/today`
 
 - 권한: manager 이상. worker는 403.
+- 응답: `{date, generated_at, should_notify, missed_orders: {count, expected_loss_total, items}, pending_reviews, count_needed, order_check_needed, maintenance_check_needed}`. `items` 원소는 `{review_id, part, verdict, flags, t_deadline, expected_loss}`.
 - `missed_orders`: 결정을 기다리는(`reviewed`·`held`) 놓친 발주 초안. 예상 손실 큰 순, `expected_loss_total`은 합계, `t_deadline`은 검토 스냅샷 값.
 - `pending_reviews`: 결정을 기다리는 직원 요청·재고 부족 초안 수(놓친 발주 제외).
 - `count_needed`: 아직 실사를 요청하지 않은 열린 의심 항목(`open`) 수.

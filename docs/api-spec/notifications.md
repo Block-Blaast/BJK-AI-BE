@@ -17,9 +17,20 @@ API 명세서 11장, 기능명세서 F-NOTI-01·03·04 기준.
 ## 알림 만들기 (`bjk_server.notify.service.notify`)
 
 - `kind`: `review_completed`, `review_urgent`, `briefing`, `decision_result`, `order_check`, `receipt_check`, `count_request`, `maintenance_check`.
+| `kind` | 만드는 곳 | 받는 사람 | 채널 |
+| --- | --- | --- | --- |
+| `review_completed` | 직원 요청 검토 완료([reviews.md](reviews.md)) | 요청자를 뺀 manager·owner | `push`, `in_app` |
+| `review_urgent` | 긴급 직원 요청·재고 부족 초안 검토 완료 | 요청자를 뺀 manager·owner | `push`, `in_app` |
+| `briefing` | `briefing` 배치 | manager·owner | `push`, `in_app` |
+| `decision_result` | 결정(REV-05), 보류, 만료 | 요청자 | `chat`(결정은 `in_app`도) |
+| `order_check`, `receipt_check` | `order-check` 배치, 입고 대조 | 승인자 또는 manager·owner | `push`, `in_app` |
+| `count_request` | 실사 요청(AUD-02) | 담당자 | `chat`, `push` |
+
+- `maintenance_check`는 정의만 있고 만들지 않는다. 정비 완료 확인은 명세상 아침 브리핑의 `maintenance_check_needed`로만 알린다(F-SETUP-04).
+- 마감 2일 전 재알림(F-NOTI-03)은 아직 없다.
+- 보낼 시각(`at`)을 주면 그 시각부터 보인다(예약 실사 요청).
 - 받는 사람마다 `notifications` 한 줄. 같은 `dedupe_key`는 사용자마다 한 번만 만든다. 마감 2일 전 재알림은 다른 키를 쓴다.
 - 조용한 시간(`notify.quiet_hours`, 기본 21:00~07:00, Asia/Seoul)에 생기면 긴급 건도 `sent_at`을 끝나는 시각으로 미룬다.
-- 웹 푸시 발송은 NOT-04(#184)에서 붙인다.
 
 ## 웹 푸시 발송 (NOT-04, `bjk_server.notify.push`)
 

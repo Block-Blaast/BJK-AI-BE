@@ -46,12 +46,12 @@
 ## DEV-01 POST /api/v1/dev/jobs/{name}/run
 
 - 권한: owner
-- `{name}`: `nightly`, `missed-scan`, `order-check`, `briefing`, `weekly-merge`, `cleanup`
+- `{name}`: `nightly`, `missed-scan`, `order-check`, `briefing`, `weekly-merge`, `cleanup`, `push`
 - 동작: 배치를 즉시(동기) 실행하고 실행 기록(`job_runs`, `trigger: manual`)을 남긴다. 응답에 작업 요약을 펼쳐 담는다. 예약 실행과 같이 앱 계정으로 돈다.
 
 ```json
 // 200 Response
-{ "job": "nightly", "status": "ok", "started_at": "...", "finished_at": "...", "companies": 1, "parts_computed": 6, "audit_flags_created": 6, "indicators": 2 }
+{ "job": "nightly", "status": "ok", "started_at": "...", "finished_at": "...", "companies": 1, "parts_computed": 6, "audit_flags_created": 6, "indicators": 2, "embeddings_filled": 0 }
 ```
 
 | `status` | 뜻 |
@@ -87,3 +87,4 @@
 | --- | --- |
 | owner 아님 | 403 `FORBIDDEN_ROLE` |
 | 개발 환경 아님 | 404 `NOT_FOUND` |
+| 회사 설정 행 없음 | 404 `NOT_FOUND` |

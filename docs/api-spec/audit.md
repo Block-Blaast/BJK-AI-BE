@@ -73,7 +73,7 @@
 
 - 문구에 장부 수량을 넣지 않는다(블라인드 실사).
 - 담당자 한 명에게 하루(Asia/Seoul) `system.count_per_worker_per_day`(기본 2)건까지 보낸다. 넘으면 `status: scheduled`이고, 한도가 남은 첫 날의 `notify.briefing_time`(기본 07:30)이 `scheduled_for`에 담긴다. 보낸 건과 예약한 건을 모두 그날 몫으로 센다.
-- 현재 구현 범위: 담당자 채팅·웹 푸시 전달은 알림(NOT) 기능에서 연결한다. 예약 건은 `scheduled_for`가 지나면 응답할 수 있다.
+- 담당자에게 `count_request` 알림(채널 `chat`, `push`, 제목은 `message_preview`)을 만든다. 예약 건은 알림도 `scheduled_for`(조용한 시간이면 끝나는 시각)부터 보이고, 그때 `push` 배치가 웹 푸시를 보낸다. 예약 건은 `scheduled_for`가 지나면 응답할 수 있다.
 
 ## AUD-03 POST /api/v1/count-requests/{id}/answer
 

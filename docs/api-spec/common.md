@@ -24,7 +24,7 @@ Notion API 명세서 1장 기준.
 | 401 | `UNAUTHORIZED`, `INVALID_CREDENTIALS`, `INVALID_PIN` |
 | 403 | `FORBIDDEN_ROLE`, `SELF_APPROVAL_NOT_ALLOWED` |
 | 404 | `NOT_FOUND` |
-| 409 | `EMAIL_TAKEN`, `NAME_TAKEN`, `ALREADY_CONFIRMED`, `REVIEW_ALREADY_DECIDED`, `REVIEW_NOT_DECIDABLE`, `SNAPSHOT_REFRESHED`, `ORDER_STATE_CONFLICT`, `PDF_NOT_READY` |
+| 409 | `EMAIL_TAKEN`, `NAME_TAKEN`, `ALREADY_CONFIRMED`, `IDEMPOTENCY_CONFLICT`, `REVIEW_ALREADY_DECIDED`, `REVIEW_NOT_DECIDABLE`, `SNAPSHOT_REFRESHED`, `ORDER_STATE_CONFLICT`, `PDF_NOT_READY` |
 | 410 | `ENTRY_EXPIRED`, `INVITE_EXPIRED` |
 | 422 | `REASON_REQUIRED`, `PART_NOT_RESOLVED` |
 | 423 | `PIN_LOCKED` |
@@ -39,7 +39,7 @@ Notion API 명세서 1장 기준.
 ## 멱등성
 
 - 채팅·폼 입력은 본문 `client_message_id`, 검토 결정은 `Idempotency-Key` 헤더를 키로 쓴다.
-- 키는 회사·용도(`scope`)별로 유일하다. 같은 키로 다시 보내면 처음 응답을 그대로 돌려준다.
+- 키는 회사·용도(`scope`)별로 유일하다. 같은 키로 다시 보내면 처음 응답을 그대로 돌려준다. 같은 키를 다른 요청자·다른 본문에 쓰면 409 `IDEMPOTENCY_CONFLICT`.
 - 동시에 같은 키가 들어오면 뒤 요청은 앞 요청의 트랜잭션이 끝날 때까지 기다린 뒤 저장된 응답을 받는다.
 
 ## 인증과 회사 격리
@@ -56,7 +56,7 @@ Notion API 명세서 1장 기준.
 
 - DB 고정 창 카운터(`rate_limits`)로 센다. 여러 서버 프로세스가 같은 횟수를 본다.
 - 요청이 실패로 롤백돼도 횟수는 남는다(별도 트랜잭션).
-- 초과 시 429 `RATE_LIMITED`, `Retry-After` 헤더는 현재 창이 끝날 때까지 남은 초.
+- 초과 시 429 `RATE_LIMITED`, `Retry-After` 헤더와 `detail.retry_after_seconds`는 현재 창이 끝날 때까지 남은 초.
 
 ## 기능명세서와 다르게 정한 것
 

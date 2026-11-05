@@ -77,3 +77,12 @@ def test_movements_reject_wrong_qty_sign(movement_id):
                 "SELECT company_id, part_id, 'OUT', 2 FROM movements LIMIT 1"
             )
         )
+
+
+def test_test_database_uses_production_collation(empty_db_url):
+    from .conftest import TEST_DB_LOCALE
+
+    engine = create_engine(empty_db_url)
+    with engine.connect() as conn:
+        assert conn.scalar(text("SHOW lc_collate")) == TEST_DB_LOCALE
+    engine.dispose()

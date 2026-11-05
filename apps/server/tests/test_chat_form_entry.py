@@ -73,3 +73,9 @@ def test_invalid_form_is_rejected_without_movement(client, demo_db, body, status
 
 def test_requires_login(client):
     assert client.post(URL, json={}).status_code == 401
+
+
+def test_form_movement_has_no_message(client, demo_db):
+    body = _post(client, client_message_id="f-nomsg").json()
+    with Session(demo_db.admin) as s:
+        assert s.get(Movement, body["movement"]["id"]).message_id is None

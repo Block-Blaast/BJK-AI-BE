@@ -10,7 +10,7 @@ from sqlalchemy import exists, false, func, or_, select
 
 from bjk_server.auth import CurrentUser, TenantDB
 from bjk_server.db.models import Category, Part, PartAlias
-from bjk_server.inventory import stock_subquery
+from bjk_server.inventory import latest_metrics_subquery, stock_subquery
 from bjk_server.pagination import Page, PageParams, keyset_page, page_params
 
 router = APIRouter(prefix="/parts", tags=["parts"])
@@ -22,7 +22,7 @@ class PartListItem(BaseModel):
     category: str | None
     unit: str
     stock: int
-    # 아래 지표는 새벽 계산(part_metrics) 전에는 null이다.
+    # 아래 지표는 최신 새벽 계산(part_metrics) 값이다. 계산 전에는 null.
     abc: Literal["A", "B", "C"] | None = None
     demand_class: str | None = None
     ledger_status: Literal["normal", "suspect"] = "normal"
@@ -55,6 +55,7 @@ def list_parts(
     정렬은 DB 로케일과 관계없이 같도록 C(코드포인트) 정렬로 고정한다. 한글은 가나다순이다.
     """
     stock = stock_subquery()
+    metrics = latest_metrics_subquery()
     stmt = (
         select(
             Part.id,
@@ -62,9 +63,16 @@ def list_parts(
             Part.unit,
             Category.name.label("category"),
             func.coalesce(stock.c.stock, 0).label("stock"),
+            metrics.c.abc,
+            metrics.c.demand_class,
+            metrics.c.t_out,
+            metrics.c.p_out,
+            metrics.c.external_level,
+            metrics.c.computed_at,
         )
         .outerjoin(Category, Category.id == Part.category_id)
         .outerjoin(stock, stock.c.part_id == Part.id)
+        .outerjoin(metrics, metrics.c.part_id == Part.id)
         .where(Part.merged_into.is_(None))
     )
     if q and q.strip():
@@ -78,8 +86,14 @@ def list_parts(
         stmt = stmt.where(or_(Part.name.ilike(pattern), alias_match, spec_match))
     if category_id:
         stmt = stmt.where(Part.category_id == category_id)
-    # 지표·장부 검증 결과가 아직 없어 지표 필터와 suspect는 결과가 없다.
-    if abc or demand_class or risk or ledger_status == "suspect":
+    if abc:
+        stmt = stmt.where(metrics.c.abc == abc)
+    if demand_class:
+        stmt = stmt.where(metrics.c.demand_class == demand_class)
+    if risk:
+        stmt = stmt.where(metrics.c.external_level == risk)
+    # 장부 검증 결과가 아직 없어 모든 부품이 normal이다.
+    if ledger_status == "suspect":
         stmt = stmt.where(false())
 
     return keyset_page(
@@ -88,7 +102,17 @@ def list_parts(
         [Part.name.collate("C"), Part.id],
         params,
         to_item=lambda r: PartListItem(
-            id=r.id, name=r.name, category=r.category, unit=r.unit, stock=r.stock
+            id=r.id,
+            name=r.name,
+            category=r.category,
+            unit=r.unit,
+            stock=r.stock,
+            abc=r.abc,
+            demand_class=r.demand_class,
+            t_out=r.t_out,
+            p_out=r.p_out,
+            risk_level=r.external_level,
+            computed_at=r.computed_at,
         ),
         cursor_of=lambda r: [r.name, r.id],
     )

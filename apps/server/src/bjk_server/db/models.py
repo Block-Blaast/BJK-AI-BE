@@ -300,8 +300,8 @@ class Movement(Base):
     maintenance_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("maintenance.id"))
     # 채팅으로 기록한 경우 원본 메시지. 폼 입력·실사조정 등은 null.
     message_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("chat_messages.id"))
-    # 발주 테이블은 발주 Issue에서 추가하고 외래 키를 건다.
-    po_id: Mapped[uuid.UUID | None]
+    # 입고 대조로 연결된 발주 (F-LEDGER-04)
+    po_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("purchase_orders.id"))
     reason: Mapped[str | None] = mapped_column(Text)
     corrects_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("movements.id"))
     created_at: Mapped[datetime] = _created_at()
@@ -743,3 +743,47 @@ class PartImport(Base):
     stock_previewed: Mapped[bool] = mapped_column(Boolean, server_default=sql_text("false"))
     created_at: Mapped[datetime] = _created_at()
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class PurchaseOrder(Base):
+    """승인으로 생긴 발주 (API 명세서 PO-01~04, F-APPROVAL-02·03).
+
+    상태 전이는 domain/purchase_order가 정한다. 실제 납기는 주문 완료 시각(ordered_at) → 입고 완료
+    시각(received_at)으로 잰다. 주문 완료 표시 없이 입고돼 서버가 ordered로 바꾼 건은
+    implicit_order로 표시해 납기 표본에서 뺀다 (F-LEDGER-04).
+    """
+
+    __tablename__ = "purchase_orders"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('approved', 'ordered', 'partially_received', 'received', 'cancelled')",
+            name="status",
+        ),
+        CheckConstraint("qty > 0", name="qty_positive"),
+        CheckConstraint("unit_price >= 0", name="unit_price"),
+        CheckConstraint("received_qty >= 0", name="received_qty"),
+        CheckConstraint("(ordered_at IS NULL) = (ordered_by IS NULL)", name="ordered_pair"),
+        Index("ix_purchase_orders_company_part_status", "company_id", "part_id", "status"),
+        Index("ix_purchase_orders_company_status", "company_id", "status"),
+    )
+
+    id: Mapped[uuid.UUID] = _id()
+    company_id: Mapped[uuid.UUID] = _company_id()
+    # 시드의 과거 이력처럼 검토 없이 들어온 발주는 null
+    review_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("reviews.id"))
+    part_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("parts.id"))
+    supplier_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("suppliers.id"))
+    qty: Mapped[int] = mapped_column(Integer)
+    unit_price: Mapped[int] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(24), server_default="approved")
+    approved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    approved_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    ordered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    ordered_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    implicit_order: Mapped[bool] = mapped_column(Boolean, server_default=sql_text("false"))
+    received_qty: Mapped[int] = mapped_column(Integer, server_default="0")
+    # 발주 수량을 모두 채운 입고 시각. 부분입고 중에는 null
+    received_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cancel_reason: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = _created_at()

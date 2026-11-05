@@ -76,3 +76,30 @@
 - `parts`: 정비 1회당 부품·수량(1 이상). 같은 부품 두 번은 400, 없거나 병합된 부품은 404. 정비 일정에 필요 부품이 없으면 이 수량을 확정 필요량 F로 쓴다.
 - 채팅이 설비를 이름(대소문자 무시)으로 찾으므로 이름은 회사 안에서 대소문자 무시 유일이다(409 `NAME_TAKEN`).
 - PATCH에서 `null`은 400. 설비는 출고·정비 원장에 연결되어 삭제 API를 두지 않는다.
+
+## SET-08 정비 일정
+
+| API | 설명 |
+| --- | --- |
+| `GET /api/v1/maintenance` | 목록. 예정일 순, 커서 목록. Query `from`, `to`(예정일 범위), `equipment_id`, `completed`(true·false) |
+| `GET /api/v1/maintenance/{id}` | 상세 |
+| `POST /api/v1/maintenance` | 등록. 201 |
+| `PATCH /api/v1/maintenance/{id}` | 보낸 항목만 수정 |
+| `DELETE /api/v1/maintenance/{id}` | 취소한 일정 삭제. 204 |
+
+```json
+// POST Request (required_parts를 비우면 설비의 정비 1회당 부품·수량을 쓴다)
+{ "equipment_id": "...", "scheduled_date": "2026-11-20", "required_parts": [ { "part_id": "...", "qty": 4 } ] }
+
+// 201 Response
+{
+  "id": "...", "equipment": { "id": "...", "name": "3호기" }, "scheduled_date": "2026-11-20",
+  "required_parts": [ { "part_id": "...", "qty": 4 } ],
+  "parts": [ { "part_id": "...", "name": "볼베어링 6205ZZ", "qty": 4 } ], "parts_source": "schedule",
+  "completed_at": null
+}
+```
+
+- `parts`는 확정 필요량 F에 실제로 쓰는 부품이다. 정비 일정의 `required_parts`가 있으면 그것(`parts_source: schedule`), 없으면 설비 기준(`equipment`). 둘을 더하지 않는다.
+- `required_parts`의 같은 부품 두 번·수량 0 이하는 400, 없거나 병합된 부품은 404. PATCH에서 `required_parts: null`이면 설비 기준으로 돌아간다. `equipment_id`·`scheduled_date`에 `null`은 400.
+- 완료된 정비는 수정·삭제할 수 없다(409 `ALREADY_CONFIRMED`, `detail.status: completed`). 출고가 연결된 정비도 삭제할 수 없다(`detail.status: linked`).

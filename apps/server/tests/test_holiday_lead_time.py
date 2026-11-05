@@ -45,6 +45,7 @@ def _lt90(demo_db, key):
 
 def test_nightly_extends_lead_time_by_category_holidays(demo_db):
     demo_db.reseed()
+    demo_db.clear_orders()
     assert run_job(demo_db.app, "nightly", "manual", now=NIGHTLY).status == "ok"
     # 볼트(국내 명절, 수입 의존 낮음): 공급사 A 7일 + 설날 4일
     assert _lt90(demo_db, "m820") == 11

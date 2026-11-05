@@ -21,6 +21,7 @@ def _url(key: str) -> str:
 @pytest.fixture
 def fresh(demo_db):
     demo_db.reseed()
+    demo_db.clear_orders()
     yield demo_db
     demo_db.reseed()
 

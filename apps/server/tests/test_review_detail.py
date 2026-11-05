@@ -106,6 +106,7 @@ def test_detail_reads_review_saved_by_run_service(client, demo_db):
     from .test_review_run import NIGHTLY_AT, _create, _run
 
     demo_db.reseed()
+    demo_db.clear_orders()
     assert run_job(demo_db.app, "nightly", "manual", now=NIGHTLY_AT).status == "ok"
     review_id = _create(demo_db)
     _run(demo_db, review_id)

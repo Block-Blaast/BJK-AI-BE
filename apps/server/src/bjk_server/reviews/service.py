@@ -37,6 +37,7 @@ from bjk_server.db.models import CompanySettings, Review, ReviewSnapshot
 from bjk_server.db.session import get_session_scope
 from bjk_server.defaults import default_settings
 from bjk_server.events import publish
+from bjk_server.reviews.notices import notify_review_result
 from bjk_server.reviews.snapshot import collect_snapshot
 
 logger = logging.getLogger(__name__)
@@ -191,6 +192,7 @@ def run_review(
             return None
         finished = now()
         _save(db, review, outcome, settings, finished)
+        notify_review_result(db, review, outcome, finished)
         publish(db, company_id, "review.progress", _progress(review_id, "done", finished))
         return review.status
 

@@ -43,7 +43,7 @@ def _no_external_fetch(monkeypatch):
 def _base_url() -> str:
     url = os.environ.get("TEST_DATABASE_URL")
     if not url:
-        # CI는 REQUIRE_DB_TESTS=1로 DB 테스트를 건너뛰지 못하게 한다.
+        # REQUIRE_DB_TESTS=1이면 DB 테스트를 건너뛰지 못하게 한다(배포 전 전체 검증).
         if os.environ.get("REQUIRE_DB_TESTS") == "1":
             pytest.fail("REQUIRE_DB_TESTS=1인데 TEST_DATABASE_URL이 없습니다.")
         pytest.skip("TEST_DATABASE_URL 미설정: DB 테스트 생략")

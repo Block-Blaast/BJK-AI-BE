@@ -70,7 +70,9 @@ def _form_out(client):
     return res.json()["stock_after"]
 
 
-def test_form_entry_publishes_stock_changed_to_open_stream(fresh):
+def test_form_entry_publishes_stock_changed_to_open_stream(fresh, monkeypatch):
+    # 폼 기록 요청이 느린 CI에서도 스트림이 열려 있는 동안 끝나도록 이 테스트만 오래 연다.
+    monkeypatch.setattr(events_api, "MAX_STREAM_SECONDS", 5.0)
     client = build_client(fresh)
 
     def later():

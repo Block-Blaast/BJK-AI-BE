@@ -30,6 +30,7 @@ from bjk_server.api import (
     settings,
     sim_reports,
     suppliers,
+    twin,
     users,
 )
 
@@ -64,4 +65,5 @@ api_router.include_router(dashboard.router)
 api_router.include_router(reviews.router)
 api_router.include_router(notifications.router)
 api_router.include_router(sim_reports.router)
+api_router.include_router(twin.router)
 api_router.include_router(activity.router)

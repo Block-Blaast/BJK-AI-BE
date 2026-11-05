@@ -18,13 +18,15 @@ class FakeGateway:
         self.generate_calls = []
         self.embed_calls = []
 
-    async def generate_json(self, *, model, system, prompt, schema):
+    async def generate_json(self, *, purpose, system, prompt, schema, max_tokens, attempt):
         self.generate_calls.append(prompt)
-        return GenerateResult(text=await self._next(self.texts), input_tokens=10, output_tokens=5)
+        text = await self._next(self.texts)
+        return GenerateResult(text=text, input_tokens=10, output_tokens=5, model="fake-llm")
 
-    async def embed(self, *, model, texts, dim):
-        self.embed_calls.append((texts, dim))
-        return EmbedResult(vectors=await self._next(self.vectors), input_tokens=0)
+    async def embed(self, *, texts, dim, task):
+        self.embed_calls.append((texts, dim, task))
+        vectors = await self._next(self.vectors)
+        return EmbedResult(vectors=vectors, input_tokens=3, model="fake-embedding")
 
     @staticmethod
     async def _next(queue):

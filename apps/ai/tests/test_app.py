@@ -2,7 +2,6 @@ import json
 import math
 
 import pytest
-from bjk_ai.embedding import format_text
 from bjk_contracts import EMBEDDING_DIM, EmbedTask
 
 
@@ -140,22 +139,20 @@ def unit_vector(index):
     return vector
 
 
-def test_embeddings_format_by_task_and_normalize(make_client, fake_gateway, embed):
+def test_embeddings_pass_task_and_normalize(make_client, fake_gateway, embed):
     gateway = fake_gateway(vectors=[[unit_vector(0), unit_vector(1)]])
     with make_client(gateway) as client:
         body = embed(client, ["육각볼트 M8-20", "헥사볼트 M8×20"]).json()
 
-    texts, dim = gateway.embed_calls[0]
-    assert texts == ["title: none | text: 육각볼트 M8-20", "title: none | text: 헥사볼트 M8×20"]
-    assert dim == EMBEDDING_DIM
-    assert body["model"] == "gemini-embedding-2"
+    texts, dim, task = gateway.embed_calls[0]
+    assert texts == ["육각볼트 M8-20", "헥사볼트 M8×20"]
+    assert (dim, task) == (EMBEDDING_DIM, EmbedTask.DOCUMENT)
+    assert dim == 1024
+    assert body["model"] == "fake-embedding"
+    assert body["usage"]["model"] == "fake-embedding"
     assert len(body["vectors"]) == 2
     assert math.isclose(sum(v * v for v in body["vectors"][0]), 1.0)
     assert body["vectors"][0][0] == 1.0
-
-
-def test_query_format():
-    assert format_text(EmbedTask.QUERY, " 베아링 ") == "task: search result | query: 베아링"
 
 
 @pytest.mark.parametrize(

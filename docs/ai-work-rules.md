@@ -22,21 +22,28 @@ MVP의 LLM 사용처는 `about_project/01-functional-spec.md` 기준으로 아�
 | 의견서 문장 | F-REVIEW-08 | 정해진 양식 의견서 |
 | 부품 이름 임베딩(매칭·중복 후보용 벡터) | F-SETUP-02 5단계, F-MATCH-01 4단계 | (제안, 명세에 없음) 임베딩 없이 규격 필터 + 자모 유사도만으로 후보 제시 |
 
-LLM과 임베딩은 모두 **Gemini API**로 하고, API 키 하나를 `apps/ai`에서만 관리한다(2026-11-05 결정). 로컬 임베딩 모델(BGE-M3 등)은 쓰지 않는다.
+LLM과 임베딩은 모두 **Amazon Bedrock**으로 한다(2026-11-05 결정, 인프라 보안 요청). EC2 IAM Role로 인증해 API 키가 없다. LLM은 Claude(Mantle Messages API), 임베딩은 Titan Text Embeddings V2 **1024차원**. Gemini는 키가 있을 때만 LLM 재시도 폴백으로 쓰고, 임베딩은 폴백하지 않는다(다른 모델 벡터끼리 비교 불가). 처음 결정(Gemini)은 `history/2026-11-05-02-llm-scope-decision.md`.
 
 ### 실행 설정 (`apps/ai`)
 
 | 환경 변수 | 기본값 | 내용 |
 | --- | --- | --- |
-| `GEMINI_API_KEY` | 없음 | 비어 있으면 Gemini를 부르지 않고 모든 요청에 대체 응답 |
-| `GEMINI_CHAT_MODEL` | `gemini-3.5-flash-lite` | 채팅 해석 모델 |
-| `GEMINI_EMBEDDING_MODEL` | `gemini-embedding-2` | 임베딩 모델(1536차원으로 받음) |
-| `GEMINI_OPINION_MODEL` | `gemini-3.5-flash-lite` | 의견서 문장 모델 |
-| `GEMINI_IMPORT_MODEL` | `gemini-3.5-flash-lite` | 엑셀 이관 규격·카테고리 제안 모델 |
+| `LLM_PROVIDER` | `bedrock` | LLM 주 제공자(`bedrock`·`gemini`). 쓸 수 없으면 다른 쪽으로 대신 |
+| `EMBEDDING_PROVIDER` | `bedrock` | 임베딩 제공자. 대신하지 않음(server DB 벡터와 같은 모델이어야 함) |
+| `AWS_REGION` | `ap-northeast-3` | Bedrock 리전. 자격 증명은 AWS 기본 체인(EC2 IAM Role) |
+| `BEDROCK_CHAT_MODEL` | `anthropic.claude-haiku-4-5` | 채팅 해석 모델 |
+| `BEDROCK_OPINION_MODEL` | `anthropic.claude-haiku-4-5` | 의견서 문장 모델 |
+| `BEDROCK_IMPORT_MODEL` | `anthropic.claude-haiku-4-5` | 엑셀 이관 규격·카테고리 제안 모델 |
+| `BEDROCK_EMBEDDING_MODEL` | `amazon.titan-embed-text-v2:0` | 임베딩 모델(1024차원, 정규화) |
+| `BEDROCK_EFFORT` | 없음 | Haiku 4.5는 비워 둠. Haiku 5.5 이상으로 바꾸면 `low` 권장 |
+| `GEMINI_API_KEY` | 없음 | 있으면 LLM 재시도 폴백. 없으면 Gemini를 쓰지 않음 |
+| `GEMINI_CHAT_MODEL` 등 | `gemini-3.5-flash-lite` | Gemini 폴백 모델(채팅·의견서·이관), 임베딩은 `gemini-embedding-2` |
 | `CHAT_BUDGET_SECONDS` | 2.5 | 채팅 해석 재시도 포함 시간 예산 |
 | `EMBED_BUDGET_SECONDS` | 10 | 임베딩 재시도 포함 시간 예산 |
 | `OPINION_BUDGET_SECONDS` | 3 | 의견서 한 번 호출의 재시도 포함 시간 예산 |
 | `IMPORT_BUDGET_SECONDS` | 30 | 엑셀 이관 제안 50줄 묶음 하나의 재시도 포함 시간 예산 |
+
+실제 제공자 확인: `uv run --package bjk-ai python apps/ai/scripts/smoke.py`(쓰인 모델·지연·대체 여부 출력).
 
 환경 변수는 레포 루트 `.env`(커밋 안 됨)에 둔다. `make ai`가 루트에서 실행되며 이 파일을 읽는다.
 

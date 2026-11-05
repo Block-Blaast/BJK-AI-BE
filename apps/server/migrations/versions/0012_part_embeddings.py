@@ -10,6 +10,7 @@ from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
+from pgvector.sqlalchemy import Vector
 
 # revision identifiers, used by Alembic.
 revision: str = "0012"
@@ -26,7 +27,7 @@ def upgrade() -> None:
     """Upgrade schema."""
     op.execute("CREATE EXTENSION IF NOT EXISTS vector")
     for table in TABLES:
-        op.execute(f"ALTER TABLE {table} ADD COLUMN embedding vector({EMBEDDING_DIM})")
+        op.add_column(table, sa.Column("embedding", Vector(EMBEDDING_DIM), nullable=True))
         # 모델이 다른 벡터끼리는 비교할 수 없어 벡터를 만든 모델명을 함께 저장한다.
         op.add_column(table, sa.Column("embedding_model", sa.String(length=100), nullable=True))
         op.create_check_constraint(

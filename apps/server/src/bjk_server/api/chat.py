@@ -111,7 +111,7 @@ def confirm_entry(
 
     intent: Literal["IN", "OUT"] = entry.intent
     movement, stock, reply = record_movement(
-        db, user, intent, part, qty, equipment_id, payload.get("source_text")
+        db, user, intent, part, qty, equipment_id, payload.get("source_text"), entry.message_id
     )
     result = RecordResponse(
         intent=intent,

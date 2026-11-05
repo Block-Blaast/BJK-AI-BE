@@ -22,7 +22,7 @@
 
 ## 검증
 
-- `REQUIRE_DB_TESTS=1 make test`, `make lint` 결과는 PR에 기록
+- `REQUIRE_DB_TESTS=1 make test` 556개 통과, `make lint` 통과
 
 ## 남은 일·확인 필요
 

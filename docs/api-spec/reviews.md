@@ -107,6 +107,19 @@ HTTP API가 아니라 채팅 발주 요청(CHAT-04), 재고 부족 초안, 놓�
 | 없는 검토, 다른 회사 검토 | 404 `NOT_FOUND` |
 | 빈 질문, 500자 초과 | 400 `VALIDATION_ERROR` |
 
+## REV-07 GET /api/v1/reviews/{id}/pdf
+
+- 권한: manager 이상. worker는 403 `FORBIDDEN_ROLE`.
+- 200 `application/pdf`. 저장한 판정 결과·최근 스냅샷·의견서·승인 기록만 써서(생성 시각 없음) 다시 받아도 같은 바이트다.
+- 구성: 발주 요약(원안·수정안), 판정·검토 의견, 근거 수치 표와 체크별 근거, 재고 추이 예측 그래프(발주 시·미발주 시), 미발주 리스크, 외부 요인, 승인자·승인 시각·계산 기준 시각.
+- 재고 추이는 S + O + H_c에서 월 소모량 m을 하루씩 고르게 빼는 단순 추정이고, 발주 시 선은 공급사 LT90 날에 수량이 들어온다. 정비 확정 필요량은 넣지 않는다.
+- 구현: HTML → WeasyPrint, 그래프 matplotlib SVG. 서버 이미지에 pango와 `fonts-noto-cjk`를 설치한다. macOS 로컬은 `brew install pango` 후 `DYLD_FALLBACK_LIBRARY_PATH=/opt/homebrew/lib`가 필요하고, pango가 없으면 PDF 테스트는 건너뛴다.
+
+| 상황 | 응답 |
+| --- | --- |
+| 승인(`approved`) 전 | 409 `PDF_NOT_READY`, `detail.status` |
+| 없는 검토, 다른 회사 검토 | 404 `NOT_FOUND` |
+
 ## REV-05 POST /api/v1/reviews/{id}/decision
 
 manager 이상. 헤더 `Idempotency-Key` 필수(없으면 400). 같은 키·같은 본문이면 처음 응답을 그대로 돌려준다.

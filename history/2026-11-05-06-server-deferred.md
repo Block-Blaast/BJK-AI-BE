@@ -1,0 +1,43 @@
+# server 스택에서 남겨둔 점
+
+- 날짜: 2026-11-05
+- 영역: server
+- 관련: `2026-11-05-04-server-progress.md`의 스택
+
+## 목적
+
+- 일부러 하지 않았거나 선행 기능이 없어 기본값으로 둔 것을, 채울 조건과 함께 남긴다
+
+일부러 하지 않았거나, 선행 기능이 없어 기본값으로 둔 것들이다. 해당 기능이 생기면 함께 채운다.
+
+## ai 파트 (지시에 따라 진행하지 않음)
+
+| 항목 | 지금 상태 | 채울 때 |
+| --- | --- | --- |
+| 채팅 해석 (#20) | `UnconfiguredInterpreter`가 항상 실패를 알려 모든 메시지가 폼 카드로 대체 | 계약(#61)과 ai 엔드포인트 연결 |
+| 별칭 후보 순위 (#21), 임베딩 의미 유사도·RRF | 매칭은 별칭·규격·철자 유사도만 사용 | ai 연동, pgvector(#65) |
+| `/health`의 `llm` | 항상 `not_configured` | ai 연결 점검 추가 |
+
+## 선행 기능이 없어 비워 둔 것
+
+| 항목 | 지금 상태 | 선행 기능 |
+| --- | --- | --- |
+| 채팅 의도 `PURCHASE_REQUEST`, `MAINTENANCE_DONE`, `COUNT` | `OTHER`와 같은 안내 | 검토(REV), 정비 완료(SET-09), 실사(AUD-03) |
+| `QUERY` 답변의 입고 예정 | 재고와 계산 시각만 | 발주(PO) |
+| `QUERY` 답변의 소진 예상일 | 미반영 (지금 `part_metrics.t_out`으로 가능) | 없음 |
+| 카드 확정 `triggered`(재고 부족 초안·장부 의심) | 항상 `null` | 검토 엔진, 장부 검증 |
+| 입고 `po_match`, `actual_lead_time_days` | 없음 | 발주 |
+| 발주 납기 표본 시드 (#12) | 없음 | 발주 테이블 |
+| nightly 납기 LT50·LT90 | 공급사 기본 납기 하나(표본 0건)라 LT50 = LT90 | 발주 입고 기록 |
+| nightly 입고 예정 O | 0 | 발주 |
+| nightly 명절·춘절 납기 연장 | 공급사 휴무일만 반영 | 캘린더(SET-11) |
+| 숨은 재고 H_c | 0 (같은 규격 재고는 모두 H_u) | 실사 기록 |
+| 부품 목록 `ledger_status=suspect` | 결과 없음 | 장부 검증(AUD) |
+| 배치 `missed-scan`, `order-check`, `briefing`, `weekly-merge` | `skipped` 기록 | 놓친 발주·알림·병합 기능 |
+| `part_stock` 재고 요약 | 원장 합산과 인덱스로 계산 | 성능 기준 초과 시 (명세 C2) |
+
+## 확인하지 못한 것
+
+- docker compose 실행 (`db` 앱 계정 접속, `server`, `scheduler` 서비스). 로컬 Docker 데몬이 꺼져 있었다. 이미지 빌드는 CI가 확인한다.
+- 배포 환경 예약 실행 (cron 또는 compose `scheduler`). 배포 환경이 정해지지 않았다.
+- 부품 1,000종 기준 nightly 5분, 채팅 3초 성능.

@@ -4,7 +4,7 @@ AI·server 영역 작업 기록 색인. 작성 규칙은 [docs/ai-work-rules.md]
 
 | 날짜 | 파일 | 내용 |
 | --- | --- | --- |
-| 2026-11-05 | [2026-11-05-37-receipt-po-match.md](2026-11-05-37-receipt-po-match.md) | 입고와 발주 대조(`po_match`, 실제 납기, `po_id`), DB 포함 714개 통과 |
+| 2026-11-05 | [2026-11-05-38-receipt-po-match.md](2026-11-05-38-receipt-po-match.md) | 입고와 발주 대조(`po_match`, 실제 납기, `po_id`), DB 포함 753개 통과 |
 | 2026-11-05 | [2026-11-05-28-purchase-orders.md](2026-11-05-28-purchase-orders.md) | 발주 테이블(0026)과 열린 발주·최근 단가 조회 함수, DB 포함 705개 통과 |
 | 2026-11-05 | [2026-11-05-37-policy-main-only.md](2026-11-05-37-policy-main-only.md) | dev 대상 PR 협업 정책 검사 중단, main·Issue 검사 유지 |
 | 2026-11-05 | [2026-11-05-36-ci-main-only.md](2026-11-05-36-ci-main-only.md) | dev CI 실행 중단(main 대상 PR만 CI), main 배포 유지 |

@@ -4,6 +4,7 @@ AI·server 영역 작업 기록 색인. 작성 규칙은 [docs/ai-work-rules.md]
 
 | 날짜 | 파일 | 내용 |
 | --- | --- | --- |
+| 2026-11-05 | [2026-11-05-39-chat-query-incoming.md](2026-11-05-39-chat-query-incoming.md) | 채팅 재고 조회 답변에 입고 예정 추가(#22), 792개 통과 |
 | 2026-11-05 | [2026-11-05-43-chat-purchase-request.md](2026-11-05-43-chat-purchase-request.md) | 채팅·폼 발주 요청으로 직원 요청 검토 생성(#153), 공급사 표현 해석, 742개 통과 |
 | 2026-11-05 | [2026-11-05-42-review-questions.md](2026-11-05-42-review-questions.md) | 검토 후속 질문 API(REV-06), 양식 답변 |
 | 2026-11-05 | [2026-11-05-41-missed-scan.md](2026-11-05-41-missed-scan.md) | 놓친 발주 스캔 배치(F-MISSED-01), 중복 방지 |

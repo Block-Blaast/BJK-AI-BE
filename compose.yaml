@@ -1,12 +1,50 @@
 services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: bjk
+      POSTGRES_PASSWORD: bjk
+      POSTGRES_DB: bjk
+    # 로컬에 설치된 PostgreSQL(5432)과 겹치지 않게 5433으로 연다.
+    ports:
+      - "5433:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./infra/db/init-roles.sql:/docker-entrypoint-initdb.d/10-init-roles.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bjk"]
+      interval: 2s
+      retries: 15
+
   server:
     build:
       context: .
       dockerfile: apps/server/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg://bjk_app_login:bjk_app_login@db:5432/bjk
+      ADMIN_DATABASE_URL: postgresql+psycopg://bjk:bjk@db:5432/bjk
     ports:
       - "8000:8000"
     depends_on:
-      - ai
+      db:
+        condition: service_healthy
+      ai:
+        condition: service_started
+
+  # 배치 예약 (APScheduler). API 서버와 분리해 서버를 늘려도 예약은 한 곳에서만 돈다.
+  scheduler:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    command: ["uv", "run", "--no-sync", "python", "-m", "bjk_server.jobs.scheduler"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://bjk_app_login:bjk_app_login@db:5432/bjk
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    # 종료 신호 뒤 실행 중인 배치가 끝날 때까지 기다린다 (부품 1,000종 nightly 목표 5분).
+    stop_grace_period: 5m
 
   ai:
     build:
@@ -14,3 +52,6 @@ services:
       dockerfile: apps/ai/Dockerfile
     ports:
       - "8001:8001"
+
+volumes:
+  db-data:

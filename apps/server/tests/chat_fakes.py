@@ -15,6 +15,7 @@ PARSED = {
     "V벨트 3개 들어옴": Interpretation("IN", "V벨트", 3),
     "기어 하나 씀": Interpretation("OUT", "기어", 1),
     "6205 몇 개 있어?": Interpretation("QUERY", "6205"),
+    "6204 몇 개 있어?": Interpretation("QUERY", "6204"),
     "안녕": Interpretation("OTHER"),
 }
 

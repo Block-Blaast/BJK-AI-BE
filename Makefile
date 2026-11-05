@@ -1,4 +1,4 @@
-.PHONY: install test lint format server ai up db-up migrate seed job scheduler
+.PHONY: install test lint format server ai up db-up migrate seed job scheduler perf
 
 install:
 	uv sync --all-packages
@@ -38,3 +38,7 @@ job:
 
 scheduler:
 	uv run --package bjk-server python -m bjk_server.jobs.scheduler
+
+# 부품 N종 성능 측정 (개발 DB 초기화). 예: make perf parts=1000
+perf:
+	uv run --package bjk-server python -m bjk_server.seed.perf --parts $(or $(parts),1000)

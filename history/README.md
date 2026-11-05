@@ -4,9 +4,10 @@ AI·server 영역 작업 기록 색인. 작성 규칙은 [docs/ai-work-rules.md]
 
 | 날짜 | 파일 | 내용 |
 | --- | --- | --- |
-| 2026-11-05 | [2026-11-05-24-chat-multi-item-cards.md](2026-11-05-24-chat-multi-item-cards.md) | 채팅 여러 품목을 품목별 확인 카드로 응답(#192), 556개 통과 |
-| 2026-11-05 | [2026-11-05-23-chat-maintenance-done.md](2026-11-05-23-chat-maintenance-done.md) | 채팅 MAINTENANCE_DONE 의도를 정비 완료 확인 카드로 연결(#186), 558개 통과 |
-| 2026-11-05 | [2026-11-05-24-chat-count-answer.md](2026-11-05-24-chat-count-answer.md) | 채팅 COUNT 의도를 실사 응답(AUD-03)으로 연결(#179), 558개 통과 |
+| 2026-11-05 | [2026-11-05-29-lane-c-chat-batch.md](2026-11-05-29-lane-c-chat-batch.md) | 레인 C 채팅 기능(#179·#186·#192) 통합 브랜치로 묶어 dev 반영(#200) |
+| 2026-11-05 | [2026-11-05-28-chat-multi-item-cards.md](2026-11-05-28-chat-multi-item-cards.md) | 채팅 여러 품목을 품목별 확인 카드로 응답(#192), 556개 통과 |
+| 2026-11-05 | [2026-11-05-27-chat-maintenance-done.md](2026-11-05-27-chat-maintenance-done.md) | 채팅 MAINTENANCE_DONE 의도를 정비 완료 확인 카드로 연결(#186), 558개 통과 |
+| 2026-11-05 | [2026-11-05-26-chat-count-answer.md](2026-11-05-26-chat-count-answer.md) | 채팅 COUNT 의도를 실사 응답(AUD-03)으로 연결(#179), 558개 통과 |
 | 2026-11-05 | [2026-11-05-24-part-detail-dev-merge.md](2026-11-05-24-part-detail-dev-merge.md) | #137 dev 반영, 충돌 양쪽 유지, 마이그레이션 0021~0023으로 변경 |
 | 2026-11-05 | [2026-11-05-24-llm-daily-token-quota.md](2026-11-05-24-llm-daily-token-quota.md) | 회사별 LLM 일일 토큰 상한(#172), `system.llm_daily_tokens`, 초과 시 `quota_exceeded` 대체 |
 | 2026-11-05 | [2026-11-05-24-llm-daily-token-quota.md](2026-11-05-24-llm-daily-token-quota.md) | 회사별 LLM 일일 토큰 상한(#172), `system.llm_daily_tokens`, 초과 시 `quota_exceeded` 대체 |

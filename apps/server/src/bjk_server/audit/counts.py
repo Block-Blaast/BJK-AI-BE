@@ -119,6 +119,23 @@ def _diff_reply(diff: int, unit: str) -> str:
     return f"장부보다 {abs(diff)}{unit} {direction}. 이유를 골라 주세요."
 
 
+def delivered_requests(db: Session, assignee_id: uuid.UUID, now: datetime) -> list[CountRequest]:
+    """담당자에게 전달돼 응답을 기다리는 실사 요청. 예약 건은 예약 시각부터. 오래된 요청부터."""
+    return list(
+        db.scalars(
+            select(CountRequest)
+            .where(
+                CountRequest.assignee_id == assignee_id,
+                or_(
+                    CountRequest.status == "sent",
+                    (CountRequest.status == "scheduled") & (CountRequest.scheduled_for <= now),
+                ),
+            )
+            .order_by(CountRequest.created_at)
+        )
+    )
+
+
 def own_delivered_request(
     db: Session, user: TokenClaims, request_id: uuid.UUID, now: datetime
 ) -> CountRequest:

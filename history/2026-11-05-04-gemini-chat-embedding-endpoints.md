@@ -2,7 +2,7 @@
 
 - 날짜: 2026-11-05
 - 영역: AI
-- 관련: Issue #67, 브랜치 `feat/ai-gemini-chat-embedding/#67`(#61 브랜치 위에 쌓음), F-CHAT-01, F-SETUP-02, F-MATCH-01, 17장 비기능 요구사항
+- 관련: Issue #67, Draft PR #70(→ #61 브랜치), 브랜치 `feat/ai-gemini-chat-embedding/#67`(#61 브랜치 위에 쌓음), F-CHAT-01, F-SETUP-02, F-MATCH-01, 17장 비기능 요구사항
 
 ## 목적
 

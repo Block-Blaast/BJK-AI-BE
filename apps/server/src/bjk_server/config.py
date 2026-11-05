@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     vapid_private_key: str | None = None
     vapid_subject: str = "mailto:admin@baljukok.kr"
 
+    # 새벽 배치가 환율·해상운임·공휴일을 외부에서 받아 온다 (F-EXT-01).
+    # 끄거나 수집에 실패하면 직전 값, 처음이면 시드 CSV를 쓴다.
+    external_fetch: bool = True
+
     jwt_secret: str = DEV_JWT_SECRET
     access_token_minutes: int = 15
     refresh_token_days: int = 14

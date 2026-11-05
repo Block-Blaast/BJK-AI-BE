@@ -14,13 +14,15 @@ server에서 AI 기능(ai 서비스 HTTP 엔드포인트 4개, 검토 엔진 `bj
 
 - **검토 엔진은 `bjk_review`를 쓴다.** server에서 체크·수정안·판정을 다시 만들지 않는다(server 할 일 7번의 엔진 부분). server는 스냅샷 수집과 저장, REV API를 만든다.
 - **LLM은 매칭 순위를 매기지 않는다**(F-MATCH-01, #21 종료). `CLAUDE.md`의 "별칭 후보 순위"는 옛 문구다.
-- **임베딩은 1024차원**(`bjk_contracts.EMBEDDING_DIM`). server DB `vector(1536)`(마이그레이션 0012)을 `vector(1024)`로 바꿔야 한다.
+- **임베딩은 1024차원**(`bjk_contracts.EMBEDDING_DIM`). server DB는 마이그레이션 0019에서 `vector(1024)`로 바꿨다(#154).
+
+연동 상태(#154): 6장 1~3단계(연결 공통·`llm_calls`·상태 확인, 채팅 해석, 임베딩 저장·매칭)는 server에 붙었다. 검토(4단계 이후)와 회사별 토큰 상한은 아직이다.
 
 ## 1. 공통
 
 ### 연결
 
-- 주소: compose 안에서는 `http://ai:8001`, 로컬은 `http://localhost:8001`. server 설정에 `AI_BASE_URL`을 추가해 넣는다.
+- 주소: compose 안에서는 `http://ai:8001`, 로컬은 `http://localhost:8001`. server 설정 `AI_BASE_URL`(비우면 ai를 부르지 않음). 클라이언트는 `bjk_server/ai/client.py`.
 - server는 동기라 `httpx.Client`를 쓴다(`httpx`를 `apps/server` 런타임 의존성에 추가). 클라이언트 타임아웃은 ai 쪽 예산보다 조금 길게: 채팅 3초, 임베딩 12초, 의견서 4초, 이관 제안 35초.
 - ai는 LLM이 실패해도 **200**과 대체 응답을 준다. 오류 응답은 입력 형식 오류(422)뿐이다. HTTP 자체가 실패(연결 거부, 타임아웃)하면 server가 같은 대체 경로로 간다.
 

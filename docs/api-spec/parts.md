@@ -85,4 +85,5 @@
 - 없는 `category_id`·`default_supplier_id`는 404(`detail`에 필드).
 - PATCH는 보낸 항목만 고친다. 재고는 바꾸지 않는다(LED-02 정정, AUD-03 실사로 맞춘다). `name`·`unit`·`spec`에 `null`은 400, 나머지는 `null`로 지운다.
 - 병합된 부품은 404(`detail.merged_into`)이며 대표 부품을 고친다.
-- 현재 구현 범위: 등록 시 임베딩·중복 후보 제안(F-SETUP-02 4·5단계)은 ai 연동·병합 기능에서 더한다.
+- 등록·이름 변경 때 이름 임베딩(ai `/v1/embeddings`, `task: document`)을 저장한다. ai가 실패해도 등록은 되고, 빈 임베딩은 nightly가 채운다.
+- 현재 구현 범위: 등록 시 중복 후보 제안(F-SETUP-02 4단계)은 병합 기능에서 더한다.

@@ -38,7 +38,7 @@ def default_settings() -> dict[str, dict[str, Any]]:
 # (키, 이름, 수입 의존도, 납기 요인, 가격 요인, HS 코드). 키는 시연 시드의 ID 생성에 쓴다.
 DEFAULT_CATEGORIES: tuple[tuple[str, str, str, list[str], list[str], str], ...] = (
     ("bearing", "베어링", "high", ["FREIGHT", "HOLIDAY_CN"], ["USDKRW"], "8482"),
-    ("belt", "V벨트·전동벨트", "medium", ["FREIGHT"], ["USDKRW"], "4010"),
-    ("bolt", "볼트·너트", "low", [], [], "7318"),
-    ("oil", "절삭유·윤활유", "medium", [], ["USDKRW"], "2710"),
+    ("belt", "V벨트·전동벨트", "medium", ["FREIGHT", "HOLIDAY_KR"], ["USDKRW"], "4010"),
+    ("bolt", "볼트·너트", "low", ["HOLIDAY_KR"], [], "7318"),
+    ("oil", "절삭유·윤활유", "medium", ["HOLIDAY_KR"], ["USDKRW"], "2710"),
 )

@@ -20,6 +20,7 @@ members = ["apps/*", "packages/*"]
 
 [tool.uv.sources]
 bjk-contracts = { workspace = true }
+bjk-review = { workspace = true }
 
 [tool.ruff]
 line-length = 100
@@ -30,4 +31,4 @@ select = ["E", "F", "I", "B", "UP"]
 
 [tool.pytest.ini_options]
 addopts = "--import-mode=importlib"
-testpaths = ["apps/server/tests", "apps/ai/tests"]
+testpaths = ["apps/server/tests", "apps/ai/tests", "packages/review/tests"]

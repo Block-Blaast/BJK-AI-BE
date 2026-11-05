@@ -41,7 +41,7 @@ class AliasLearned(BaseModel):
 
 
 class Triggered(BaseModel):
-    # 재고 부족 초안·장부 의심 항목은 검토·장부 검증 기능에서 채운다.
+    # 재고 부족 초안은 검토 기능에서 채운다. 장부 의심 항목은 음수 재고가 됐을 때 (F-LEDGER-03).
     draft_review_id: uuid.UUID | None = None
     audit_flag_id: uuid.UUID | None = None
 

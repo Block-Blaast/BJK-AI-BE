@@ -115,11 +115,11 @@ def test_other_company_cannot_see_reviews(fresh):
         assert len(s.scalars(select(Review)).all()) == 1
 
 
-def test_downgrade_0014_removes_review_tables(empty_db_url):
+def test_downgrade_0019_removes_review_tables(empty_db_url):
     config = alembic_config(empty_db_url)
     engine = create_engine(empty_db_url)
     command.upgrade(config, "head")
-    command.downgrade(config, "0014")
+    command.downgrade(config, "0019")
     assert not {"reviews", "review_snapshots"} & set(inspect(engine).get_table_names())
     command.upgrade(config, "head")
     assert {"reviews", "review_snapshots"} <= set(inspect(engine).get_table_names())

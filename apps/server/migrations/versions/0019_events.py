@@ -1,7 +1,7 @@
 """events
 
-Revision ID: 0014
-Revises: 0013
+Revision ID: 0019
+Revises: 0018
 Create Date: 2026-11-05
 
 SSE 실시간 이벤트 (API 명세서 NOT-03). 연결이 끊겨도 Last-Event-ID로 이어 받도록 저장한다.
@@ -14,8 +14,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-revision: str = "0014"
-down_revision: str | Sequence[str] | None = "0013"
+revision: str = "0019"
+down_revision: str | Sequence[str] | None = "0018"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

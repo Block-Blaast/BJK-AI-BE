@@ -24,7 +24,7 @@
 
 | 상황 | 응답 |
 | --- | --- |
-| 비밀번호 8자 미만, 이메일 형식 오류, 빈 이름·회사 이름 | 400 `VALIDATION_ERROR` |
+| 비밀번호 8자 미만·128자 초과, 이메일 형식 오류·255자 초과, 빈 이름·회사 이름, 이름 50자·회사 이름 100자 초과 | 400 `VALIDATION_ERROR` |
 | 이미 가입된 이메일 (동시 가입 포함) | 409 `EMAIL_TAKEN` |
 | 시간당 10회 초과 | 429 `RATE_LIMITED`, `Retry-After` 헤더 |
 
@@ -122,7 +122,7 @@
 | --- | --- |
 | PIN 불일치 (1~4회째) | 401 `INVALID_PIN`, `remaining_attempts` |
 | 5회째 실패, 잠금 중 요청 | 423 `PIN_LOCKED`, `Retry-After` 헤더 |
-| 없는 회사 코드, 없는 사용자, PIN 미등록 사용자 | 404 `NOT_FOUND` |
+| 없는 회사 코드, 없는 사용자, 비활성 사용자, PIN 미등록 사용자 | 404 `NOT_FOUND` |
 
 ## AUTH-06 POST /api/v1/auth/invites, AUTH-07 POST /api/v1/auth/invites/{token}/accept
 

@@ -31,7 +31,7 @@ ai `/v1/imports/suggest`(200줄 묶음)가 시간 초과·오류·대체 응답�
 
 - `spec`: 정규식 값만
 - `suggested_category`: 모든 줄 `null`(관리자가 직접 고름)
-- `ai`: `{"used": true, "fallback": true, "reason": "timeout|error|schema_invalid|quota_exceeded"}`. ai 미설정은 `used: false`, `reason: "error"`
+- `ai`: `{"used": true, "fallback": true, "reason": "timeout|error|schema_invalid|quota_exceeded"}`. ai 미설정, 회사에 카테고리가 없음, 이름 있는 줄이 없음은 `used: false`, `reason: "error"`
 
 ## SET-02 POST /api/v1/imports/parts/{id}/confirm
 
@@ -41,10 +41,12 @@ ai `/v1/imports/suggest`(200줄 묶음)가 시간 초과·오류·대체 응답�
 | --- | --- | --- |
 | `initial` (첫 이관 기본값) | 시작 재고 ADJUST(`초기 재고`) | 정보만 갱신 |
 | `ignore` (재이관 기본값) | 시작 재고 ADJUST(`초기 재고`) | 정보만 갱신 |
-| `preview` | 저장 안 함 | 차이 목록만 (`stock_diffs`) |
+| `preview` | 저장 안 함, 차이 목록에 포함(`part_id: null`, `ledger_stock: 0`) | 차이 목록만 (`stock_diffs`) |
 | `apply` | 시작 재고 ADJUST(`초기 재고`) | 차이만 ADJUST(`엑셀 재이관`) |
 
-- 재이관에 `initial`, `preview` 전의 `apply`는 400 `VALIDATION_ERROR`. 오류가 있는 줄·파일에 없는 줄도 400.
+- 응답 200: `{created, updated, adjust_movements, stock_diffs}`. `stock_diffs` 원소는 `{row, part_id, name, ledger_stock, file_stock, diff}`이고 차이가 0인 줄은 뺀다. `preview`는 `created`·`updated`·`adjust_movements`가 0이다.
+- 요청의 `spec` 값은 공백과 `-`를 빼고 대문자로 바꿔 저장한다.
+- 재이관에 `initial`, `preview` 전의 `apply`는 400 `VALIDATION_ERROR`. 오류가 있는 줄·파일에 없는 줄, 회사에 없는 `category_id`도 400(SET-05와 달리 404가 아님).
 - 이미 확정한 이관은 409 `ALREADY_CONFIRMED`. 없는 이관·병합 대상은 404.
 - 재고 ADJUST 전에 부품 재고 잠금을 잡는다(#69).
 - 공급사가 등록돼 있으면 기본 공급사로 두고, 단가가 있으면 `supplier_parts.unit_price`를 넣거나 갱신한다.

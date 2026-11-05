@@ -1,6 +1,6 @@
 # 배치 (HTTP API 아님)
 
-API 명세서 14장 기준. 예약은 API 서버와 분리된 APScheduler 프로세스(`python -m bjk_server.jobs.scheduler`, compose `scheduler` 서비스)가 하고, 실행·잠금·기록은 `run_job`이 맡는다. 수동 실행은 CLI를 쓴다.
+API 명세서 14장 기준. 예약은 API 서버와 분리된 APScheduler 프로세스(`python -m bjk_server.jobs.scheduler`, compose `scheduler` 서비스)가 하고, 실행·잠금·기록은 `run_job`이 맡는다. 수동 실행은 CLI를 쓴다. CLI 실행도 `job_runs.trigger`는 `schedule`로 남고, `manual`은 DEV-01 실행뿐이다.
 
 ```bash
 python -m bjk_server.jobs nightly
@@ -10,13 +10,13 @@ python -m bjk_server.jobs nightly
 | --- | --- | --- |
 | `nightly` | 매일 03:00 | 외부 지표 위험도 → 부품 근거 지표 → 장부 검증 → 빈 임베딩 채우기 |
 | `missed-scan` | 매일 07:00 | 놓친 발주 초안 생성 → 검토 |
-| `order-check` | 매일 07:00 | 승인 후 24시간 지나도 주문 전인 발주 → 승인자(없으면 관리자·사장님)에게 `order_check` 알림, 주문 후 기본 공급사 LT90(근거 지표, 없으면 공급사 기본 납기, 그것도 없으면 7일)을 넘겨 다 들어오지 않은 발주 → 관리자·사장님에게 `receipt_check` 알림. 발주마다 한 번만. 요약 `{ "order_check": n, "receipt_check": n }` |
+| `order-check` | 매일 07:00 | 승인 후 24시간 지나도 주문 전인 발주 → 승인자(없으면 관리자·사장님)에게 `order_check` 알림, 주문 후 기본 공급사 LT90(근거 지표, 없으면 공급사 기본 납기, 그것도 없으면 7일)을 넘겨 다 들어오지 않은 발주 → 관리자·사장님에게 `receipt_check` 알림. 배치 알림은 발주마다 한 번만. 요약 `{ "order_check": n, "receipt_check": n }`의 n은 새로 만든 알림 수(받는 사람 수 합)이고 이미 알린 발주는 세지 않는다. 입고 수량이 잔량보다 많을 때(CHAT-03 `po_match: mismatch`)도 `receipt_check`를 보내며 이 알림은 입고마다 나간다 |
 | `briefing` | 매일 07:30 | 결정 대기 검토 만료(요청자 알림) → 브리핑 계산, 확인할 일이 있으면 사장님·관리자 알림(하루 1회) |
 | `weekly-merge` | 월요일 03:30 | 중복 부품 후보 저장, 한쪽이 병합된 열린 후보 종료([merge.md](merge.md)) |
 | `cleanup` | 매일 04:00 | 만료 행 삭제: `rate_limits` 창 종료 1시간 뒤, `pin_attempts` 잠금 해제·마지막 실패 1일 뒤, `idempotency_keys` 7일 뒤 (명세 밖, #185) |
-| `push` | 10분마다 | 보낼 시각이 된 웹 푸시 발송(조용한 시간으로 미룬 알림 포함, NOT-04). VAPID 키 없으면 `skipped` 요약 |
+| `push` | 10분마다 | 보낼 시각이 된 웹 푸시 발송(조용한 시간으로 미룬 알림 포함, NOT-04). VAPID 키가 없으면 실행 상태는 `ok`, 요약은 `{ "skipped": "vapid_not_configured" }` |
 
-- 플랫폼 cron을 쓰는 환경이면 스케줄러 대신 `infra/cron/crontab`처럼 CLI를 예약해도 된다. 둘을 같이 켜도 advisory lock으로 한 번만 실행된다.
+- 플랫폼 cron을 쓰는 환경이면 스케줄러 대신 `infra/cron/crontab`처럼 CLI를 예약해도 된다. 단 현재 `infra/cron/crontab`에는 `push`가 없어, cron만 쓰면 미룬 웹 푸시와 커밋 직후 발송에 실패한 푸시가 나가지 않는다. 둘을 같이 켜도 advisory lock으로 한 번만 실행된다.
 - RLS가 적용되는 앱 계정(`DATABASE_URL`)으로 실행한다. 회사 ID 목록만 `system_company_ids()` 함수로 받고, 회사마다 `app.company_id`를 지정한 뒤 그 회사 데이터만 읽고 쓴다.
 - 같은 작업은 advisory lock으로 한 번에 하나만 돈다. 겹치면 `skipped`(`already_running`)로 기록한다.
 - 실패하면 작업 트랜잭션을 롤백하고 `job_runs`에 `error`로 남긴다. CLI 종료 코드 1.

@@ -8,7 +8,7 @@
 
 | Query | 설명 |
 | --- | --- |
-| `q` | 이름·별칭·규격 값 부분 일치, 대소문자 무시. 규격 키는 검색하지 않는다. `%`·`_`는 글자로 취급 |
+| `q` | 이름·별칭·규격 값 부분 일치, 대소문자 무시. 최대 100자(넘으면 400). 규격 키는 검색하지 않는다. `%`·`_`는 글자로 취급 |
 | `category_id` | 카테고리 |
 | `abc` | `A`, `B`, `C` |
 | `demand_class` | `smooth`, `erratic`, `intermittent`, `lumpy`, `insufficient` |
@@ -75,7 +75,7 @@
 | 없는 부품, 다른 회사 부품, 병합된 부품 | 404 `NOT_FOUND` |
 | 토큰 없음 | 401 `UNAUTHORIZED` |
 
-- 현재 구현 범위: 발주 테이블 전이라 `stock.incoming`은 빈 목록, 실사 전이라 `last_counted_at`은 `null`, 장부 검증 전이라 `ledger_status`는 `normal`. 숨은 재고 부품 목록 `hidden.parts`는 빈 목록.
+- 현재 구현 범위: `stock.incoming`·`hidden.parts`는 빈 목록, `last_counted_at`은 `null`, `stock.ledger_status`는 항상 `normal`로 고정돼 있다. 목록(SET-03)의 `ledger_status`는 열린 의심 항목으로 `suspect`를 계산하므로, 같은 부품이 목록에서는 `suspect`이고 상세에서는 `normal`일 수 있다. 열린 발주 잔량은 재고 예측선(forecast)에만 반영된다.
 
 ## 재고 예측선 GET /api/v1/parts/{id}/forecast (명세 밖, #258)
 
@@ -130,6 +130,7 @@
 ```
 
 - 필수: `name`(1~200자), `unit`(1~16자). 앞뒤 공백은 뺀다. `spec` 값은 문자열·숫자만.
+- 범위: `pack_qty` 1 이상, `monthly_estimate`·`initial_stock` 0 이상, `location` 100자 이하. 벗어나면 400.
 - `initial_stock`(기본 0)이 있으면 원장에 `ADJUST`(사유 `초기 재고`, 작성자 등록한 관리자)로 넣는다. 재고 열은 저장하지 않는다.
 - `import_override`: 카테고리와 다른 수입 의존도(`high`, `medium`, `low`).
 - 없는 `category_id`·`default_supplier_id`는 404(`detail`에 필드).

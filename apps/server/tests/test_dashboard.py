@@ -1,0 +1,142 @@
+"""대시보드 요약 (API 명세서 DSH-02)."""
+
+import uuid
+from datetime import UTC, datetime, timedelta
+
+import pytest
+from bjk_server.api import dashboard
+from bjk_server.db.models import Movement, Part, Review, SupplierPart
+from bjk_server.jobs.runner import run_job
+from bjk_server.seed.demo import COMPANY_CODE, demo_id
+from sqlalchemy.orm import Session
+
+from .conftest import auth_header
+
+URL = "/api/v1/dashboard/summary"
+COMPANY = demo_id("company", COMPANY_CODE)
+# 2026-11-05 10:00 KST
+NOW = datetime(2026, 11, 5, 1, 0, tzinfo=UTC)
+
+
+@pytest.fixture
+def summary(client, demo_db, monkeypatch):
+    demo_db.reseed()
+    monkeypatch.setattr(dashboard.clock, "utcnow", lambda: NOW)
+
+    def get(user="manager"):
+        return client.get(URL, headers=auth_header(user))
+
+    return get
+
+
+def _review(status, flags=(), created_at=NOW, decided_at=None):
+    return Review(
+        company_id=COMPANY,
+        entry="missed_draft",
+        status=status,
+        flags=list(flags),
+        request={},
+        created_at=created_at,
+        decided_at=decided_at,
+        decided_by=demo_id("user", "owner") if decided_at else None,
+    )
+
+
+def test_worker_is_forbidden(summary):
+    assert summary("worker").status_code == 403
+
+
+def test_risk_top5_follows_nightly_priority(summary, demo_db):
+    assert run_job(demo_db.app, "nightly", "manual", now=NOW).status == "ok"
+    body = summary().json()
+    risks = body["risk_top5"]
+    assert 0 < len(risks) <= 5
+    priorities = [r["priority"] for r in risks]
+    assert priorities == sorted(priorities, reverse=True)
+    assert body["computed_at"].endswith("+09:00")
+    assert body["external"]["level"] in {"normal", "caution", "high"}
+
+
+def test_counts_reviews_flags_and_today(summary, demo_db):
+    yesterday = NOW - timedelta(days=1)
+    with Session(demo_db.admin) as s, s.begin():
+        s.add_all(
+            [
+                _review("reviewed", ["urgent"]),
+                _review("held", created_at=yesterday),
+                _review("reviewing"),
+                _review("approved", created_at=yesterday, decided_at=NOW),
+            ]
+        )
+    body = summary().json()
+    assert body["pending_reviews"] == {"count": 2, "urgent": 1}
+    assert body["today"]["reviews_created"] == 2
+    assert body["today"]["decisions"] == 1
+    assert body["awaiting_order"] == 0
+
+
+def test_tied_up_stock_counts_idle_parts_only(summary, demo_db):
+    idle, used = uuid.uuid4(), uuid.uuid4()
+    long_ago = NOW - timedelta(days=200)
+    with Session(demo_db.admin) as s, s.begin():
+        for part_id, name in ((idle, "안 쓰는 부품"), (used, "쓰는 부품")):
+            s.add(
+                Part(
+                    id=part_id,
+                    company_id=COMPANY,
+                    name=name,
+                    unit="개",
+                    default_supplier_id=demo_id("supplier", "a"),
+                )
+            )
+        s.flush()
+        for part_id in (idle, used):
+            s.add(
+                SupplierPart(
+                    company_id=COMPANY,
+                    supplier_id=demo_id("supplier", "a"),
+                    part_id=part_id,
+                    unit_price=1_000,
+                )
+            )
+            s.add(
+                Movement(
+                    company_id=COMPANY, part_id=part_id, type="IN", qty=10, occurred_at=long_ago
+                )
+            )
+        s.add(
+            Movement(
+                company_id=COMPANY,
+                part_id=used,
+                type="OUT",
+                qty=-1,
+                occurred_at=NOW - timedelta(days=10),
+            )
+        )
+    before = summary().json()["tied_up_stock_amount"]
+    with Session(demo_db.admin) as s, s.begin():
+        s.add(
+            SupplierPart(
+                company_id=COMPANY,
+                supplier_id=demo_id("supplier", "b"),
+                part_id=idle,
+                unit_price=500,
+            )
+        )
+    # 기본 공급사 단가(1,000원)를 쓴다
+    assert summary().json()["tied_up_stock_amount"] == before
+    # 시드 부품은 모두 최근 출고가 있어 0원, 안 쓰는 부품 10개 × 1,000원만 남는다
+    assert before == 10_000
+
+
+def test_today_movements_counted_from_kst_midnight(summary, demo_db):
+    base = summary().json()["today"]["movements"]
+    part = demo_id("part", "6205")
+    with Session(demo_db.admin) as s, s.begin():
+        # 2026-11-05 00:30 KST: 오늘, 2026-11-04 23:30 KST: 어제
+        for at in (
+            datetime(2026, 11, 4, 15, 30, tzinfo=UTC),
+            datetime(2026, 11, 4, 14, 30, tzinfo=UTC),
+        ):
+            s.add(Movement(company_id=COMPANY, part_id=part, type="IN", qty=1, occurred_at=at))
+    assert summary().json()["today"]["movements"] == base + 1

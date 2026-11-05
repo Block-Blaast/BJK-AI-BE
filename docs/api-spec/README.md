@@ -18,6 +18,7 @@ Notion「API 명세서」가 정본이고, 이 디렉터리는 저장소에 구�
 | [audit.md](audit.md) | 장부 검증·실사 (AUD) |
 | [briefing.md](briefing.md) | 아침 브리핑 (DSH-01) |
 | [dashboard.md](dashboard.md) | 대시보드 요약 (DSH-02) |
+| [activity.md](activity.md) | 대시보드 오늘 활동 목록 (W-01, 명세 밖) |
 | [external.md](external.md) | 외부 요인 현황 (DSH-03) |
 | [push.md](push.md) | 웹 푸시 구독 (NOT-04) |
 | [notifications.md](notifications.md) | 알림 목록·읽음 (NOT-01·02) |

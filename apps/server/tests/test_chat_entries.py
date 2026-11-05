@@ -47,7 +47,9 @@ def test_select_then_confirm_records_out_and_learns_alias(client, chat, demo_db)
 
 
 def test_confirm_card_uses_card_values(client, chat):
-    body = _confirm(client, _card(chat, "V벨트 3개 들어옴")).json()
+    body = _confirm(
+        client, _card(chat, "V벨트 3개 들어옴"), part_id=str(demo_id("part", "a42"))
+    ).json()
     assert (body["intent"], body["movement"]["qty"], body["stock_after"]) == ("IN", 3, 5)
     assert body["reply"] == "입고 완료. 현재 재고 5개"
     assert body["alias_learned"] == {"text": "V벨트", "part_id": str(demo_id("part", "a42"))}
@@ -58,13 +60,29 @@ def test_confirm_can_override_qty(client, chat):
     assert body["stock_after"] == 2
 
 
-def test_alias_used_by_two_parts_becomes_ambiguous(client, chat, demo_db):
+def _aliases(demo_db, text):
+    with Session(demo_db.admin) as s:
+        rows = s.scalars(select(PartAlias).where(PartAlias.text == text)).all()
+        return {a.part_id: (a.confirmed_count, a.ambiguous) for a in rows}
+
+
+def test_one_confirmation_to_other_part_is_not_ambiguous(client, chat, demo_db):
     _confirm(client, _card(chat, "3호기 베어링 두 개 씀"), part_id=str(P6205))
     _confirm(client, _card(chat, "3호기 베어링 두 개 씀"), part_id=str(P6204))
-    with Session(demo_db.admin) as s:
-        aliases = s.scalars(select(PartAlias).where(PartAlias.text == "베어링")).all()
-    assert {a.part_id for a in aliases} == {P6205, P6204}
-    assert all(a.ambiguous for a in aliases)
+    assert _aliases(demo_db, "베어링") == {P6205: (1, False), P6204: (1, False)}
+
+
+def test_second_confirmation_to_other_part_makes_alias_ambiguous(client, chat, demo_db):
+    for part in (P6205, P6205, P6204, P6204):
+        _confirm(client, _card(chat, "3호기 베어링 두 개 씀"), part_id=str(part))
+    assert _aliases(demo_db, "베어링") == {P6205: (2, True), P6204: (2, True)}
+
+
+def test_ambiguous_alias_never_auto_confirms(client, chat, demo_db):
+    for part in (P6205, P6205, P6204, P6204):
+        _confirm(client, _card(chat, "3호기 베어링 두 개 씀"), part_id=str(part))
+    assert all(ambiguous for _, ambiguous in _aliases(demo_db, "베어링").values())
+    assert _card(chat, "3호기 베어링 두 개 씀")["type"] == "select"
 
 
 def test_select_rejects_part_outside_candidates(client, chat):
@@ -120,3 +138,11 @@ def test_form_card_cannot_be_confirmed_here(client, chat):
 @pytest.mark.parametrize("qty", [0, -1])
 def test_non_positive_qty_is_400(client, chat, qty):
     assert _confirm(client, _card(chat, "베어링 작은 거 2개 씀"), qty=qty).status_code == 400
+
+
+def test_confirmed_movement_links_source_message(client, chat, demo_db):
+    sent = chat("베어링 작은 거 2개 씀").json()
+    body = _confirm(client, sent["cards"][0]).json()
+    with Session(demo_db.admin) as s:
+        movement = s.get(Movement, body["movement"]["id"])
+    assert str(movement.message_id) == sent["message_id"]

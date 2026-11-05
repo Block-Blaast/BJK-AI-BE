@@ -24,3 +24,13 @@ class FakeInterpreter:
         if text == "타임아웃":
             raise InterpreterUnavailable("timeout")
         return PARSED[text]
+
+
+PARSED.update(
+    {
+        "베아링 2개 씀": Interpretation("OUT", "베아링", 2),
+        "6205 1개 씀": Interpretation("OUT", "6205", 1),
+        "M8*30 볼트 5개 씀": Interpretation("OUT", "M8*30 볼트", 5),
+        "M8x20 볼트 5개 씀": Interpretation("OUT", "M8x20 볼트", 5),
+    }
+)

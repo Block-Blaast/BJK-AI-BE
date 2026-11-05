@@ -4,6 +4,7 @@ AI·server 영역 작업 기록 색인. 작성 규칙은 [docs/ai-work-rules.md]
 
 | 날짜 | 파일 | 내용 |
 | --- | --- | --- |
+| 2026-11-05 | [2026-11-05-41-review-pdf.md](2026-11-05-41-review-pdf.md) | 결재용 PDF API(REV-07), WeasyPrint·한글 글꼴 |
 | 2026-11-05 | [2026-11-05-37-policy-main-only.md](2026-11-05-37-policy-main-only.md) | dev 대상 PR 협업 정책 검사 중단, main·Issue 검사 유지 |
 | 2026-11-05 | [2026-11-05-36-ci-main-only.md](2026-11-05-36-ci-main-only.md) | dev CI 실행 중단(main 대상 PR만 CI), main 배포 유지 |
 | 2026-11-05 | [2026-11-05-40-review-questions.md](2026-11-05-40-review-questions.md) | 검토 후속 질문 API(REV-06), 양식 답변 |

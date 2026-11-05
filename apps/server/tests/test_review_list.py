@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 import pytest
+from bjk_server.db.models import Review
 from bjk_server.seed.demo import demo_id
 from sqlalchemy.orm import Session
 
@@ -62,11 +63,14 @@ def test_item_shape(client, rows):
         "status",
         "verdict",
         "flags",
+        "qty",
         "original_total",
         "saving",
+        "decision",
         "created_at",
     }
     assert item["part"] == "V벨트 A-42"
+    assert item["qty"] == 30 and item["decision"] is None
     assert item["original_total"] == 540000
     assert item["created_at"].endswith("+09:00")
     assert res["next_cursor"] is None
@@ -117,3 +121,18 @@ def test_cursor_walks_all_pages_in_order(client, rows):
 def test_invalid_filter_is_400(client, rows, params):
     res = client.get(URL, params=params, headers=auth_header("manager"))
     assert res.status_code == 400
+
+
+def test_item_carries_decision(client, demo_db, rows):
+    """결정된 검토는 목록 항목에 행동·사유·결정 시각을 담는다 (#297)."""
+    with Session(demo_db.admin) as s, s.begin():
+        review = s.get(Review, rows["other_worker"])
+        review.decision = {"action": "reject", "reason": "이번 달 예산 초과"}
+        review.decided_by = demo_id("user", "owner")
+        review.decided_at = COMPUTED_AT + timedelta(hours=2)
+    items = client.get(URL, params={"mine": "true"}, headers=auth_header("worker2")).json()["items"]
+    assert items[0]["decision"] == {
+        "action": "reject",
+        "reason": "이번 달 예산 초과",
+        "decided_at": "2026-11-04T05:00:00+09:00",
+    }

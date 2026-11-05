@@ -50,7 +50,10 @@ def list_parts(
     risk: Literal["caution", "high"] | None = None,
     ledger_status: Literal["normal", "suspect"] | None = None,
 ) -> Page[PartListItem]:
-    """SET-03. 이름·별칭·규격 검색과 필터. 이름순."""
+    """SET-03. 이름·별칭·규격 검색과 필터. 이름순.
+
+    정렬은 DB 로케일과 관계없이 같도록 C(코드포인트) 정렬로 고정한다. 한글은 가나다순이다.
+    """
     stock = stock_subquery()
     stmt = (
         select(
@@ -82,7 +85,7 @@ def list_parts(
     return keyset_page(
         db,
         stmt,
-        [Part.name, Part.id],
+        [Part.name.collate("C"), Part.id],
         params,
         to_item=lambda r: PartListItem(
             id=r.id, name=r.name, category=r.category, unit=r.unit, stock=r.stock

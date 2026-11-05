@@ -87,6 +87,7 @@ def record_movement(
     qty: int,
     equipment_id: uuid.UUID | None,
     source_text: str | None,
+    message_id: uuid.UUID | None = None,
 ) -> tuple[Movement, int, str]:
     if qty <= 0:
         raise ApiError(ErrorCode.VALIDATION_ERROR, "수량은 1 이상이어야 합니다.", {"qty": qty})
@@ -99,6 +100,7 @@ def record_movement(
         author_id=user.user_id,
         equipment_id=equipment_id,
         source_text=source_text,
+        message_id=message_id,
     )
     db.add(movement)
     db.flush()

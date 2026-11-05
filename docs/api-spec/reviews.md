@@ -17,7 +17,7 @@ HTTP API가 아니라 채팅 발주 요청(CHAT-04), 재고 부족 초안, 놓�
 | `hold` | `held` | 저장 시각 + `system.review_expire_days` |
 
 - 저장: `reviews`에 판정·표시·보류 사유·결과(`checks`, `original`, `proposal`, `alternatives`, `risk_if_not_ordered`, `count_requests`)·의견서(`text`, `source`, `verified`)·원안 총액·절감액·미발주 예상 손실, `review_snapshots`에 스냅샷 값·검토 기준값·해시(`sha256:…`)·계산 시각.
-- 의견서: ai(`AI_BASE_URL`)가 없거나 실패·시간 초과(4초)·숫자 검증 실패면 양식 의견서(`source: template`). ai 호출 사용량은 `llm_calls`(`purpose: opinion`)에 남긴다.
+- 의견서: ai(`AI_BASE_URL`)가 없거나 실패·시간 초과(8초)·숫자 검증 실패면 양식 의견서(`source: template`). ai 호출 사용량은 `llm_calls`(`purpose: opinion`)에 남긴다.
 - 이미 `reviewing`이 아닌 검토는 다시 실행하지 않는다.
 
 ### 근거 스냅샷 (F-REVIEW-02)

@@ -25,11 +25,11 @@ from pydantic import BaseModel, ValidationError
 from bjk_server.ai.quota import check_daily_quota
 from bjk_server.config import get_settings
 
-# 클라이언트 시간 제한은 ai 쪽 재시도 포함 예산(채팅 2.5초, 임베딩 10초, 의견서 3초)보다
+# 클라이언트 시간 제한은 ai 쪽 재시도 포함 예산(채팅 2.5초, 임베딩 10초, 의견서 7초)보다
 # 조금 길게 둔다.
 CHAT_TIMEOUT = 3.0
 EMBED_TIMEOUT = 12.0
-OPINION_TIMEOUT = 4.0
+OPINION_TIMEOUT = 8.0
 # 채팅 중 부품 표현 하나의 검색용 임베딩. 채팅 응답 3초 목표 안에서 기다린다.
 QUERY_EMBED_TIMEOUT = 2.0
 HEALTH_TIMEOUT = 1.0

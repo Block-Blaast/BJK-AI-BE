@@ -1,7 +1,9 @@
 import pytest
 from alembic import command
-from sqlalchemy import create_engine, inspect, text
+from bjk_server.db.models import EMBEDDING_DIM, Part, PartAlias
+from sqlalchemy import create_engine, inspect, select, text
 from sqlalchemy.exc import DBAPIError
+from sqlalchemy.orm import Session
 
 from .conftest import alembic_config
 
@@ -90,4 +92,113 @@ def test_test_database_uses_production_collation(empty_db_url):
             text("SELECT datcollate FROM pg_database WHERE datname = current_database()")
         )
         assert collate == TEST_DB_LOCALE
+    engine.dispose()
+
+
+EMBEDDING_TABLES = ("parts", "part_aliases")
+
+
+@pytest.fixture
+def part_row(migrated_db_url):
+    engine = create_engine(migrated_db_url)
+    with engine.begin() as conn:
+        company = conn.execute(
+            text(
+                "INSERT INTO companies (name, code) "
+                "VALUES ('t', substr(md5(random()::text), 1, 8)) RETURNING id"
+            )
+        ).scalar_one()
+        part = conn.execute(
+            text("INSERT INTO parts (company_id, name, unit) VALUES (:c, 'p', '개') RETURNING id"),
+            {"c": company},
+        ).scalar_one()
+    yield engine, company, part
+    engine.dispose()
+
+
+def test_embedding_columns_are_vector_1536_with_model_name(part_row):
+    engine, _, _ = part_row
+    with engine.connect() as conn:
+        for table in EMBEDDING_TABLES:
+            columns = dict(
+                conn.execute(
+                    text(
+                        "SELECT attname, format_type(atttypid, atttypmod) FROM pg_attribute "
+                        "WHERE attrelid = CAST(:t AS regclass) AND attname LIKE 'embedding%'"
+                    ),
+                    {"t": table},
+                ).all()
+            )
+            assert columns == {
+                "embedding": "vector(1536)",
+                "embedding_model": "character varying(100)",
+            }
+
+
+def test_orm_stores_embedding_and_compares_by_cosine(part_row):
+    engine, company, part_id = part_row
+    vector = [1.0] + [0.0] * (EMBEDDING_DIM - 1)
+    with Session(engine) as session, session.begin():
+        part = session.get(Part, part_id)
+        part.embedding, part.embedding_model = vector, "m1"
+        session.add(
+            PartAlias(
+                company_id=company,
+                part_id=part_id,
+                text="a",
+                embedding=vector,
+                embedding_model="m1",
+            )
+        )
+
+    with Session(engine) as session:
+        part = session.get(Part, part_id)
+        assert part.embedding == vector
+        assert part.embedding_model == "m1"
+        distance = session.scalar(
+            select(PartAlias.embedding.cosine_distance(vector)).where(PartAlias.part_id == part_id)
+        )
+        assert distance == pytest.approx(0.0)
+
+
+@pytest.mark.parametrize("table", EMBEDDING_TABLES)
+@pytest.mark.parametrize(
+    ("dimension", "model", "error"),
+    [
+        (2, "m1", "expected 1536 dimensions"),
+        (EMBEDDING_DIM, None, "embedding_model"),
+        (None, "m1", "embedding_model"),
+    ],
+)
+def test_embedding_rejects_wrong_dimension_or_unpaired_model(
+    part_row, table, dimension, model, error
+):
+    engine, company, part = part_row
+    vector = None if dimension is None else str([0.1] * dimension)
+    columns = {
+        "parts": "company_id, name, unit",
+        "part_aliases": "company_id, part_id, text",
+    }[table]
+    values = {"parts": ":c, 'p', '개'", "part_aliases": ":c, :p, 'a'"}[table]
+    with pytest.raises(DBAPIError, match=error), engine.begin() as conn:
+        conn.execute(
+            text(
+                f"INSERT INTO {table} ({columns}, embedding, embedding_model) "
+                f"VALUES ({values}, CAST(:v AS vector), :m)"
+            ),
+            {"c": company, "p": part, "v": vector, "m": model},
+        )
+
+
+def test_downgrade_0011_removes_embedding_columns(empty_db_url):
+    config = alembic_config(empty_db_url)
+    engine = create_engine(empty_db_url)
+    command.upgrade(config, "head")
+
+    command.downgrade(config, "0011")
+    for table in EMBEDDING_TABLES:
+        columns = {column["name"] for column in inspect(engine).get_columns(table)}
+        assert not {"embedding", "embedding_model"} & columns
+    with engine.connect() as conn:
+        assert not conn.scalar(text("SELECT 1 FROM pg_extension WHERE extname = 'vector'"))
     engine.dispose()

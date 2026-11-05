@@ -23,7 +23,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from .chat_fakes import NOW, FakeInterpreter
 
 SERVER_DIR = Path(__file__).resolve().parents[1]
-# 테스트 DB 정렬 로케일. compose·CI의 postgres:16 기본값과 같게 둔다.
+# 테스트 DB 정렬 로케일. compose·CI의 pgvector/pgvector:pg16 기본값과 같게 둔다.
 TEST_DB_LOCALE = os.environ.get("TEST_DB_LOCALE", "en_US.UTF-8")
 CHAT_URL = "/api/v1/chat/messages"
 

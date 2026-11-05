@@ -16,6 +16,7 @@ from bjk_server.api import (
     maintenance,
     notifications,
     parts,
+    reviews,
     settings,
     suppliers,
     users,
@@ -40,4 +41,5 @@ api_router.include_router(settings.router)
 api_router.include_router(audit.router)
 api_router.include_router(external.router)
 api_router.include_router(health.router)
+api_router.include_router(reviews.router)
 api_router.include_router(notifications.router)

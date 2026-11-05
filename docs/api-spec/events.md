@@ -19,7 +19,7 @@ data: {"part_id":"...","stock":2}
 
 | 이벤트 | 데이터 | 언제 | 구현 |
 | --- | --- | --- | --- |
-| `stock.changed` | `part_id`, `stock` | 원장 기록 (채팅 확정, 폼 입력) | ○ (아래 미발행 경로 참고) |
+| `stock.changed` | `part_id`, `stock` | 재고가 바뀐 원장 기록, 부품 병합 (아래 발행 경로 참고) | ○ |
 | `review.created` | `review_id`, `entry` | 검토 생성 | ○ |
 | `review.progress` | `review_id`, `step`, `at` | 검토 단계 진행 ([reviews.md](reviews.md)) | ○ |
 | `review.decided` | `review_id`, `status`, `action` | 결정 ([reviews.md](reviews.md) REV-05) | ○ |
@@ -38,5 +38,6 @@ data: {"part_id":"...","stock":2}
 | 토큰 없음·만료 | 401 `UNAUTHORIZED` |
 
 - 현재 구현 범위: `stock.changed`, `review.created`, `review.progress`, `review.decided` 발행. 오래된 이벤트 정리 배치는 아직 없다.
-- `stock.changed`는 채팅 확정·폼 입력에서만 발행한다. 원장 정정(LED-02), 실사 조정(AUD-03), 엑셀 이관 확정(SET-02), 부품 등록 초기 재고(SET-05)는 재고가 바뀌어도 이벤트를 보내지 않는다.
+- `stock.changed`는 재고가 바뀌는 모든 경로에서 부품마다 발행한다(`bjk_server.events.publish_stock_changed`): 채팅 확정·폼 입력, 원장 정정(LED-02), 실사 조정(AUD-03), 엑셀 이관 확정의 시작 재고·재이관 차이(SET-02), 부품 등록 초기 재고(SET-05), 중복 부품 병합(MAT-02, 대표 부품). `stock`은 병합 부품을 합산한 바뀐 뒤 재고다.
+- 재고가 그대로인 경우(정정 차이 0, 실사 차이 0, 초기 재고 0, 재이관 `ignore`·`preview`)는 발행하지 않는다.
 - `audit.flagged`는 이벤트 이름만 정의돼 있고 의심 항목을 만들 때 발행하지 않는다.

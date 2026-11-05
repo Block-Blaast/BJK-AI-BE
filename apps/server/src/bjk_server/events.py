@@ -13,6 +13,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from bjk_server.db.models import ServerEvent
+from bjk_server.inventory import stock_of
 
 EventType = Literal[
     "stock.changed", "review.created", "review.progress", "review.decided", "audit.flagged"
@@ -27,6 +28,14 @@ def publish(
     session: Session, company_id: uuid.UUID, type_: EventType, data: dict[str, Any]
 ) -> None:
     session.add(ServerEvent(company_id=company_id, type=type_, data=data))
+
+
+def publish_stock_changed(session: Session, company_id: uuid.UUID, part_id: uuid.UUID) -> int:
+    """원장을 더한 뒤 같은 트랜잭션에서 부른다. 바뀐 재고(병합 부품 합산)를 보내고 돌려준다."""
+    session.flush()
+    stock = stock_of(session, part_id)
+    publish(session, company_id, "stock.changed", {"part_id": str(part_id), "stock": stock})
+    return stock
 
 
 @dataclass(frozen=True)

@@ -21,7 +21,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .ai_fakes import usage
-from .conftest import auth_header
+from .conftest import auth_header, watch_stock_events
 
 URL = "/api/v1/imports/parts"
 BEARING = str(demo_id("category", "bearing"))
@@ -157,6 +157,7 @@ def test_first_import_creates_parts_with_initial_stock(client, demo_db, fresh):
     _use_ai(client, SuggestAi())
     res = _upload(client)
     import_id = res.json()["import_id"]
+    events = watch_stock_events(demo_db)
     rows = [
         {"row": 2},
         {"row": 3, "category_id": BOLT},
@@ -172,6 +173,9 @@ def test_first_import_creates_parts_with_initial_stock(client, demo_db, fresh):
         assert bearing.location == "B선반 1칸"
         adjust = s.scalar(select(Movement).where(Movement.part_id == bearing.id))
         assert (adjust.type, adjust.qty, adjust.reason) == ("ADJUST", 4, "초기 재고")
+        # 시작 재고를 넣은 새 부품만 알리고, 원장을 건드리지 않은 기존 부품은 알리지 않는다
+        assert {"part_id": str(bearing.id), "stock": 4} in events()
+        assert len(events()) == 2
         link = s.scalar(select(SupplierPart).where(SupplierPart.part_id == bearing.id))
         assert link.unit_price == 21000
         # 기존 부품 6205ZZ는 원장을 건드리지 않고, 다른 이름은 별칭으로 남긴다
@@ -205,8 +209,10 @@ def test_reimport_ignores_stock_until_preview_and_apply(client, demo_db, fresh):
             "diff": -3,
         }
     ]
+    events = watch_stock_events(demo_db)
     applied = _confirm(client, import_id, [{"row": 2}, {"row": 3}], "apply")
     assert applied.json()["adjust_movements"] == 1
+    assert events() == [{"part_id": created, "stock": 1}]
     with Session(demo_db.admin) as s:
         rows = s.execute(
             select(Movement.qty, Movement.reason).where(Movement.part_id == created)

@@ -18,8 +18,8 @@ from bjk_server.domain.ledger import (
     pick_maintenance,
 )
 from bjk_server.errors import ApiError, ErrorCode
-from bjk_server.events import publish
-from bjk_server.inventory import lock_part_stock, stock_of
+from bjk_server.events import publish_stock_changed
+from bjk_server.inventory import lock_part_stock
 from bjk_server.purchasing.receipt import PoMatch, ReceiptMatch, match_receipt
 from bjk_server.reviews.drafts import stock_draft_after_record
 from bjk_server.security import TokenClaims
@@ -192,8 +192,7 @@ def record_movement(
     db.flush()
     # 응답(RecordResponse)의 po_match를 채우려고 원장 행에 대조 결과를 붙여 둔다
     movement.receipt = receipt
-    stock = stock_of(db, part.id)
-    publish(db, user.company_id, "stock.changed", {"part_id": str(part.id), "stock": stock})
+    stock = publish_stock_changed(db, user.company_id, part.id)
     # 재주문점 이탈이면 재고 부족 초안 검토 (F-LEDGER-03). 응답 triggered.draft_review_id로 나간다
     movement.draft_review_id = stock_draft_after_record(db, user.company_id, part, stock, now)
     action = "출고" if intent == "OUT" else "입고"

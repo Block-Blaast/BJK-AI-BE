@@ -20,8 +20,8 @@ data: {"part_id":"...","stock":2}
 | 이벤트 | 데이터 | 언제 | 구현 |
 | --- | --- | --- | --- |
 | `stock.changed` | `part_id`, `stock` | 원장 기록 (채팅 확정, 폼 입력) | ○ |
-| `review.created` | `review_id`, `entry` | 검토 생성 | 검토 Issue에서 |
-| `review.progress` | `review_id`, `step` | 검토 단계 진행 | 검토 Issue에서 |
+| `review.created` | `review_id`, `entry` | 검토 생성 | ○ |
+| `review.progress` | `review_id`, `step`, `at` | 검토 단계 진행 ([reviews.md](reviews.md)) | ○ |
 | `review.decided` | `review_id`, `status` | 결정 | 검토 결정 Issue에서 |
 | `audit.flagged` | `audit_flag_id`, `part_id`, `level` | 의심 항목 생성 | 장부 검증 Issue에서 |
 
@@ -37,4 +37,4 @@ data: {"part_id":"...","stock":2}
 | --- | --- |
 | 토큰 없음·만료 | 401 `UNAUTHORIZED` |
 
-- 현재 구현 범위: `stock.changed`만 발행. 오래된 이벤트 정리 배치는 아직 없다.
+- 현재 구현 범위: `stock.changed`, `review.created`, `review.progress` 발행. 오래된 이벤트 정리 배치는 아직 없다.

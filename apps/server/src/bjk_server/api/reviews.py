@@ -13,11 +13,13 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy import case, select
 
+from bjk_server.api.schemas import Forecast
 from bjk_server.auth import CurrentUser, TenantDB
 from bjk_server.clock import KST
 from bjk_server.db.models import Part, Review, ReviewSnapshot, User
 from bjk_server.errors import ApiError, ErrorCode
 from bjk_server.pagination import Page, PageParams, keyset_page, page_params
+from bjk_server.reviews.service import stored_review
 from bjk_server.security import TokenClaims
 
 router = APIRouter(prefix="/reviews", tags=["reviews"])
@@ -266,4 +268,35 @@ def get_review(review_id: uuid.UUID, user: CurrentUser, db: TenantDB) -> ReviewD
         expires_at=review.expires_at.astimezone(KST) if review.expires_at else None,
         decision=review.decision,
         created_at=review.created_at.astimezone(KST),
+    )
+
+
+@router.get("/{review_id}/forecast", response_model=Forecast)
+def review_forecast(review_id: uuid.UUID, user: CurrentUser, db: TenantDB) -> Forecast:
+    """검토 상세(W-03) 재고 예측 그래프 (#258, 명세 밖). 저장한 스냅샷 기준이라 다시 받아도 같다.
+
+    발주 시 선은 수정안 수량(없으면 원안)이 그 공급사 LT90 날에 들어온다. 결재용 PDF와 같은 값.
+    """
+    review = db.scalar(visible_reviews(user).where(Review.id == review_id))
+    if review is None:
+        raise ApiError(ErrorCode.NOT_FOUND, "검토를 찾을 수 없습니다.")
+    stored = stored_review(db, review)
+    if stored is None:
+        raise ApiError(
+            ErrorCode.REVIEW_NOT_DECIDABLE,
+            "검토가 끝난 뒤 볼 수 있습니다.",
+            {"status": review.status},
+        )
+    result, s = stored
+    line = result.proposal or result.original
+    offer = s.offer(line.supplier_id) or s.offer(s.default_supplier_id)
+    return Forecast.build(
+        as_of=s.as_of,
+        start=s.stock + s.incoming + s.hidden_confirmed,
+        monthly_use=s.m,
+        order_qty=line.qty,
+        lead_days=offer.lt90 if offer else 0,
+        computed_at=s.computed_at.astimezone(KST),
+        reorder_point=None,
+        t_out=s.t_out,
     )

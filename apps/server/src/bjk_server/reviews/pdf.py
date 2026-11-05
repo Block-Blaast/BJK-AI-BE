@@ -13,11 +13,11 @@ from bjk_review import ReviewResult
 from bjk_review import ReviewSnapshot as SnapshotValues
 
 from bjk_server.clock import KST
+from bjk_server.domain.forecast import PROJECTION_DAYS, project_stock
 
 # PDF 본문과 그래프가 같은 글꼴을 쓴다. 운영 이미지는 fonts-noto-cjk(Noto Sans CJK KR)
 FONTS = ("Noto Sans KR", "Noto Sans CJK KR", "Apple SD Gothic Neo")
 FONT = ", ".join(f'"{f}"' for f in FONTS) + ", sans-serif"
-PROJECTION_DAYS = 56
 
 VERDICT = {"ok": "적정", "revise": "수정 권고", "hold": "보류"}
 FLAG = {"urgent": "긴급", "caution": "주의", "alternative": "대안"}
@@ -54,13 +54,8 @@ def _day(value: date | None) -> str:
 def stock_projection(
     s: SnapshotValues, qty: int, lead_days: int
 ) -> tuple[list[float], list[float]]:
-    """일별 예상 재고(발주 시, 미발주 시). 월 소모량 m을 하루에 고르게 쓰는 단순 추정이고 정비
-    확정 필요량은 넣지 않는다. 발주 수량은 공급사 LT90 날에 들어온다."""
-    daily = s.m / 30
-    start = s.stock + s.incoming + s.hidden_confirmed
-    without = [round(start - daily * day, 2) for day in range(PROJECTION_DAYS + 1)]
-    with_order = [v + (qty if day >= lead_days else 0) for day, v in enumerate(without)]
-    return with_order, without
+    """일별 예상 재고(발주 시, 미발주 시). 시작 재고는 S + O + H_c (domain.forecast)."""
+    return project_stock(s.stock + s.incoming + s.hidden_confirmed, s.m, qty, lead_days)
 
 
 def projection_svg(s: SnapshotValues, qty: int, lead_days: int) -> str:

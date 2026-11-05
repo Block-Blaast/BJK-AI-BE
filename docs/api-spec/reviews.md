@@ -140,3 +140,22 @@ manager 이상. 헤더 `Idempotency-Key` 필수(없으면 400). 같은 키·같�
 - 요청자가 있으면 `decision_result` 알림(채널 `chat`, `in_app`). `requester_notified`는 알림을 만들었는지.
 - 오류: 403 `SELF_APPROVAL_NOT_ALLOWED`(사장님이 아닌 사람이 본인 요청을 결정), 409 `REVIEW_NOT_DECIDABLE`(`reviewed`가 아님, 발주할 줄이 없음), 409 `REVIEW_ALREADY_DECIDED`(`approved`·`closed`, 동시 결정의 두 번째 포함).
 - PDF 생성(REV-07)은 아직 없다. `pdf_url`만 돌려준다.
+
+## 재고 예측선 GET /api/v1/reviews/{id}/forecast (명세 밖, #258)
+
+- 권한: REV-02와 같다(manager 이상, worker는 본인 요청). 검토 상세(W-03) 재고 예측 그래프용.
+- Notion API 명세서에 없어 사용자 결정(2026-11-05)으로 이 레포에서 정했다. 판정에는 쓰지 않는다.
+- 저장한 최근 스냅샷 기준이라 다시 받아도 같고, 결재용 PDF 그래프와 같은 값이다.
+
+```json
+{
+  "as_of": "2026-11-04", "computed_at": "2026-11-04T03:00:00+09:00",
+  "start_stock": 2, "monthly_use": 3.3, "order_qty": 10, "lead_days": 8,
+  "reorder_point": null, "t_out": "2026-11-17",
+  "days": [ { "date": "2026-11-04", "with_order": 2.0, "without_order": 2.0 }, "... 57일" ]
+}
+```
+
+- `start_stock` = S + O + H_c, 하루 소모 = m ÷ 30, 정비 확정 필요량은 넣지 않는다. 8주(57개 점).
+- `with_order`는 수정안 수량(수정안이 없으면 원안)이 그 공급사 LT90 날에 들어온다.
+- 검토가 끝나지 않았으면 409 `REVIEW_NOT_DECIDABLE`, 없거나 볼 수 없는 검토는 404.

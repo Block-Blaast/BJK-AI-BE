@@ -11,6 +11,7 @@ from sqlalchemy import exists, func, or_, select
 from bjk_server import clock
 from bjk_server.ai.client import AiClient, get_ai_client
 from bjk_server.ai.embeddings import embed_rows
+from bjk_server.api.schemas import Forecast
 from bjk_server.auth import CurrentUser, TenantDB, require_role
 from bjk_server.db.models import (
     AuditFlag,
@@ -27,6 +28,7 @@ from bjk_server.db.models import (
 from bjk_server.errors import ApiError, ErrorCode
 from bjk_server.inventory import latest_metrics_subquery, stock_of, stock_subquery
 from bjk_server.pagination import Page, PageParams, keyset_page, page_params
+from bjk_server.purchasing.orders import open_qty
 from bjk_server.security import TokenClaims
 
 router = APIRouter(prefix="/parts", tags=["parts"])
@@ -349,6 +351,48 @@ def get_part(part_id: uuid.UUID, _: CurrentUser, db: TenantDB) -> PartDetail:
             AliasItem(text=a.text, confirmed_count=a.confirmed_count, ambiguous=a.ambiguous)
             for a in aliases
         ],
+    )
+
+
+@router.get("/{part_id}/forecast", response_model=Forecast)
+def part_forecast(part_id: uuid.UUID, _: CurrentUser, db: TenantDB) -> Forecast:
+    """부품 상세(W-05) 재고 추이 예측선 (#258, 명세 밖).
+
+    시작은 지금 재고 S + 열린 발주 O + 확인된 숨은 재고 H_c, 소모는 최신 새벽 계산의 m.
+    발주 시 선은 권장 발주량 R이 기본 공급사 LT90 날에 들어온다. 새벽 계산 전이면 `days`가 빈다.
+    """
+    part = db.get(Part, part_id)
+    if part is None or part.merged_into is not None:
+        raise ApiError(ErrorCode.NOT_FOUND, "부품을 찾을 수 없습니다.")
+    today = clock.utcnow().astimezone(clock.KST).date()
+    stock = stock_of(db, part.id) + open_qty(db, [part.id]).get(part.id, 0)
+    metrics = db.scalar(
+        select(PartMetrics)
+        .where(PartMetrics.part_id == part.id)
+        .order_by(PartMetrics.computed_on.desc())
+        .limit(1)
+    )
+    if metrics is None:
+        return Forecast(
+            as_of=today,
+            computed_at=None,
+            start_stock=stock,
+            monthly_use=0,
+            order_qty=0,
+            lead_days=0,
+            reorder_point=None,
+            t_out=None,
+            days=[],
+        )
+    return Forecast.build(
+        as_of=today,
+        start=stock + metrics.hidden_confirmed,
+        monthly_use=metrics.m,
+        order_qty=metrics.recommended_qty,
+        lead_days=metrics.lt90,
+        computed_at=metrics.computed_at.astimezone(clock.KST),
+        reorder_point=metrics.reorder_point,
+        t_out=metrics.t_out,
     )
 
 

@@ -84,5 +84,9 @@ def test_test_database_uses_production_collation(empty_db_url):
 
     engine = create_engine(empty_db_url)
     with engine.connect() as conn:
-        assert conn.scalar(text("SHOW lc_collate")) == TEST_DB_LOCALE
+        # PostgreSQL 16부터 lc_collate 설정이 없어 pg_database에서 읽는다.
+        collate = conn.scalar(
+            text("SELECT datcollate FROM pg_database WHERE datname = current_database()")
+        )
+        assert collate == TEST_DB_LOCALE
     engine.dispose()

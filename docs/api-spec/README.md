@@ -8,6 +8,7 @@ Notion「API 명세서」가 정본이고, 이 디렉터리는 저장소에 구�
 | [auth.md](auth.md) | 인증·직원 (AUTH) |
 | [parts.md](parts.md) | 부품·기준 정보 (SET) |
 | [chat.md](chat.md) | 채팅 기록 (CHAT) |
+| [ledger.md](ledger.md) | 원장 정정 (LED-02) |
 | [system.md](system.md) | 설정·시스템 (SYS) |
 | [dev.md](dev.md) | 개발·시연 전용 API (DEV) |
 | [jobs.md](jobs.md) | 배치 실행과 예약 |

@@ -27,6 +27,8 @@ DEFAULT_SETTINGS: dict[str, dict[str, Any]] = {
         "external_k": 0.25,
         "count_per_worker_per_day": 2,
         "count_suppress_days": 30,
+        # 회사별 LLM 일일 토큰 상한 (API 명세서 1-5, 입력·출력 합계, Asia/Seoul 하루)
+        "llm_daily_tokens": 1_000_000,
     },
 }
 

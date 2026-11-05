@@ -346,12 +346,17 @@ def seed_demo(session: Session, scenario: str = "demo_v1", today: date | None = 
     for p in PARTS:
         part_id = sid("part", p.key)
         outs = _history(p, scenario, today)
-        # 시작 재고는 현재 재고에서 거꾸로 맞춘다: 시작 + 입고 - 출고 = 현재
+        # 시작 재고는 현재 재고에서 거꾸로 맞춘다: 시작 + 입고 - 출고 = 현재.
+        # 이력 중 재고가 0 미만이 되지 않도록 시작 재고가 보충 입고 전 출고를 덮게 한다.
+        refill_on = start + timedelta(weeks=HISTORY_WEEKS // 2)
         used = sum(q for _, q in outs)
-        refill = 0
+        pack = p.pack_qty or 1
+        opening, refill = p.stock + used, 0
         if used > p.stock:
-            refill = (p.pack_qty or 1) * -(-(used - p.stock) // (p.pack_qty or 1))
-        opening = p.stock + used - refill
+            before_refill = sum(q for day, q in outs if day <= refill_on)
+            opening = max(pack, pack * -(-before_refill // pack))
+            refill = max(0, p.stock + used - opening)
+            opening = p.stock + used - refill
         movements = []
         if opening:
             movements.append(
@@ -373,7 +378,7 @@ def seed_demo(session: Session, scenario: str = "demo_v1", today: date | None = 
                     part_id=part_id,
                     type="IN",
                     qty=refill,
-                    occurred_at=_at(start + timedelta(weeks=HISTORY_WEEKS // 2), 14),
+                    occurred_at=_at(refill_on, 14),
                     author_id=worker_id,
                     source_text=f"{p.name} {refill}{p.unit} 입고",
                 )

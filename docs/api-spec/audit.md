@@ -96,3 +96,19 @@
 - 차이가 있으면 차이만큼 `ADJUST`(사유 `실사조정`, 작성자 담당자)를 원장에 더한다. 요청은 `answered`, 의심 항목은 사유(AUD-04)를 받을 때까지 `count_requested`로 둔다.
 - 차이가 0이면 원장은 그대로(`adjust_movement_id: null`), 요청과 의심 항목을 닫는다(`resolution: no_diff`). 같은 규칙은 억제 기간 동안 다시 뜨지 않는다.
 - 현재 구현 범위: 폼 경로만 구현했다. 채팅 답(의도 `COUNT`) 연결은 ai 해석 연동 후 추가한다.
+
+## AUD-04 PATCH /api/v1/count-requests/{id}
+
+- 권한: 담당자 본인(남의 요청은 404).
+- 차이가 있어 사유를 기다리는 요청(`answered`)에만 쓴다. 응답 전·차이 0으로 닫힌 요청은 409 `ALREADY_CONFIRMED`(`detail.status`).
+
+```json
+// Request
+{ "reason": "missing_record", "note": "정비 때 쓰고 기록 안 함" }
+
+// 200 Response
+{ "count_request_id": "...", "status": "closed", "audit_flag_status": "closed" }
+```
+
+- `reason`: `lost` 분실, `missing_record` 기록 누락, `damaged` 파손, `other` 기타. `note`는 선택, 500자 이하.
+- 원장은 추가 전용이라 실사조정 행(사유 `실사조정`)은 그대로 두고 차이 사유는 실사 요청에 남긴다. 의심 항목은 `resolution: adjusted`로 닫힌다.

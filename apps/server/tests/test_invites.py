@@ -124,3 +124,27 @@ def test_owner_role_cannot_be_invited(client, role):
 def test_only_owner_creates_invites(client, user):
     res = client.post(URL, json={"role": "worker"}, headers=auth_header(user))
     assert res.status_code == 403
+
+
+def test_invite_info_shows_company_role_and_expiry(client, fresh):
+    created = _invite(client, role="manager")
+    res = client.get(f"{URL}/{created['token']}")
+    assert res.status_code == 200, res.text
+    assert res.json() == {
+        "company_name": "한서정밀",
+        "role": "manager",
+        "expires_at": created["expires_at"],
+    }
+
+
+def test_invite_info_for_used_expired_unknown(client, fresh, monkeypatch):
+    used = _invite(client)["token"]
+    assert _accept(client, used).status_code == 201
+    res = client.get(f"{URL}/{used}")
+    assert (res.status_code, res.json()["detail"]) == (410, {"reason": "used"})
+    assert client.get(f"{URL}/inv_nope").status_code == 404
+    stale = _invite(client)["token"]
+    later = clock.utcnow() + timedelta(hours=72, seconds=1)
+    monkeypatch.setattr(clock, "utcnow", lambda: later)
+    res = client.get(f"{URL}/{stale}")
+    assert (res.status_code, res.json()["detail"]) == (410, {"reason": "expired"})

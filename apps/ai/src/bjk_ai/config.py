@@ -36,10 +36,14 @@ class Settings(BaseSettings):
     # 재시도까지 이 예산 안에서 끝낸다.
     chat_budget_seconds: float = 2.5
     embed_budget_seconds: float = 10.0
-    # 검토는 요청부터 의견서까지 10초. server가 검증 실패로 최대 2번 더 부를 수 있어 한 번에 3초.
-    opinion_budget_seconds: float = 3.0
+    # 검토는 요청부터 의견서까지 10초. 체크별 문장까지 쓰는 출력이라 Bedrock Haiku 4.5가 3초 안에
+    # 끝내지 못했다. 재작성은 첫 작성이 빨리 끝났을 때만 한다(bjk_review.graph).
+    opinion_budget_seconds: float = 7.0
     # 엑셀 이관은 실시간 응답이 아니라 넉넉히 준다(50줄 묶음 하나당).
     import_budget_seconds: float = 30.0
+    # 시작 시 제공자를 한 번 불러 첫 요청 지연을 없앤다. 끝날 때까지 기다리지 않는다.
+    warm_up: bool = True
+    warm_up_timeout_seconds: float = 15.0
 
 
 @lru_cache

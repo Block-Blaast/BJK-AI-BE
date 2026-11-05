@@ -21,7 +21,6 @@ from bjk_server.auth import set_tenant
 from bjk_server.clock import KST
 from bjk_server.db.models import (
     Category,
-    Company,
     CompanySettings,
     Equipment,
     EquipmentPart,
@@ -37,7 +36,7 @@ from bjk_server.db.models import (
 from bjk_server.defaults import default_settings
 from bjk_server.domain import analytics as an
 from bjk_server.domain.external import indicator_risk, risk_level
-from bjk_server.jobs.runner import job
+from bjk_server.jobs.runner import company_ids, job
 
 INDICATOR_CSV = Path(__file__).resolve().parents[1] / "seed" / "data" / "external_indicators.csv"
 # 지표 코드 → (이름, 계열). 카테고리의 lead_factors·price_factors가 이 코드를 가리킨다.
@@ -391,6 +390,6 @@ def compute_company(
 @job("nightly")
 def nightly(session: Session, now: datetime) -> dict[str, Any]:
     r_by_code = load_indicators(session)
-    companies = session.scalars(select(Company.id)).all()
+    companies = company_ids(session)
     parts = sum(compute_company(session, cid, now, r_by_code) for cid in companies)
     return {"companies": len(companies), "parts_computed": parts, "indicators": len(r_by_code)}

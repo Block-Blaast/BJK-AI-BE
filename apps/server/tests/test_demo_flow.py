@@ -133,3 +133,113 @@ def test_held_review_is_clarified_then_decided(client, demo_db, flow):
         **{"Idempotency-Key": f"flow-{uuid.uuid4()}"},
     )
     assert (closed["status"], closed["purchase_order"]) == ("closed", None)
+
+
+def _has_pango() -> bool:
+    """결재용 PDF는 시스템 pango가 있어야 만든다(macOS `make` 환경에서는 없음)."""
+    try:
+        import weasyprint  # noqa: F401
+    except OSError:
+        return False
+    return True
+
+
+def _order_and_receive(client, chat, flow, order_id, qty):
+    """주문 완료 표시 → 5일 뒤 입고 채팅 확정 → 입고완료."""
+    detail = _get(client, f"/purchase-orders/{order_id}")
+    assert detail["order_message"].startswith(f"안녕하세요. V벨트 A-42 {qty}")
+    _post(client, f"/purchase-orders/{order_id}/mark-ordered", {})
+    flow(NOW + timedelta(days=5))
+    PARSED[f"V벨트 A-42 {qty}개 들어옴"] = Interpretation("IN", "V벨트 A-42", qty)
+    [card] = chat(f"V벨트 A-42 {qty}개 들어옴").json()["cards"]
+    received = _post(client, f"/chat/entries/{card['entry_id']}/confirm", {}, user="worker")
+    assert (received["po_match"], received["movement"]["po_id"]) == ("complete", order_id)
+    final = _get(client, f"/purchase-orders/{order_id}")
+    assert (final["status"], final["received_qty"]) == ("received", qty)
+
+
+def _approve_proposal(client, review_id):
+    review = _get(client, f"/reviews/{review_id}")
+    return _post(
+        client,
+        f"/reviews/{review_id}/decision",
+        {"action": "approve_proposal", "snapshot_hash": review["snapshot"]["hash"]},
+        status=201,
+        **{"Idempotency-Key": f"flow-{uuid.uuid4()}"},
+    )["purchase_order"]
+
+
+def test_worker_view_question_and_pdf(client, chat, flow):
+    """작업자는 자기 요청을 보고, 관리자는 질문하고 승인한 뒤 결재용 PDF를 받는다."""
+    [card] = chat("V벨트 A-42 30개 시켜주세요, 저번 데서요").json()["cards"]
+    review_id = _post(client, f"/chat/entries/{card['entry_id']}/confirm", {}, user="worker")[
+        "review_id"
+    ]
+    assert _get(client, f"/reviews/{review_id}", user="worker")["id"] == review_id
+    mine = _get(client, "/reviews", user="worker")["items"]
+    assert [r["id"] for r in mine] == [review_id]
+    answer = _post(client, f"/reviews/{review_id}/questions", {"question": "왜 그 수량이야?"})
+    assert (answer["topic"], answer["source"]) == ("qty", "template")
+    order = _approve_proposal(client, review_id)
+    if _has_pango():
+        pdf = client.get(f"/api/v1/reviews/{review_id}/pdf", headers=auth_header("owner"))
+        assert (pdf.status_code, pdf.headers["content-type"]) == (200, "application/pdf")
+    _order_and_receive(client, chat, flow, order["id"], order["qty"])
+
+
+def test_held_review_clarified_by_worker_then_approved(client, chat, demo_db, flow):
+    """보류(부품 미확정) → 작업자 보완 → 직접 수정 승인 → 주문 완료 → 입고완료."""
+    scope = sessionmaker(demo_db.app, expire_on_commit=False).begin
+    with scope() as s:
+        set_tenant(s, COMPANY)
+        order = OrderRequest(qty=30, supplier_id=str(SUPPLIER_A), unit_price=18000)
+        review_id = create_review(
+            s, COMPANY, entry="staff_request", order=order, part_id=None, requested_by=WORKER
+        ).id
+    assert run_review(scope, None, COMPANY, review_id) == "held"
+    held = _get(client, f"/reviews/{review_id}", user="worker")
+    assert held["hold_reasons"][0] == "part_unresolved"
+    _post(client, f"/reviews/{review_id}/clarify", {"part_id": str(A42)}, user="worker", status=202)
+    edited = {"qty": 8, "supplier_id": str(SUPPLIER_A), "unit_price": 18000}
+    preview = _post(client, f"/reviews/{review_id}/recheck", edited)
+    decided = _post(
+        client,
+        f"/reviews/{review_id}/decision",
+        {"action": "approve_edited", "edited": edited, "recheck_hash": preview["recheck_hash"]},
+        status=201,
+        **{"Idempotency-Key": f"flow-{uuid.uuid4()}"},
+    )
+    _order_and_receive(client, chat, flow, decided["purchase_order"]["id"], 8)
+
+
+def test_stock_draft_to_receipt(client, chat, demo_db, flow, monkeypatch):
+    """출고로 재주문점을 벗어나면 재고 부족 초안 → 수정안 승인 → 주문 완료 → 입고완료."""
+    from bjk_server.db.models import PartMetrics
+    from bjk_server.reviews import drafts
+    from bjk_server.reviews.service import ReviewRunner
+    from sqlalchemy import select
+
+    from .test_chat_purchase_request import _Inline
+
+    scope = sessionmaker(demo_db.app, expire_on_commit=False).begin
+    monkeypatch.setattr(drafts, "request_runner", lambda db: ReviewRunner(scope, None, _Inline()))
+    with Session(demo_db.admin) as s:
+        m = s.scalar(select(PartMetrics).where(PartMetrics.part_id == A42))
+    qty = max(1, m.stock + m.hidden_confirmed - m.reorder_point)
+    out = {
+        "client_message_id": f"out-{uuid.uuid4()}",
+        "type": "OUT",
+        "part_id": str(A42),
+        "qty": qty,
+    }
+    recorded = _post(client, "/chat/entries", out, user="worker")
+    draft_id = recorded["triggered"]["draft_review_id"]
+    assert draft_id is not None
+    draft = _get(client, f"/reviews/{draft_id}")
+    assert (draft["entry"], draft["requested_by"], draft["status"]) == (
+        "stock_draft",
+        None,
+        "reviewed",
+    )
+    order = _approve_proposal(client, draft_id)
+    _order_and_receive(client, chat, flow, order["id"], order["qty"])

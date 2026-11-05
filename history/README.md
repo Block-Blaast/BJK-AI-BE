@@ -4,7 +4,7 @@ AI·server 영역 작업 기록 색인. 작성 규칙은 [docs/ai-work-rules.md]
 
 | 날짜 | 파일 | 내용 |
 | --- | --- | --- |
-| 2026-11-05 | [2026-11-05-32-dashboard-summary.md](2026-11-05-32-dashboard-summary.md) | 대시보드 요약 DSH-02(#180), 묶인 재고 180일 미출고 기준, 주문 대기는 발주 연결 전 0 |
+| 2026-11-05 | [2026-11-05-33-dashboard-summary.md](2026-11-05-33-dashboard-summary.md) | 대시보드 요약 DSH-02(#180), 묶인 재고 180일 미출고 기준, 주문 대기는 발주 연결 전 0 |
 | 2026-11-05 | [2026-11-05-32-hidden-stock-confirmed.md](2026-11-05-32-hidden-stock-confirmed.md) | nightly H_c·H_u 분리, 최근 실사·의심 여부 판정 순수 함수 |
 | 2026-11-05 | [2026-11-05-31-lane-c-chat-batch.md](2026-11-05-31-lane-c-chat-batch.md) | 레인 C 채팅 기능(#179·#186·#192) 통합 브랜치로 묶어 dev 반영(#200) |
 | 2026-11-05 | [2026-11-05-30-chat-multi-item-cards.md](2026-11-05-30-chat-multi-item-cards.md) | 채팅 여러 품목을 품목별 확인 카드로 응답(#192), 556개 통과 |

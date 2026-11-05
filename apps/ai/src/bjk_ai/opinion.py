@@ -5,44 +5,26 @@ LLM은 문장만 쓴다. 판정 표시(첫 줄 머리)와 계산 기준 시각(�
 """
 
 import json
-from zoneinfo import ZoneInfo
 
 from bjk_contracts import (
     AiMeta,
-    CheckLevel,
     FallbackReason,
     LlmPurpose,
     OpinionRequest,
     OpinionResponse,
 )
+from bjk_contracts.opinion_format import (
+    CHECK_NAMES,
+    FLAG_NAMES,
+    HOLD_REASON_NAMES,
+    LEVEL_NAMES,
+    VERDICT_NAMES,
+    render_opinion,
+)
 from pydantic import BaseModel
 
 from bjk_ai.config import Settings
 from bjk_ai.gateway import AttemptFailed, CallLog, LlmGateway, call_with_retry, usage_from
-
-SEOUL = ZoneInfo("Asia/Seoul")
-
-VERDICT_NAMES = {"ok": "적정", "revise": "수정 권고", "hold": "보류"}
-FLAG_NAMES = {"urgent": "긴급", "caution": "주의", "alternative": "대안"}
-LEVEL_NAMES = {"urgent": "긴급", "warning": "경고", "info": "정보"}
-CHECK_NAMES = {
-    "C-01": "수량 과다",
-    "C-02": "장기 재고화",
-    "C-03": "중복 발주",
-    "C-04": "숨은 재고",
-    "C-05": "단가 이상",
-    "C-06": "더 싼 공급사",
-    "C-07": "수량 부족",
-    "C-08": "마감 임박",
-    "C-09": "외부 리스크",
-}
-HOLD_REASON_NAMES = {
-    "part_unresolved": "부품을 확정하지 못함",
-    "supplier_unresolved": "공급사를 특정하지 못하고 기본 공급사도 없음",
-    "no_demand_data": "사용 기록·정비 일정·사용 추정치가 모두 없음",
-}
-# 의견서의 체크 순서: 긴급 → 경고 → 정보 (F-REVIEW-08)
-LEVEL_ORDER = {CheckLevel.URGENT: 0, CheckLevel.WARNING: 1, CheckLevel.INFO: 2}
 
 SYSTEM_PROMPT = """\
 너는 영세 제조 공장 사장님께 올리는 발주 검토 의견서의 문장을 쓴다.
@@ -109,18 +91,6 @@ def build_prompt(request: OpinionRequest) -> str:
     return prompt
 
 
-def header(request: OpinionRequest) -> str:
-    names = [VERDICT_NAMES[request.verdict], *(FLAG_NAMES[f] for f in request.flags)]
-    return "[" + " · ".join(names) + "]"
-
-
-def footer(request: OpinionRequest) -> str:
-    computed_at = request.computed_at
-    if computed_at.tzinfo is not None:
-        computed_at = computed_at.astimezone(SEOUL)
-    return f"계산 기준: {computed_at:%Y-%m-%d %H:%M}"
-
-
 def _clean(value: str | None) -> str | None:
     if value is None:
         return None
@@ -140,21 +110,14 @@ def assemble(request: OpinionRequest, output: _LlmOpinion) -> str:
     if summary is None or set(sentences) != {c.code for c in request.checks}:
         raise AttemptFailed(FallbackReason.SCHEMA_INVALID)
 
-    lines = [f"{header(request)} {summary}"]
-    ordered = sorted(request.checks, key=lambda c: LEVEL_ORDER[c.level])
-    lines += [f"- {sentences[c.code]}" for c in ordered]
-    proposal = _clean(output.proposal) if request.proposal is not None else None
-    if proposal:
-        lines.append(f"수정안: {proposal}")
-    if risk := _clean(output.risk):
-        lines.append(f"미발주 시: {risk}")
-    alternatives = _clean(output.alternatives) if request.alternatives else None
-    if alternatives:
-        lines.append(f"대안: {alternatives}")
-    if request.data_mode == "estimated":
-        lines.append("※ 사용 기록이 부족해 추정치 기반으로 계산했습니다.")
-    lines.append(footer(request))
-    return "\n".join(lines)
+    return render_opinion(
+        request,
+        summary=summary,
+        sentences=sentences,
+        proposal=_clean(output.proposal),
+        risk=_clean(output.risk),
+        alternatives=_clean(output.alternatives),
+    )
 
 
 async def write_opinion(

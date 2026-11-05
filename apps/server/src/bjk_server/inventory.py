@@ -2,7 +2,7 @@
 
 import uuid
 
-from sqlalchemy import Subquery, func, select
+from sqlalchemy import Subquery, func, or_, select
 from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.orm import Session
 
@@ -10,16 +10,27 @@ from bjk_server.db.models import Movement, Part, PartMetrics
 
 
 def stock_subquery() -> Subquery:
-    """part_id별 현재 재고 (part_id, stock)."""
+    """part_id별 현재 재고 (part_id, stock).
+
+    병합된 부품의 원장은 대표 부품에 합산한다(F-LEDGER-02).
+    """
+    owner = func.coalesce(Part.merged_into, Movement.part_id)
     return (
-        select(Movement.part_id, func.sum(Movement.qty).label("stock"))
-        .group_by(Movement.part_id)
+        select(owner.label("part_id"), func.sum(Movement.qty).label("stock"))
+        .join(Part, Part.id == Movement.part_id)
+        .group_by(owner)
         .subquery("stock")
     )
 
 
 def stock_of(session: Session, part_id: uuid.UUID) -> int:
-    total = session.scalar(select(func.sum(Movement.qty)).where(Movement.part_id == part_id))
+    """현재 재고. 이 부품에 병합된 부품의 원장도 더한다(F-LEDGER-02)."""
+    merged = select(Part.id).where(Part.merged_into == part_id)
+    total = session.scalar(
+        select(func.sum(Movement.qty)).where(
+            or_(Movement.part_id == part_id, Movement.part_id.in_(merged))
+        )
+    )
     return int(total or 0)
 
 

@@ -7,7 +7,7 @@ AI 영역(`apps/ai`, `packages/review`, `packages/contracts`의 ai·검토 관�
 | 구분 | 내용 |
 | --- | --- |
 | 담당 | `apps/ai`(`bjk_ai`) LLM 게이트웨이, server ↔ ai 계약 중 ai 호출 스키마(`packages/contracts`) |
-| 담당 | 발주 검토 판정 엔진 `packages/review`(`bjk_review`): 보류·체크 9개·수정안·판정, 의견서 숫자 검증·양식 의견서, 재검토, 후속 질문 양식 답변(F-REVIEW, 2026-11-05 사용자 결정) |
+| 담당 | 발주 검토 `packages/review`(`bjk_review`): LangGraph 검토 흐름과 진행 단계(F-REVIEW-01), 보류·체크 9개·수정안·판정, 의견서 숫자 검증·양식 의견서, 재검토, 후속 질문 양식 답변(F-REVIEW, 2026-11-05 사용자 결정) |
 | 담당 아님 | `apps/server`의 장부·근거 지표 계산(F-ANAL)·스냅샷 수집·검토 저장·승인·알림 |
 | 공동 | 계약 스키마와 검토 스냅샷 형식. 바꾸기 전에 사람에게 확인한다(dev-harness §0) |
 

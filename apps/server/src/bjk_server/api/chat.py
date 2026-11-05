@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from bjk_server import clock, idempotency, ratelimit
 from bjk_server.api.maintenance import mark_completed
+from bjk_server.audit.counts import delivered_requests
 from bjk_server.audit.flags import check_after_record
 from bjk_server.auth import CurrentUser, TenantDB
 from bjk_server.chat.interpreter import Interpreter, get_interpreter
@@ -434,3 +435,36 @@ def history(
         for m in page.items
     ]
     return Page(items=items, next_cursor=page.next_cursor)
+
+
+class InboxItem(BaseModel):
+    id: uuid.UUID
+    kind: Literal["count_request"]
+    text: str
+    created_at: datetime
+    count_request_id: uuid.UUID
+
+
+class Inbox(BaseModel):
+    items: list[InboxItem]
+
+
+@router.get("/inbox", response_model=Inbox)
+def inbox(user: CurrentUser, db: TenantDB) -> Inbox:
+    """시스템이 먼저 보낸 메시지(명세 밖, #275). 지금은 응답을 기다리는 내 실사 요청뿐이다.
+
+    블라인드 실사(F-AUDIT-06)라 장부 수량은 담지 않는다. 응답은 채팅 `COUNT` 의도나 AUD-03으로 한다.
+    `created_at`은 전달 시각(예약 건은 예약 시각)이고 오래된 요청부터 준다.
+    """
+    return Inbox(
+        items=[
+            InboxItem(
+                id=r.id,
+                kind="count_request",
+                text=r.message,
+                created_at=r.sent_at or r.scheduled_for,
+                count_request_id=r.id,
+            )
+            for r in delivered_requests(db, user.user_id, clock.utcnow())
+        ]
+    )

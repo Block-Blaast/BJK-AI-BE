@@ -116,7 +116,6 @@ async def suggest_import(
             suggestions=None, ai=AiMeta(used=False, fallback=True, reason=FallbackReason.ERROR)
         )
 
-    model = settings.gemini_import_model
     category_ids = {c.id for c in request.categories}
     chunks = [request.rows[i : i + CHUNK_SIZE] for i in range(0, len(request.rows), CHUNK_SIZE)]
 
@@ -125,10 +124,14 @@ async def suggest_import(
 
         async def attempt(log: CallLog) -> list[RowSuggestion]:
             result = await gateway.generate_json(
-                model=model, system=SYSTEM_PROMPT, prompt=prompt, schema=_LlmOutput
+                purpose=LlmPurpose.IMPORT_SUGGEST,
+                system=SYSTEM_PROMPT,
+                prompt=prompt,
+                schema=_LlmOutput,
+                max_tokens=8192,
+                attempt=log.attempts,
             )
-            log.input_tokens += result.input_tokens
-            log.output_tokens += result.output_tokens
+            log.record(result)
             output = _LlmOutput.model_validate_json(result.text)
             return to_suggestions(output, rows, category_ids)
 
@@ -141,9 +144,10 @@ async def suggest_import(
         total.attempts += log.attempts
         total.input_tokens += log.input_tokens
         total.output_tokens += log.output_tokens
+        total.model = log.model or total.model
         total.latency_ms = max(total.latency_ms, log.latency_ms)
     reasons = [reason for _, reason, _ in results if reason is not None]
-    usage = usage_from(total, purpose=LlmPurpose.IMPORT_SUGGEST, model=model, success=not reasons)
+    usage = usage_from(total, purpose=LlmPurpose.IMPORT_SUGGEST, success=not reasons)
     if reasons:
         return ImportSuggestResponse(suggestions=None, ai=AiMeta.failed(reasons[0]), usage=usage)
     suggestions = [s for chunk, _, _ in results for s in chunk]

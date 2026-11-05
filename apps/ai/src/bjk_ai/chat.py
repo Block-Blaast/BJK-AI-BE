@@ -82,14 +82,16 @@ async def parse_chat(
             intent=None, ai=AiMeta(used=False, fallback=True, reason=FallbackReason.ERROR)
         )
 
-    model = settings.gemini_chat_model
-
     async def attempt(log: CallLog) -> tuple[ChatIntent, list[ParsedItem]]:
         result = await gateway.generate_json(
-            model=model, system=SYSTEM_PROMPT, prompt=request.text, schema=_LlmOutput
+            purpose=LlmPurpose.CHAT_PARSE,
+            system=SYSTEM_PROMPT,
+            prompt=request.text,
+            schema=_LlmOutput,
+            max_tokens=1024,
+            attempt=log.attempts,
         )
-        log.input_tokens += result.input_tokens
-        log.output_tokens += result.output_tokens
+        log.record(result)
         output = _LlmOutput.model_validate_json(result.text)
         items = [_to_item(item) for item in output.items]
         if output.intent is ChatIntent.OTHER:
@@ -99,7 +101,7 @@ async def parse_chat(
     parsed, reason, log = await call_with_retry(
         attempt, budget_seconds=settings.chat_budget_seconds
     )
-    usage = usage_from(log, purpose=LlmPurpose.CHAT_PARSE, model=model, success=parsed is not None)
+    usage = usage_from(log, purpose=LlmPurpose.CHAT_PARSE, success=parsed is not None)
     if parsed is None:
         return ChatParseResponse(intent=None, ai=AiMeta.failed(reason), usage=usage)
     intent, items = parsed

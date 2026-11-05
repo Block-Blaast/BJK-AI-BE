@@ -4,7 +4,9 @@ version = "0.1.0"
 description = "발주콕 AI 서비스(LLM 게이트웨이)"
 requires-python = ">=3.12"
 dependencies = [
+    "anthropic[bedrock]>=2.5.0",
     "bjk-contracts",
+    "boto3>=1.43.124",
     "fastapi>=0.115",
     "google-genai>=2.34.0",
     "pydantic-settings>=2.16.2",

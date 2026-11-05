@@ -1,6 +1,6 @@
 import os
 import uuid
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import date
@@ -13,13 +13,13 @@ from bjk_server import ratelimit
 from bjk_server.ai.client import get_ai_client
 from bjk_server.chat.interpreter import get_interpreter
 from bjk_server.config import get_settings
-from bjk_server.db.models import PurchaseOrder
+from bjk_server.db.models import PurchaseOrder, ServerEvent
 from bjk_server.db.session import get_admin_db, get_db, get_session_scope
 from bjk_server.main import create_app
 from bjk_server.security import create_access_token
 from bjk_server.seed.demo import COMPANY_CODE, USERS, demo_id, seed_demo
 from fastapi.testclient import TestClient
-from sqlalchemy import Engine, create_engine, delete, text
+from sqlalchemy import Engine, create_engine, delete, func, select, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -155,6 +155,23 @@ def demo_db() -> Iterator[DemoDB]:
         yield db
         db.admin.dispose()
         db.app.dispose()
+
+
+def watch_stock_events(db: DemoDB) -> Callable[[], list[dict]]:
+    """부른 뒤 저장된 stock.changed 이벤트의 data를 id 순으로 돌려주는 함수."""
+    with Session(db.admin) as s:
+        start = s.scalar(select(func.coalesce(func.max(ServerEvent.id), 0)))
+
+    def read() -> list[dict]:
+        with Session(db.admin) as s:
+            rows = s.scalars(
+                select(ServerEvent.data)
+                .where(ServerEvent.id > start, ServerEvent.type == "stock.changed")
+                .order_by(ServerEvent.id)
+            )
+            return list(rows)
+
+    return read
 
 
 def build_client(db: DemoDB) -> TestClient:

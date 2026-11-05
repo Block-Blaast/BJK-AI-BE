@@ -11,7 +11,8 @@ from bjk_server import clock
 from bjk_server.auth import TenantDB, require_role
 from bjk_server.db.models import Movement
 from bjk_server.errors import ApiError, ErrorCode
-from bjk_server.inventory import lock_part_stock, stock_of
+from bjk_server.events import publish_stock_changed
+from bjk_server.inventory import lock_part_stock
 from bjk_server.security import TokenClaims
 
 router = APIRouter(prefix="/movements", tags=["ledger"])
@@ -94,10 +95,10 @@ def correct_movement(
         corrects_id=original.id,
     )
     db.add(correction)
-    db.flush()
+    stock_after = publish_stock_changed(db, original.company_id, original.part_id)
     return CorrectionResponse(
         movement=CorrectionMovement(
             id=correction.id, type="ADJUST", qty=diff, reason=reason, corrects=original.id
         ),
-        stock_after=stock_of(db, original.part_id),
+        stock_after=stock_after,
     )

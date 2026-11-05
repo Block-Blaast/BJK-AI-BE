@@ -6,7 +6,7 @@ from bjk_server.seed.demo import PARTS, demo_id
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
-from .conftest import auth_header
+from .conftest import auth_header, watch_stock_events
 
 URL = "/api/v1/parts"
 
@@ -21,6 +21,7 @@ def _post(client, body, user="manager"):
 
 
 def test_create_part_with_initial_stock_as_adjust(client, demo_db, fresh):
+    events = watch_stock_events(demo_db)
     res = _post(
         client,
         {
@@ -40,6 +41,7 @@ def test_create_part_with_initial_stock_as_adjust(client, demo_db, fresh):
         5,
         "6206",
     )
+    assert events() == [{"part_id": part["id"], "stock": 5}]
     with Session(demo_db.admin) as s:
         movement = s.scalar(select(Movement).where(Movement.part_id == part["id"]))
         assert (movement.type, movement.qty, movement.reason) == ("ADJUST", 5, "초기 재고")
@@ -50,8 +52,10 @@ def test_create_part_with_initial_stock_as_adjust(client, demo_db, fresh):
 
 
 def test_create_without_stock_records_nothing(client, demo_db, fresh):
+    events = watch_stock_events(demo_db)
     part = _post(client, {"name": "평와셔 M8", "unit": "개"}).json()
     assert part["stock"] == 0
+    assert events() == []
     with Session(demo_db.admin) as s:
         assert s.scalar(select(Movement).where(Movement.part_id == part["id"])) is None
 

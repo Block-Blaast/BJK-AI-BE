@@ -26,6 +26,7 @@ from bjk_server.db.models import (
     User,
 )
 from bjk_server.errors import ApiError, ErrorCode
+from bjk_server.events import publish_stock_changed
 from bjk_server.inventory import latest_metrics_subquery, stock_of, stock_subquery
 from bjk_server.pagination import Page, PageParams, keyset_page, page_params
 from bjk_server.purchasing.orders import open_qty
@@ -551,7 +552,7 @@ def create_part(body: PartCreate, user: Manager, db: TenantDB, ai: Ai) -> PartOu
                 reason=INITIAL_STOCK_REASON,
             )
         )
-        db.flush()
+        publish_stock_changed(db, user.company_id, part.id)
     if ai:
         embed_rows(db, ai, user.company_id, [part])
     return _part_out(db, part)

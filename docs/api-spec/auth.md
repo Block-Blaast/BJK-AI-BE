@@ -157,6 +157,24 @@
 
 - 명세에 없어 정한 것: 초대로 만들 수 있는 역할은 `worker`·`manager`, PIN은 숫자 4자리, 없는 토큰은 404.
 
+## 초대 정보 조회 GET /api/v1/auth/invites/{token} (명세 밖, #261)
+
+- 권한: 없음(토큰만으로 공개 조회). 초대 QR 접속 화면이 이름·PIN 입력 전에 보여 줄 값.
+- Notion API 명세서에 없어 사용자 결정(2026-11-05)으로 이 레포에서 정했다.
+
+```json
+// 200 Response
+{ "company_name": "한서정밀", "role": "worker", "expires_at": "2026-11-08T10:00:00Z" }
+```
+
+- 회사 코드·직원 정보는 주지 않는다.
+
+| 상황 | 응답 |
+| --- | --- |
+| 없는 토큰 | 404 `NOT_FOUND` |
+| 이미 쓴 토큰 | 410 `INVITE_EXPIRED`, `detail.reason: "used"` |
+| 만료된 토큰 | 410 `INVITE_EXPIRED`, `detail.reason: "expired"` |
+
 ## AUTH-09 GET /api/v1/users, PATCH /api/v1/users/{id}
 
 - 권한: owner. 다른 역할은 403 `FORBIDDEN_ROLE`.

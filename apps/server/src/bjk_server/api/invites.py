@@ -1,4 +1,4 @@
-"""직원 초대 API (API 명세서 AUTH-06·07).
+"""직원 초대 API (API 명세서 AUTH-06·07, 초대 정보 조회는 #261).
 
 사장님이 일회용 초대 토큰(72시간)을 만들고, 화면이 join_url로 QR을 그린다. 직원은 QR로
 이름·PIN을 등록하고 바로 로그인 토큰과 회사 코드를 받는다.
@@ -83,9 +83,8 @@ def _expired(reason: Literal["used", "expired"]) -> ApiError:
     return ApiError(ErrorCode.INVITE_EXPIRED, "사장님께 새 QR을 요청하세요.", {"reason": reason})
 
 
-@router.post("/{token}/accept", response_model=AcceptResponse, status_code=201)
-def accept_invite(token: str, body: AcceptRequest, db: DB) -> AcceptResponse:
-    """AUTH-07. 초대 수락. 이름·PIN을 등록하고 로그인 토큰과 회사 코드를 준다."""
+def _usable_invite(db: Session, token: str, *, lock: bool) -> Invite:
+    """토큰으로 초대를 찾아 그 회사로 지정한다. 없으면 404, 사용·만료면 410."""
     found = db.execute(
         text("SELECT invite_id, company_id FROM auth_invite_by_token(:h)"),
         {"h": token_hash(token)},
@@ -93,15 +92,40 @@ def accept_invite(token: str, body: AcceptRequest, db: DB) -> AcceptResponse:
     if found is None:
         raise ApiError(ErrorCode.NOT_FOUND, "초대를 찾을 수 없습니다.")
     set_tenant(db, found.company_id)
-    # 같은 토큰 동시 수락은 행 잠금으로 줄을 세워 한 명만 만든다.
-    invite = db.scalar(select(Invite).where(Invite.id == found.invite_id).with_for_update())
+    query = select(Invite).where(Invite.id == found.invite_id)
+    invite = db.scalar(query.with_for_update() if lock else query)
     if invite is None:
         raise ApiError(ErrorCode.NOT_FOUND, "초대를 찾을 수 없습니다.")
     if invite.used_at is not None:
         raise _expired("used")
-    now = clock.utcnow()
-    if invite.expires_at <= now:
+    if invite.expires_at <= clock.utcnow():
         raise _expired("expired")
+    return invite
+
+
+class InviteInfo(BaseModel):
+    company_name: str
+    role: Literal["worker", "manager"]
+    expires_at: datetime
+
+
+@router.get("/{token}", response_model=InviteInfo)
+def invite_info(token: str, db: DB) -> InviteInfo:
+    """초대 QR 접속 화면용 조회 (#261, 명세 밖). 토큰만으로 공개 조회하므로 회사명·역할·만료만 준다.
+
+    회사 코드·직원 정보는 주지 않는다. 수락(AUTH-07)과 같게 없는 토큰 404, 사용·만료 410.
+    """
+    invite = _usable_invite(db, token, lock=False)
+    company = db.get(Company, invite.company_id)
+    return InviteInfo(company_name=company.name, role=invite.role, expires_at=invite.expires_at)
+
+
+@router.post("/{token}/accept", response_model=AcceptResponse, status_code=201)
+def accept_invite(token: str, body: AcceptRequest, db: DB) -> AcceptResponse:
+    """AUTH-07. 초대 수락. 이름·PIN을 등록하고 로그인 토큰과 회사 코드를 준다."""
+    # 같은 토큰 동시 수락은 행 잠금으로 줄을 세워 한 명만 만든다.
+    invite = _usable_invite(db, token, lock=True)
+    now = clock.utcnow()
 
     user = User(
         id=uuid.uuid4(),

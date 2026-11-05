@@ -19,7 +19,7 @@ from bjk_server.domain.ledger import (
 )
 from bjk_server.errors import ApiError, ErrorCode
 from bjk_server.events import publish
-from bjk_server.inventory import stock_of
+from bjk_server.inventory import lock_part_stock, stock_of
 from bjk_server.security import TokenClaims
 
 # 다른 부품으로 확정된 횟수가 이만큼 쌓이면 모호 별칭 (F-MATCH-02)
@@ -136,6 +136,10 @@ def record_movement(
 ) -> tuple[Movement, int, str]:
     if qty <= 0:
         raise ApiError(ErrorCode.VALIDATION_ERROR, "수량은 1 이상이어야 합니다.", {"qty": qty})
+
+    if not lock_part_stock(db, user.company_id, part.id):
+        raise ApiError(ErrorCode.PART_NOT_RESOLVED, "기록할 부품을 골라 주세요.")
+
     now = clock.utcnow()
     maintenance_id = (
         linked_maintenance(db, equipment_id, now) if intent == "OUT" and equipment_id else None

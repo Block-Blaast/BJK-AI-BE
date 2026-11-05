@@ -17,6 +17,8 @@
 
 기능 정본은 Notion「발주콕 기능명세서」의 SERVER·WEB·APP DB. 명세와 코드가 다르면 명세를 먼저 확인한다.
 
+작업을 시작하거나 Issue 범위를 정할 때 `docs/work-areas.md`의 영역별 책임과 분리 기준을 확인한다. 라벨과 브랜치 운영 제안의 적용 여부는 해당 문서와 실제 저장소 상태를 확인한다.
+
 ## 구조
 
 - `apps/server` (`bjk_server`): API 서버. 장부, 계산·판정·검증 엔진, 리포트, 승인
@@ -29,6 +31,11 @@ uv workspace 하나로 묶는다. 앱끼리 직접 import하지 않고 `bjk_cont
 
 - `make install` / `make test` / `make lint` / `make format`
 - `make server` (:8000), `make ai` (:8001), `make up` (docker compose)
+- `make db-up` (PostgreSQL :5433), `make migrate` (Alembic 최신 적용)
+- `make seed`: 개발 DB를 시연 상태(demo_v1)로 초기화. 시연 계정은 `bjk_server/seed/demo.py`의 `USERS`
+- `make job name=<nightly|missed-scan|order-check|briefing|weekly-merge>`: 배치 즉시 실행
+- `make scheduler`: 배치 예약 프로세스(APScheduler). compose에서는 `scheduler` 서비스
+- DB 테스트는 `TEST_DATABASE_URL`이 있을 때만 실행 (`.env.example` 참고). CI는 PostgreSQL 서비스와 `REQUIRE_DB_TESTS=1`로 항상 실행
 
 ## 설계 원칙
 

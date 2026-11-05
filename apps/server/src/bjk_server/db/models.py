@@ -722,3 +722,24 @@ class Notification(Base):
     sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = _created_at()
+
+
+class PartImport(Base):
+    """SET-01 엑셀 이관 한 번. 파싱·제안 결과를 두고 SET-02 확정 때 그대로 쓴다 (F-SETUP-01·02)."""
+
+    __tablename__ = "part_imports"
+    __table_args__ = (CheckConstraint("status IN ('open', 'confirmed')", name="status"),)
+
+    id: Mapped[uuid.UUID] = _id()
+    company_id: Mapped[uuid.UUID] = _company_id()
+    created_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    file_name: Mapped[str] = mapped_column(String(200))
+    file_sha256: Mapped[str] = mapped_column(String(64))
+    is_reimport: Mapped[bool] = mapped_column(Boolean)
+    # SET-01 응답의 rows와 같은 모양에 파일 원래 값(supplier·unit_price 등)을 더한 목록
+    rows: Mapped[list[dict[str, Any]]] = mapped_column(JSONB)
+    status: Mapped[str] = mapped_column(String(16), server_default="open")
+    # stock_mode=apply는 preview를 먼저 불러야 한다 (API 명세서 SET-02)
+    stock_previewed: Mapped[bool] = mapped_column(Boolean, server_default=sql_text("false"))
+    created_at: Mapped[datetime] = _created_at()
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

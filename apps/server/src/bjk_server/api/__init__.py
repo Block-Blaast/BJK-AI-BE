@@ -10,6 +10,7 @@ from bjk_server.api import (
     events,
     external,
     health,
+    imports,
     invites,
     ledger,
     maintenance,
@@ -26,6 +27,7 @@ api_router.include_router(auth.router)
 api_router.include_router(invites.router)
 api_router.include_router(users.router)
 api_router.include_router(parts.router)
+api_router.include_router(imports.router)
 api_router.include_router(ledger.router)
 api_router.include_router(categories.router)
 api_router.include_router(suppliers.router)

@@ -13,7 +13,13 @@ from bjk_server import clock
 from bjk_server.api.health import STALE_AFTER
 from bjk_server.auth import TenantDB, require_role
 from bjk_server.clock import KST
-from bjk_server.db.models import Category, CompanySettings, ExternalIndicator, Supplier
+from bjk_server.db.models import (
+    CalendarEvent,
+    Category,
+    CompanySettings,
+    ExternalIndicator,
+    Supplier,
+)
 from bjk_server.domain.external import Level, apply_shock, risk_level
 from bjk_server.jobs.nightly import shock_enabled
 from bjk_server.security import TokenClaims
@@ -101,15 +107,27 @@ def external_status(user: Manager, db: TenantDB) -> ExternalStatusResponse:
             )
         )
 
-    # 연휴 캘린더(국내·중국) 전이라 공급사 휴무일만 보여준다.
+    # 연휴 캘린더(SET-11)와 공급사 휴무일 중 오늘부터 90일 안에 걸치는 것
     today = now.astimezone(KST).date()
+    until = today + HOLIDAY_HORIZON
+    events = db.scalars(
+        select(CalendarEvent).where(
+            CalendarEvent.end_date >= today, CalendarEvent.start_date <= until
+        )
+    )
     holidays = sorted(
-        (
-            Holiday(name=f"{s.name} 휴무", start=day, end=day, scope="supplier")
-            for s in db.scalars(select(Supplier))
-            for day in s.holidays or ()
-            if today <= day <= today + HOLIDAY_HORIZON
-        ),
+        [
+            *(
+                Holiday(name=e.name, start=e.start_date, end=e.end_date, scope=e.scope)
+                for e in events
+            ),
+            *(
+                Holiday(name=f"{s.name} 휴무", start=day, end=day, scope="supplier")
+                for s in db.scalars(select(Supplier))
+                for day in s.holidays or ()
+                if today <= day <= until
+            ),
+        ],
         key=lambda h: (h.start, h.name),
     )
 

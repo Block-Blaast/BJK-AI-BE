@@ -51,3 +51,26 @@
 
 - 열린 항목이 있는 부품은 부품 목록(SET-03)에서 `ledger_status: suspect`다.
 - 기록 직후 음수 재고가 되면 CHAT-03·CHAT-05 응답의 `triggered.audit_flag_id`에 항목 ID가 담긴다.
+
+## AUD-02 POST /api/v1/audit-flags/{id}/count-request
+
+- 권한: manager 이상.
+- 상태가 `open`인 의심 항목만 요청할 수 있다. 이미 요청했거나 닫힌 항목은 409 `ALREADY_CONFIRMED`(`detail.status`). 항목·담당자(같은 회사 활성 직원)가 없으면 404.
+- 요청하면 의심 항목은 `count_requested`가 된다.
+
+```json
+// Request
+{ "assignee_id": "..." }
+
+// 201 Response
+{
+  "count_request_id": "...",
+  "status": "sent",
+  "scheduled_for": null,
+  "message_preview": "오링 P-20 지금 몇 개 있나요? 세어서 숫자만 보내 주세요."
+}
+```
+
+- 문구에 장부 수량을 넣지 않는다(블라인드 실사).
+- 담당자 한 명에게 하루(Asia/Seoul) `system.count_per_worker_per_day`(기본 2)건까지 보낸다. 넘으면 `status: scheduled`이고, 한도가 남은 첫 날의 `notify.briefing_time`(기본 07:30)이 `scheduled_for`에 담긴다. 보낸 건과 예약한 건을 모두 그날 몫으로 센다.
+- 현재 구현 범위: 담당자 채팅·웹 푸시 전달은 알림(NOT) 기능에서 연결한다. 예약 건은 `scheduled_for`가 지나면 응답할 수 있다.

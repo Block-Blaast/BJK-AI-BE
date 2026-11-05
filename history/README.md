@@ -4,6 +4,7 @@ AI·server 영역 작업 기록 색인. 작성 규칙은 [docs/ai-work-rules.md]
 
 | 날짜 | 파일 | 내용 |
 | --- | --- | --- |
+| 2026-11-05 | [2026-11-05-83-hidden-stock-spec.md](2026-11-05-83-hidden-stock-spec.md) | 숨은 재고 같은 규격 판정 수정(값 표기 통일, 품목 종류·점도 등급 추출) |
 | 2026-11-05 | [2026-11-05-82-review-list-request-fields.md](2026-11-05-82-review-list-request-fields.md) | 검토 목록 REV-01 항목에 요청 수량·결정(행동·사유·시각) 추가(#297) |
 | 2026-11-05 | [2026-11-05-81-stock-changed-all-paths.md](2026-11-05-81-stock-changed-all-paths.md) | 재고가 바뀌는 모든 경로(정정·실사 조정·이관 확정·등록 초기 재고·병합)에 `stock.changed` 발행 |
 | 2026-11-05 | [2026-11-05-80-review-external-factors.md](2026-11-05-80-review-external-factors.md) | 검토 상세 REV-02에 외부 요인(운임·환율 위험도·단계, 연휴, C-09 적용) 항상 포함 |

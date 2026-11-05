@@ -119,7 +119,7 @@ def test_upload_with_ai_suggestions_sorted_by_confidence(client, demo_db, fresh)
     assert body["is_reimport"] is False
     assert [r["row"] for r in body["rows"]] == [3, 2, 4]  # 확신도 0.45 → 0.95 → 0.95
     rows = _rows(res)
-    assert rows[3]["spec"] == {"thread": "M10", "length_mm": "30"}
+    assert rows[3]["spec"] == {"thread": "M10", "length_mm": "30", "kind": "HEX_BOLT"}
     assert rows[3]["suggested_category"]["confidence"] == 0.45
     assert rows[2]["spec"] == {"bearing_no": "6305", "shield": "ZZ"}
     assert rows[2]["suggested_category"] == {"id": BEARING, "name": "베어링", "confidence": 0.95}
@@ -150,7 +150,7 @@ def test_ai_failure_falls_back_to_regex_and_manual_category(client, fresh, fake,
     rows = _rows(res)
     assert all(r["suggested_category"] is None for r in rows.values())
     assert rows[2]["spec"] == {"bearing_no": "6305", "shield": "ZZ"}
-    assert rows[3]["spec"] == {"thread": "M10", "length_mm": "30"}
+    assert rows[3]["spec"] == {"thread": "M10", "length_mm": "30", "kind": "HEX_BOLT"}
 
 
 def test_first_import_creates_parts_with_initial_stock(client, demo_db, fresh):

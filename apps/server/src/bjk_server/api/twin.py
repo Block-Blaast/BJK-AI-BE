@@ -28,6 +28,7 @@ from bjk_server.db.models import (
     Review,
     TwinLayout,
 )
+from bjk_server.domain.matching import spec_key
 from bjk_server.domain.twin import (
     DEFAULT_CV,
     HORIZON_DAYS,
@@ -201,9 +202,11 @@ class Projection(BaseModel):
 
 
 def _spec_key(part: Part) -> str | None:
-    if not part.spec:
+    """숨은 재고 묶음 키. 검토의 같은 규격 판정(domain.hidden_stock.same_spec)과 같은 키를 쓴다."""
+    key = spec_key(part.spec)
+    if not key:
         return None
-    return f"{part.category_id}:{json.dumps(part.spec, sort_keys=True, ensure_ascii=False)}"
+    return f"{part.category_id}:{json.dumps(dict(key), ensure_ascii=False)}"
 
 
 def _arrivals(db: Session, owners, live: set[uuid.UUID], base: date, with_orders, lt50):

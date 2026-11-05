@@ -1,7 +1,9 @@
 name: Collaboration Policy
 
+# dev 대상 PR은 검사하지 않는다. main 대상 PR과 Issue 양식만 검사한다.
 on:
   pull_request:
+    branches: [main]
     types: [opened, edited, synchronize, reopened, ready_for_review, converted_to_draft]
   issues:
     types: [opened, edited, reopened]

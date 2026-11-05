@@ -4,9 +4,12 @@ AI·server 영역 작업 기록 색인. 작성 규칙은 [docs/ai-work-rules.md]
 
 | 날짜 | 파일 | 내용 |
 | --- | --- | --- |
-| 2026-11-05 | [2026-11-05-28-review-run.md](2026-11-05-28-review-run.md) | 검토 실행·저장 서비스, 스냅샷 수집, 의견서 ai 호출 |
-| 2026-11-05 | [2026-11-05-27-hidden-stock-confirmed.md](2026-11-05-27-hidden-stock-confirmed.md) | nightly H_c·H_u 분리, 최근 실사·의심 여부 판정 순수 함수 |
+| 2026-11-05 | [2026-11-05-29-review-run.md](2026-11-05-29-review-run.md) | 검토 실행·저장 서비스, 스냅샷 수집, 의견서 ai 호출 |
+| 2026-11-05 | [2026-11-05-28-hidden-stock-confirmed.md](2026-11-05-28-hidden-stock-confirmed.md) | nightly H_c·H_u 분리, 최근 실사·의심 여부 판정 순수 함수 |
+| 2026-11-05 | [2026-11-05-27-notifications.md](2026-11-05-27-notifications.md) | 알림 저장·목록·읽음(#183), 중복 방지와 조용한 시간 보류, 마이그레이션 0025 |
 | 2026-11-05 | [2026-11-05-26-part-excel-import.md](2026-11-05-26-part-excel-import.md) | 부품 엑셀 이관 SET-01·02, ai 제안과 정규식 대체 경로, DB 포함 588개 통과 |
+| 2026-11-05 | [2026-11-05-25-part-detail-dev-merge.md](2026-11-05-25-part-detail-dev-merge.md) | #137 dev 반영, 충돌 양쪽 유지, 마이그레이션 0021~0023으로 변경 |
+| 2026-11-05 | [2026-11-05-25-expired-rows-cleanup.md](2026-11-05-25-expired-rows-cleanup.md) | `cleanup` 배치(#185), 호출 제한·PIN 잠금·멱등 키 만료 행 삭제 |
 | 2026-11-05 | [2026-11-05-25-expired-rows-cleanup.md](2026-11-05-25-expired-rows-cleanup.md) | `cleanup` 배치(#185), 호출 제한·PIN 잠금·멱등 키 만료 행 삭제 |
 | 2026-11-05 | [2026-11-05-24-part-detail-dev-merge.md](2026-11-05-24-part-detail-dev-merge.md) | #137 dev 반영, 충돌 양쪽 유지, 마이그레이션 0021~0023으로 변경 |
 | 2026-11-05 | [2026-11-05-24-llm-daily-token-quota.md](2026-11-05-24-llm-daily-token-quota.md) | 회사별 LLM 일일 토큰 상한(#172), `system.llm_daily_tokens`, 초과 시 `quota_exceeded` 대체 |

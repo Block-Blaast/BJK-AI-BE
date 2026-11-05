@@ -42,8 +42,10 @@ LLM과 임베딩은 모두 **Amazon Bedrock**으로 한다(2026-11-05 결정, �
 | `GEMINI_CHAT_MODEL` 등 | `gemini-3.5-flash-lite` | Gemini 폴백 모델(채팅·의견서·이관), 임베딩은 `gemini-embedding-2` |
 | `CHAT_BUDGET_SECONDS` | 2.5 | 채팅 해석 재시도 포함 시간 예산 |
 | `EMBED_BUDGET_SECONDS` | 10 | 임베딩 재시도 포함 시간 예산 |
-| `OPINION_BUDGET_SECONDS` | 3 | 의견서 한 번 호출의 재시도 포함 시간 예산 |
+| `OPINION_BUDGET_SECONDS` | 7 | 의견서 한 번 호출의 재시도 포함 시간 예산(Bedrock Haiku 4.5가 3초로는 부족했음) |
 | `IMPORT_BUDGET_SECONDS` | 30 | 엑셀 이관 제안 50줄 묶음 하나의 재시도 포함 시간 예산 |
+| `WARM_UP` | `true` | 시작 시 Bedrock Claude(1토큰)·Titan을 한 번 불러 첫 요청 지연을 없앰. 백그라운드로 돌고 실패해도 서비스는 뜸 |
+| `WARM_UP_TIMEOUT_SECONDS` | 15 | 워밍업 제한 시간 |
 
 실제 제공자 확인: `uv run --package bjk-ai python apps/ai/scripts/smoke.py`(쓰인 모델·지연·대체 여부 출력).
 

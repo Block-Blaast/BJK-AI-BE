@@ -7,6 +7,21 @@ API 명세서 REV 기준. 검토 실행·저장은 [reviews.md](reviews.md)(#146
 - manager 이상: 회사 전체 검토.
 - worker: 본인이 올린 요청(`requested_by`)만. 다른 사람 검토와 시스템 초안은 404 `NOT_FOUND`.
 
+## REV-01 `GET /reviews`
+
+| Query | 값 |
+| --- | --- |
+| `status` | `reviewing`, `reviewed`, `held`, `approved`, `closed`, `expired` |
+| `verdict` | `ok`, `revise`, `hold` |
+| `urgent` | `true`면 긴급(`flags`에 `urgent`)만, `false`면 긴급 아닌 것만 |
+| `entry` | `staff_request`, `stock_draft`, `missed_draft` |
+| `mine` | `true`면 본인 요청만 |
+| `cursor`, `limit` | 커서 페이지네이션 (기본 20, 최대 100) |
+
+- 정렬: 긴급 먼저 → 미발주 예상 손실(`loss`) 큰 순 → 최근 생성 순.
+- 항목: `id`, `entry`, `part`(부품 이름, 미확정이면 `null`), `status`, `verdict`, `flags`, `original_total`, `saving`, `created_at`(Asia/Seoul).
+- 허용 값 밖의 필터·잘못된 커서는 400 `VALIDATION_ERROR`.
+
 ## REV-02 `GET /reviews/{id}`
 
 - `requested_by`: `{"type":"user","id","name"}`, 시스템 초안(`stock_draft`·`missed_draft`)은 `null`.

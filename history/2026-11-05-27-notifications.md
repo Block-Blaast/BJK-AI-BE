@@ -27,6 +27,7 @@
 - `REQUIRE_DB_TESTS=1 make test`: 586개 통과, `make lint` 통과
 - dev 반영 후 `REQUIRE_DB_TESTS=1 make test` 592개 통과, 마이그레이션 0021(당시 dev 최신 0020 다음) 확인
 - #137 반영 후 `REQUIRE_DB_TESTS=1 make test` 683개 통과, 빈 DB `make migrate` 0024까지 적용
+- #190 반영 후 `REQUIRE_DB_TESTS=1 make test` 697개 통과, `alembic check` 차이 없음, 빈 DB `make migrate` 0025까지 적용
 
 ## 남은 일·확인 필요
 

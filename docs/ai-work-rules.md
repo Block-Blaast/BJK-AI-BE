@@ -11,6 +11,8 @@ AI 영역(`apps/ai`, `packages/review`, `packages/contracts`의 ai·검토 관�
 | 담당 아님 | `apps/server`의 장부·근거 지표 계산(F-ANAL)·스냅샷 수집·검토 저장·승인·알림 |
 | 공동 | 계약 스키마와 검토 스냅샷 형식. 바꾸기 전에 사람에게 확인한다(dev-harness §0) |
 
+server 쪽 연동 방법(엔드포인트, 검토 엔진 호출, 스냅샷 필드 대응)은 [docs/ai-integration.md](ai-integration.md)에 둔다.
+
 검토 엔진은 server가 같은 프로세스에서 실행하는 순수 함수 패키지다. ai 서비스가 멈춰도 판정은 나와야 하기 때문이다(설계 원칙 7). LLM은 의견서 문장만 맡는다.
 
 MVP의 LLM 사용처는 `about_project/01-functional-spec.md` 기준으로 아래 셋이며, 모두 실패 시 대체 경로가 있어야 한다.

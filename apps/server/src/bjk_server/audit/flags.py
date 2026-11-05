@@ -26,6 +26,7 @@ from bjk_server.db.models import (
 from bjk_server.defaults import DEFAULT_SETTINGS
 from bjk_server.domain import audit as rules
 from bjk_server.domain.audit import Hit, LedgerRow
+from bjk_server.inventory import merged_owners
 
 # 정비 완료 기록을 거슬러 보는 기간. 그보다 오래된 정비는 새로 판단하지 않는다.
 MAINTENANCE_LOOKBACK = timedelta(days=14)
@@ -162,6 +163,8 @@ def audit_company(db: Session, company_id: uuid.UUID, now: datetime) -> int:
     parts = db.scalars(
         select(Part).where(Part.company_id == company_id, Part.merged_into.is_(None))
     ).all()
+    # 병합된 부품의 원장은 대표 부품 원장으로 본다(F-LEDGER-02). 시각 순서는 쿼리 정렬로 유지된다.
+    owners = merged_owners(db, company_id)
     ledger: dict[uuid.UUID, list[LedgerRow]] = defaultdict(list)
     for m in db.execute(
         select(
@@ -177,7 +180,9 @@ def audit_company(db: Session, company_id: uuid.UUID, now: datetime) -> int:
     ):
         # 근거에 남는 시각은 화면 기준(Asia/Seoul)으로 둔다.
         occurred_at = m.occurred_at.astimezone(KST)
-        ledger[m.part_id].append(LedgerRow(m.id, m.type, m.qty, occurred_at, m.maintenance_id))
+        ledger[owners.get(m.part_id, m.part_id)].append(
+            LedgerRow(m.id, m.type, m.qty, occurred_at, m.maintenance_id)
+        )
     demand_class = dict(
         db.execute(
             select(PartMetrics.part_id, PartMetrics.demand_class).where(
@@ -205,12 +210,15 @@ def audit_company(db: Session, company_id: uuid.UUID, now: datetime) -> int:
             Maintenance.completed_at.between(now - MAINTENANCE_LOOKBACK, now),
         )
     ):
+        required: dict[uuid.UUID, int] = defaultdict(int)
         if m.required_parts is not None:
-            required: dict[uuid.UUID, int] = defaultdict(int)
             for item in m.required_parts:
-                required[uuid.UUID(item["part_id"])] += int(item["qty"])
+                part_id = uuid.UUID(item["part_id"])
+                required[owners.get(part_id, part_id)] += int(item["qty"])
         else:
-            required = {p: q for (e, p), q in per_maintenance.items() if e == m.equipment_id}
+            for (e, part_id), q in per_maintenance.items():
+                if e == m.equipment_id:
+                    required[owners.get(part_id, part_id)] += q
         for part_id, qty in required.items():
             linked = sum(
                 -r.qty

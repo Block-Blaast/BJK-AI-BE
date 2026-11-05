@@ -52,6 +52,7 @@ from bjk_server.domain.external import (
     indicator_risk,
     risk_level,
 )
+from bjk_server.inventory import merged_owners
 from bjk_server.jobs.runner import company_ids, job
 from bjk_server.purchasing.orders import open_qty
 
@@ -219,13 +220,19 @@ def compute_company(
             tuple(sorted({*(supplier.holidays or ()), *supplier_days[sp.supplier_id]})),
         )
 
-    stock = dict(
-        session.execute(
-            select(Movement.part_id, func.sum(Movement.qty))
-            .where(Movement.company_id == company_id)
-            .group_by(Movement.part_id)
-        ).all()
-    )
+    # 병합된 부품의 원장·발주는 흡수된 부품 id로 남아 있다. 대표 부품으로 합산한다(F-LEDGER-02).
+    owners = merged_owners(session, company_id)
+
+    def owner(part_id: uuid.UUID) -> uuid.UUID:
+        return owners.get(part_id, part_id)
+
+    stock: dict[uuid.UUID, int] = defaultdict(int)
+    for part_id, qty in session.execute(
+        select(Movement.part_id, func.sum(Movement.qty))
+        .where(Movement.company_id == company_id)
+        .group_by(Movement.part_id)
+    ):
+        stock[owner(part_id)] += int(qty)
     # 숨은 재고 확인 여부 (F-MATCH-03): 마지막 실사 응답 시각, 열린 장부 의심 항목
     last_counted = dict(
         session.execute(
@@ -241,13 +248,14 @@ def compute_company(
             )
         )
     )
-    first_seen = dict(
-        session.execute(
-            select(Movement.part_id, func.min(Movement.occurred_at))
-            .where(Movement.company_id == company_id)
-            .group_by(Movement.part_id)
-        ).all()
-    )
+    first_seen: dict[uuid.UUID, datetime] = {}
+    for part_id, seen in session.execute(
+        select(Movement.part_id, func.min(Movement.occurred_at))
+        .where(Movement.company_id == company_id)
+        .group_by(Movement.part_id)
+    ):
+        key = owner(part_id)
+        first_seen[key] = min(seen, first_seen.get(key, seen))
     # 통계 예측 입력: 정비에 연결되지 않은 출고만 (F-ANAL-03)
     outs: dict[uuid.UUID, list[tuple[date, int]]] = defaultdict(list)
     usage_qty: dict[uuid.UUID, float] = defaultdict(float)
@@ -258,9 +266,9 @@ def compute_company(
         )
     ):
         if maintenance_id is None:
-            outs[part_id].append((occurred_at.astimezone(KST).date(), -qty))
+            outs[owner(part_id)].append((occurred_at.astimezone(KST).date(), -qty))
         if occurred_at >= year_ago:
-            usage_qty[part_id] += -qty
+            usage_qty[owner(part_id)] += -qty
 
     equipment = {
         e.id: e
@@ -305,10 +313,12 @@ def compute_company(
         )
     ):
         days = max(0, (received_at - ordered_at).days)
-        lead_by_pair[(part_id, supplier_id)].append(days)
+        lead_by_pair[(owner(part_id), supplier_id)].append(days)
         lead_by_supplier[supplier_id].append(days)
     # 입고 예정 O: 열린 발주(승인됨·발주됨·부분입고)의 미입고 수량 (F-ANAL-09)
-    incoming = open_qty(session, [p.id for p in parts])
+    incoming: dict[uuid.UUID, int] = defaultdict(int)
+    for part_id, qty in open_qty(session, [p.id for p in parts] + list(owners)).items():
+        incoming[owner(part_id)] += qty
 
     priced = all(default_terms(p) for p in parts)
     usage = {p.id: usage_qty[p.id] * (default_terms(p).unit_price if priced else 1) for p in parts}

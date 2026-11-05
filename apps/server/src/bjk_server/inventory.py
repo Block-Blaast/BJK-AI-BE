@@ -34,6 +34,21 @@ def stock_of(session: Session, part_id: uuid.UUID) -> int:
     return int(total or 0)
 
 
+def with_merged_ids(session: Session, part_id: uuid.UUID) -> list[uuid.UUID]:
+    """이 부품과 이 부품으로 병합된 부품 id. 원장·발주 행은 병합 뒤에도 흡수된 부품에 남는다."""
+    return [part_id, *session.scalars(select(Part.id).where(Part.merged_into == part_id))]
+
+
+def merged_owners(session: Session, company_id: uuid.UUID) -> dict[uuid.UUID, uuid.UUID]:
+    """병합된 부품 id → 대표 부품 id. 병합 사슬은 만들지 않으므로 한 단계다(F-LEDGER-02)."""
+    rows = session.execute(
+        select(Part.id, Part.merged_into).where(
+            Part.company_id == company_id, Part.merged_into.is_not(None)
+        )
+    )
+    return {part_id: owner for part_id, owner in rows}
+
+
 def lock_part_stock(session: Session, company_id: uuid.UUID, part_id: uuid.UUID) -> bool:
     """재고를 바꾸는 모든 경로가 원장 추가 전에 잡는 부품 행 잠금 (#69).
 

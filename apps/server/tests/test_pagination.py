@@ -1,5 +1,5 @@
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 import pytest
 from bjk_server.db.models import Company, Part
@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 
 def test_cursor_round_trip_keeps_types():
-    values = [datetime(2026, 11, 4, 10, 0, tzinfo=UTC), uuid.uuid4(), 3, "a"]
+    values = [datetime(2026, 11, 4, 10, 0, tzinfo=UTC), date(2026, 11, 4), uuid.uuid4(), 3, "a"]
     assert decode_cursor(encode_cursor(values)) == values
 
 

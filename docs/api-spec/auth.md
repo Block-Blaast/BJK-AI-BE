@@ -2,6 +2,34 @@
 
 토큰 형식과 역할 규칙은 [common.md](common.md#인증과-회사-격리) 참고.
 
+## AUTH-01 POST /api/v1/auth/owner/signup
+
+- 권한: 공개. 사장님 가입과 회사 생성.
+- 회사 코드(6자, 헷갈리는 글자 0·O·1·I·L 제외)를 새로 만들고, 기본 설정(SYS-01 기본값)과 기본 카테고리 4종(F-SETUP-03)을 함께 넣는다.
+- 이메일은 앞뒤 공백을 지우고 소문자로 저장한다. 대소문자만 다른 이메일은 같은 이메일로 본다.
+- 회사가 정해지기 전이라 새 회사 ID를 먼저 정해 트랜잭션의 회사로 지정한 뒤 RLS 안에서 넣는다.
+- IP당 시간당 10회. 실패한 요청도 횟수에 포함한다.
+
+```json
+// Request
+{ "company_name": "한서정밀", "name": "김사장", "email": "owner@hanseo.kr", "password": "********" }
+
+// 201 Response
+{
+  "access_token": "eyJ...", "refresh_token": "eyJ...", "expires_in": 900,
+  "user": { "id": "...", "name": "김사장", "role": "owner" },
+  "company": { "id": "...", "name": "한서정밀", "code": "HS7F3K" }
+}
+```
+
+| 상황 | 응답 |
+| --- | --- |
+| 비밀번호 8자 미만, 이메일 형식 오류, 빈 이름·회사 이름 | 400 `VALIDATION_ERROR` |
+| 이미 가입된 이메일 (동시 가입 포함) | 409 `EMAIL_TAKEN` |
+| 시간당 10회 초과 | 429 `RATE_LIMITED`, `Retry-After` 헤더 |
+
+- 명세에 없어 정한 것: 가입 호출 제한(IP당 시간당 10회), 이메일 형식은 `@`와 도메인 점 포함 여부만 확인.
+
 ## AUTH-02 POST /api/v1/auth/login
 
 - 권한: 공개. 사장님·관리자 이메일 로그인.

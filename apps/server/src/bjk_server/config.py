@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     # 마이그레이션·시드용 소유자 계정. 비우면 database_url을 쓴다.
     admin_database_url: str | None = None
 
+    # 배치 예약 스케줄러 동시 실행 작업 수. DB 연결 풀도 같은 크기로 잡는다.
+    scheduler_workers: int = 2
+
     jwt_secret: str = DEV_JWT_SECRET
     access_token_minutes: int = 15
     refresh_token_days: int = 14

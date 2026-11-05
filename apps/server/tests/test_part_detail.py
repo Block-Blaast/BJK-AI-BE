@@ -9,6 +9,7 @@ from bjk_server.seed.demo import PARTS, demo_id
 from sqlalchemy.orm import Session
 
 from .conftest import auth_header
+from .test_nightly import add_hidden_twin
 
 NIGHTLY_AT = datetime(2026, 11, 3, 18, 0, tzinfo=UTC)  # 2026-11-04 03:00 KST
 
@@ -74,6 +75,15 @@ def test_detail_after_nightly_shows_latest_metrics(client, fresh):
     supplier = body["supplier_metrics"][0]
     assert supplier["LT90"] == m["default_supplier"]["LT90"]
     assert supplier["samples"] is not None
+
+
+def test_detail_after_nightly_splits_hidden_stock(client, fresh):
+    add_hidden_twin(fresh, 800, counted_days_ago=14)
+    result = run_job(fresh.app, "nightly", "manual", now=NIGHTLY_AT)
+    assert result.status == "ok", result.error
+    body = client.get(_url("6205"), headers=auth_header("worker")).json()
+    assert {k: body["stock"]["hidden"][k] for k in ("H_c", "H_u")} == {"H_c": 800, "H_u": 0}
+    assert body["metrics"]["R"] == 0
 
 
 def test_two_suppliers_are_listed_by_name(client, fresh):

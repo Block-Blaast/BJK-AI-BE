@@ -22,6 +22,8 @@ from bjk_review.models import (
     RiskIfNotOrdered,
     SupplierOffer,
 )
+from bjk_review.opinion import Opinion, finalize_opinion, template_opinion, to_opinion_request
+from bjk_review.verify import verify_opinion
 
 __all__ = [
     "AlternativeLine",
@@ -39,7 +41,12 @@ __all__ = [
     "ReviewSettings",
     "ReviewSnapshot",
     "RiskIfNotOrdered",
+    "Opinion",
     "SupplierOffer",
+    "finalize_opinion",
     "review_hash",
     "run_review",
+    "template_opinion",
+    "to_opinion_request",
+    "verify_opinion",
 ]

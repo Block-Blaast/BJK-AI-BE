@@ -5,44 +5,26 @@ LLM은 문장만 쓴다. 판정 표시(첫 줄 머리)와 계산 기준 시각(�
 """
 
 import json
-from zoneinfo import ZoneInfo
 
 from bjk_contracts import (
     AiMeta,
-    CheckLevel,
     FallbackReason,
     LlmPurpose,
     OpinionRequest,
     OpinionResponse,
 )
+from bjk_contracts.opinion_format import (
+    CHECK_NAMES,
+    FLAG_NAMES,
+    HOLD_REASON_NAMES,
+    LEVEL_NAMES,
+    VERDICT_NAMES,
+    render_opinion,
+)
 from pydantic import BaseModel
 
 from bjk_ai.config import Settings
 from bjk_ai.gateway import AttemptFailed, CallLog, LlmGateway, call_with_retry, usage_from
-
-SEOUL = ZoneInfo("Asia/Seoul")
-
-VERDICT_NAMES = {"ok": "적정", "revise": "수정 권고", "hold": "보류"}
-FLAG_NAMES = {"urgent": "긴급", "caution": "주의", "alternative": "대안"}
-LEVEL_NAMES = {"urgent": "긴급", "warning": "경고", "info": "정보"}
-CHECK_NAMES = {
-    "C-01": "수량 과다",
-    "C-02": "장기 재고화",
-    "C-03": "중복 발주",
-    "C-04": "숨은 재고",
-    "C-05": "단가 이상",
-    "C-06": "더 싼 공급사",
-    "C-07": "수량 부족",
-    "C-08": "마감 임박",
-    "C-09": "외부 리스크",
-}
-HOLD_REASON_NAMES = {
-    "part_unresolved": "부품을 확정하지 못함",
-    "supplier_unresolved": "공급사를 특정하지 못하고 기본 공급사도 없음",
-    "no_demand_data": "사용 기록·정비 일정·사용 추정치가 모두 없음",
-}
-# 의견서의 체크 순서: 긴급 → 경고 → 정보 (F-REVIEW-08)
-LEVEL_ORDER = {CheckLevel.URGENT: 0, CheckLevel.WARNING: 1, CheckLevel.INFO: 2}
 
 SYSTEM_PROMPT = """\
 너는 영세 제조 공장 사장님께 올리는 발주 검토 의견서의 문장을 쓴다.
@@ -50,7 +32,9 @@ SYSTEM_PROMPT = """\
 
 반드시 지킬 것:
 - 입력에 있는 숫자만 쓴다. 새로 계산하거나(합, 차, 비율, 개월 수 등) 반올림하거나 추정하지 않는다.
-- 금액은 "540,000원", 수량은 "10개", 날짜는 "11월 8일"처럼 쓴다.
+- 금액은 "540,000원", 수량은 "10개", 날짜는 "11월 8일"처럼 쓴다. "2026-11-08" 형식은 쓰지 않는다.
+- r_lead·r_price(위험도)는 숫자로 쓰지 않고 1 이상이면 "주의", 2 이상이면 "높음"으로 쓴다.
+  r_lead는 해상운임 등 납기 위험, r_price는 환율 등 가격 위험이다.
 - 판정을 바꾸거나 다르게 해석하지 않는다.
 - 판정 단어([수정 권고] 등)는 쓰지 않는다. 머리는 따로 붙는다.
 - 입력에 없는 사실(뉴스, 시세, 공급사 사정 등)을 덧붙이지 않는다.
@@ -59,6 +43,8 @@ SYSTEM_PROMPT = """\
 출력 필드:
 - summary: 판정의 이유를 한 문장으로 요약
 - checks: 입력의 체크마다 정확히 하나씩, code와 근거 문장. 입력에 없는 체크는 쓰지 않는다.
+  문장에 그 체크 이름(name, 예: "수량 부족", "외부 리스크")이나 그 뜻이 드러나게 쓴다.
+  facts의 기호를 다른 기호로 바꿔 부르지 않는다(Q는 요청 수량, P는 다른 열린 요청 수량).
 - proposal: 수정안과 금액을 한두 문장으로. 입력에 수정안이 없으면 null
   ("이번 발주 불필요"면 그렇게 쓰고 절감액을 적는다.
    saving이 음수면 추가 비용과 피하는 예상 손실을 적는다)
@@ -109,18 +95,6 @@ def build_prompt(request: OpinionRequest) -> str:
     return prompt
 
 
-def header(request: OpinionRequest) -> str:
-    names = [VERDICT_NAMES[request.verdict], *(FLAG_NAMES[f] for f in request.flags)]
-    return "[" + " · ".join(names) + "]"
-
-
-def footer(request: OpinionRequest) -> str:
-    computed_at = request.computed_at
-    if computed_at.tzinfo is not None:
-        computed_at = computed_at.astimezone(SEOUL)
-    return f"계산 기준: {computed_at:%Y-%m-%d %H:%M}"
-
-
 def _clean(value: str | None) -> str | None:
     if value is None:
         return None
@@ -140,21 +114,14 @@ def assemble(request: OpinionRequest, output: _LlmOpinion) -> str:
     if summary is None or set(sentences) != {c.code for c in request.checks}:
         raise AttemptFailed(FallbackReason.SCHEMA_INVALID)
 
-    lines = [f"{header(request)} {summary}"]
-    ordered = sorted(request.checks, key=lambda c: LEVEL_ORDER[c.level])
-    lines += [f"- {sentences[c.code]}" for c in ordered]
-    proposal = _clean(output.proposal) if request.proposal is not None else None
-    if proposal:
-        lines.append(f"수정안: {proposal}")
-    if risk := _clean(output.risk):
-        lines.append(f"미발주 시: {risk}")
-    alternatives = _clean(output.alternatives) if request.alternatives else None
-    if alternatives:
-        lines.append(f"대안: {alternatives}")
-    if request.data_mode == "estimated":
-        lines.append("※ 사용 기록이 부족해 추정치 기반으로 계산했습니다.")
-    lines.append(footer(request))
-    return "\n".join(lines)
+    return render_opinion(
+        request,
+        summary=summary,
+        sentences=sentences,
+        proposal=_clean(output.proposal),
+        risk=_clean(output.risk),
+        alternatives=_clean(output.alternatives),
+    )
 
 
 async def write_opinion(

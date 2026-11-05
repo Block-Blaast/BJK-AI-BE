@@ -1,10 +1,14 @@
 """오늘 활동 목록·채팅 인박스 (W-01, F-AUDIT-06, #275)."""
 
+from concurrent.futures import Executor, Future
 from datetime import datetime, timedelta
 
 import pytest
 from bjk_server import clock
+from bjk_server.reviews import drafts
+from bjk_server.reviews.service import ReviewRunner
 from bjk_server.seed.demo import demo_id
+from sqlalchemy.orm import sessionmaker
 
 from .conftest import auth_header
 from .test_count_requests import NOW, _request, flags  # noqa: F401
@@ -12,9 +16,20 @@ from .test_count_requests import NOW, _request, flags  # noqa: F401
 P6205 = demo_id("part", "6205")
 
 
+class _Inline(Executor):
+    def submit(self, fn, /, *args, **kwargs):
+        future: Future = Future()
+        future.set_result(fn(*args, **kwargs))
+        return future
+
+
 @pytest.fixture(autouse=True)
-def _clock(monkeypatch):
+def _clock(monkeypatch, demo_db):
     monkeypatch.setattr(clock, "utcnow", lambda: NOW)
+    # 출고로 생긴 재고 부족 초안 검토를 커밋 직후 같은 스레드에서 끝낸다. 백그라운드로 두면
+    # 다음 테스트의 시드 초기화(TRUNCATE)와 겹쳐 교착 상태가 난다.
+    scope = sessionmaker(demo_db.app, expire_on_commit=False).begin
+    monkeypatch.setattr(drafts, "request_runner", lambda db: ReviewRunner(scope, None, _Inline()))
 
 
 def _activity(client, user="manager"):

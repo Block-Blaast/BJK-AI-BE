@@ -2,7 +2,7 @@
 
 - 날짜: 2026-11-05
 - 영역: AI (검토 엔진)
-- 관련: Issue #77, 브랜치 `feat/opinion-verify/#77`(#73 브랜치 위에 쌓음), F-REVIEW-08, REV-02 `opinion`
+- 관련: Issue #77, Draft PR #78(→ #73 브랜치), 브랜치 `feat/opinion-verify/#77`(#73 브랜치 위에 쌓음), F-REVIEW-08, REV-02 `opinion`
 
 ## 목적
 

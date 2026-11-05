@@ -9,7 +9,7 @@ python -m bjk_server.jobs nightly
 | 이름 | 시각 (Asia/Seoul) | 구현 |
 | --- | --- | --- |
 | `nightly` | 매일 03:00 | 외부 지표 위험도 → 부품 근거 지표 → 장부 검증 → 빈 임베딩 채우기 |
-| `missed-scan` | 매일 07:00 | 미구현 |
+| `missed-scan` | 매일 07:00 | 놓친 발주 초안 생성 → 검토 |
 | `order-check` | 매일 07:00 | 미구현 |
 | `briefing` | 매일 07:30 | 미구현 |
 | `weekly-merge` | 월요일 03:30 | 중복 부품 후보 저장, 한쪽이 병합된 열린 후보 종료([merge.md](merge.md)) |
@@ -61,3 +61,18 @@ python -m bjk_server.jobs nightly
 - 근거 지표 계산 뒤 장부 검증 규칙 5종을 실행한다([audit.md](audit.md)). 요약의 `audit_flags_created`는 새로 만든 의심 항목 수다.
 - `AI_BASE_URL`이 있으면 임베딩이 없는 부품(병합 제외)·별칭을 100개씩 묶어 채운다. 요약의 `embeddings_filled`는 채운 행 수다.
 - 재고 요약 대조(F-LEDGER-02)는 요약 도입 시 더한다.
+
+## missed-scan: 놓친 발주 스캔
+
+기능명세서 F-MISSED-01 기준. 회사마다 최신 근거 지표(`part_metrics`)에서 대상 부품을 골라 시스템 초안 검토(`entry: missed_draft`, 요청자 없음)를 만든다.
+
+| 조건 | 값 |
+| --- | --- |
+| 결품 확률 | `p_out` ≥ `system.missed_p_out_min`(기본 0.3) |
+| 발주 마감 | `t_deadline` ≤ 오늘 + `review.c08_days`(기본 5일, C-08과 같은 기준) |
+| 권장 발주량 | R > 0 (R = 0이면 초안을 만들지 않음) |
+| 중복 방지 | 같은 부품의 열린 검토(`reviewing`, `reviewed`, `held`)가 있거나, 오늘(Asia/Seoul) `accept_no_order`로 닫힌 검토가 있으면 제외 |
+
+- 초안 원안: 수량 R, 공급사는 기본 공급사, 단가는 비움(등록 단가 사용). 우선순위(P_out × L) 높은 순으로 만든다.
+- 초안은 작업 트랜잭션과 함께 커밋되고, 검토([reviews.md](reviews.md) 검토 실행)는 커밋 직후 같은 프로세스에서 하나씩 끝까지 돈다. 요약 `{"companies", "drafts_created"}`.
+- 현재 구현 범위: 열린 발주 제외는 발주 테이블 연결 전이라 하지 않는다(`missed_scan.BLOCKERS`에 더할 자리).

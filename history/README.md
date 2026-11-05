@@ -4,6 +4,7 @@ AI·server 영역 작업 기록 색인. 작성 규칙은 [docs/ai-work-rules.md]
 
 | 날짜 | 파일 | 내용 |
 | --- | --- | --- |
+| 2026-11-05 | [2026-11-05-81-stock-changed-all-paths.md](2026-11-05-81-stock-changed-all-paths.md) | 재고가 바뀌는 모든 경로(정정·실사 조정·이관 확정·등록 초기 재고·병합)에 `stock.changed` 발행 |
 | 2026-11-05 | [2026-11-05-80-review-external-factors.md](2026-11-05-80-review-external-factors.md) | 검토 상세 REV-02에 외부 요인(운임·환율 위험도·단계, 연휴, C-09 적용) 항상 포함 |
 | 2026-11-05 | [2026-11-05-79-demo-seed-v2.md](2026-11-05-79-demo-seed-v2.md) | 시연 시드 확장 demo_v2(가상 공장 부품 100종·52주 이력·발주 입고, 시드 뒤 배치·예시 검토) |
 | 2026-11-05 | [2026-11-05-78-twin-api.md](2026-11-05-78-twin-api.md) | 3D 창고 배치·예측 API(명세 밖, 프론트 목업 대체, 시드 더미 배치) |

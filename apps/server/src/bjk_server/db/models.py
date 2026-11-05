@@ -175,6 +175,34 @@ class Part(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class MergeCandidate(Base):
+    """중복 등록 의심 부품 쌍 (F-MATCH-03, MAT-01). part_a_id < part_b_id로 한 쌍을 한 행에 둔다."""
+
+    __tablename__ = "merge_candidates"
+    __table_args__ = (
+        UniqueConstraint("company_id", "part_a_id", "part_b_id"),
+        CheckConstraint("part_a_id < part_b_id", name="pair_order"),
+        CheckConstraint(
+            "status IN ('open', 'count_requested', 'merged', 'different', 'closed')",
+            name="status",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = _id()
+    company_id: Mapped[uuid.UUID] = _company_id()
+    part_a_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("parts.id", ondelete="CASCADE"))
+    part_b_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("parts.id", ondelete="CASCADE"))
+    score: Mapped[float] = mapped_column(Float)
+    reason: Mapped[str] = mapped_column(String(64))
+    # open: 결정 대기, count_requested: 실사 후 결정, merged·different: 결정됨,
+    # closed: 다른 병합으로 한쪽이 사라져 더 볼 필요 없음
+    status: Mapped[str] = mapped_column(String(16), server_default="open")
+    representative_part_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("parts.id"))
+    decided_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = _created_at()
+
+
 class PartAlias(Base):
     __tablename__ = "part_aliases"
     __table_args__ = (

@@ -33,3 +33,32 @@ HTTP API가 아니라 채팅 발주 요청(CHAT-04), 재고 부족 초안, 놓�
 | 연휴 | 오늘부터 기본 공급사 LT90 사이에 걸치는 연휴(카테고리 납기 요인의 국내·중국 명절, 기본 공급사 휴무) |
 
 - 현재 구현 범위: 열린 발주(O, `open_orders`)와 최근 구매 단가 통계(`price_stats`)는 발주 테이블 연결 전이라 비어 있다(C-03 열린 발주, C-05 건너뜀). 병합 부품 재고는 S에 더하지 않는다. 미확인 숨은 재고의 실사 요청은 결과 `count_requests`에만 담고 `count_requests` 행은 만들지 않는다.
+
+## REV-04 POST /api/v1/reviews/{id}/recheck
+
+- 권한: manager 이상. worker는 403 `FORBIDDEN_ROLE`.
+- 저장한 최근 스냅샷과 검토 기준값으로 직접 수정 값을 다시 판정한다(F-REVIEW-09). 저장하지 않는다.
+
+```json
+// Request
+{ "qty": 10, "supplier_id": "...", "unit_price": 18000 }
+
+// 200 Response
+{
+  "verdict": "ok",
+  "flags": ["urgent", "alternative"],
+  "checks": [ { "code": "C-08", "level": "urgent", "facts": { "LT90": 10, "cause": "deadline", "t_need": "2026-11-17", "deadline": "2026-11-07", "days_left": 3 } } ],
+  "proposal": { "qty": 10, "supplier": { "id": "...", "name": "공급사 A" }, "unit_price": 18000, "total": 180000, "saving": 0, "no_order": false, "basis": [] },
+  "recheck_hash": "sha256:..."
+}
+```
+
+- `qty`는 0 이상, `supplier_id`·`unit_price`는 생략 가능(기본 공급사·등록 단가).
+- 같은 스냅샷·수정 값이면 같은 `recheck_hash`. 원안 값 그대로면 저장된 스냅샷 해시와 같다. 결정(`approve_edited`)에서 이 값을 대조한다.
+- `proposal` 모양은 REV-02와 같다.
+
+| 상황 | 응답 |
+| --- | --- |
+| `reviewed`가 아닌 검토(검토중·보류·결정됨) | 409 `REVIEW_NOT_DECIDABLE`, `detail.status` |
+| 없는 검토, 다른 회사 검토 | 404 `NOT_FOUND` |
+| 수량 음수 등 형식 오류 | 400 `VALIDATION_ERROR` |

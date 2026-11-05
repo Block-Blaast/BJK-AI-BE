@@ -45,6 +45,27 @@ def test_app_role_cannot_bypass_rls(app_session):
     assert row == (False, False)
 
 
+def test_every_company_table_has_rls_policy(app_session):
+    """company_id 열이 있는 테이블은 모두 RLS와 회사 격리 정책을 가진다."""
+    missing = app_session.scalars(
+        text(
+            """
+            SELECT c.relname FROM pg_class c
+            JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public'
+            JOIN pg_attribute a ON a.attrelid = c.oid AND a.attname = 'company_id'
+            WHERE c.relkind = 'r' AND (
+                NOT c.relrowsecurity
+                OR NOT EXISTS (
+                    SELECT FROM pg_policy p
+                    WHERE p.polrelid = c.oid AND p.polname = 'tenant_isolation'
+                )
+            )
+            """
+        )
+    ).all()
+    assert missing == []
+
+
 def test_without_company_nothing_is_visible(app_session, two_companies):
     assert app_session.scalar(select(func.count()).select_from(Part)) == 0
     assert app_session.scalar(select(func.count()).select_from(Company)) == 0

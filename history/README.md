@@ -4,6 +4,7 @@ AI·server 영역 작업 기록 색인. 작성 규칙은 [docs/ai-work-rules.md]
 
 | 날짜 | 파일 | 내용 |
 | --- | --- | --- |
+| 2026-11-05 | [2026-11-05-18-embedding-dim-check.md](2026-11-05-18-embedding-dim-check.md) | server 1024차원 변경(#157·#159) 대조, #159 실제 HTTP·DB 확인, 두 PR 충돌 |
 | 2026-11-05 | [2026-11-05-17-ai-stack-merge.md](2026-11-05-17-ai-stack-merge.md) | AI PR 10개 dev 머지, 색인 충돌 해결, DB 포함 500개 통과, server AI 연동은 아직 없음 |
 | 2026-11-05 | [2026-11-05-16-ai-integration-doc.md](2026-11-05-16-ai-integration-doc.md) | server ↔ AI 연동 안내 문서, 예시 코드 실행 확인 |
 | 2026-11-05 | [2026-11-05-15-stack-sync-dev.md](2026-11-05-15-stack-sync-dev.md) | AI PR 스택을 최신 dev에 맞춤(merge), compose ai 설정, DB 포함 385개 통과 |

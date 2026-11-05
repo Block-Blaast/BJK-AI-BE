@@ -1,3 +1,7 @@
+import asyncio
+import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Literal
 
 from bjk_contracts import (
@@ -28,6 +32,18 @@ class HealthResponse(BaseModel):
 
 AUTO = "auto"
 
+logger = logging.getLogger(__name__)
+
+
+async def warm_up(gateway: LlmGateway, timeout: float) -> None:
+    """실패해도 서비스는 그대로 뜬다. 첫 요청이 조금 느릴 뿐이다."""
+    try:
+        await asyncio.wait_for(gateway.warm_up(), timeout=timeout)
+    except Exception as exc:
+        logger.warning("워밍업 실패: %s", type(exc).__name__)
+    else:
+        logger.info("워밍업 완료")
+
 
 def create_app(
     settings: Settings | None = None, gateway: LlmGateway | None | Literal["auto"] = AUTO
@@ -37,7 +53,17 @@ def create_app(
     if gateway == AUTO:
         gateway = build_gateway(settings)
 
-    app = FastAPI(title="발주콕 ai")
+    @asynccontextmanager
+    async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+        # 요청과 같은 이벤트 루프에서 데워야 루프별 클라이언트(_PerLoopClient)를 다시 쓴다.
+        task = None
+        if settings.warm_up and gateway is not None and hasattr(gateway, "warm_up"):
+            task = asyncio.create_task(warm_up(gateway, settings.warm_up_timeout_seconds))
+        yield
+        if task is not None:
+            task.cancel()
+
+    app = FastAPI(title="발주콕 ai", lifespan=lifespan)
     app.state.settings = settings
     app.state.gateway = gateway
 

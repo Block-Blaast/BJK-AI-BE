@@ -119,6 +119,22 @@ def test_two_failed_rewrites_end_with_template(case):
     assert len(outcome.opinion.feedback) == 3
 
 
+def test_slow_first_opinion_skips_rewrite_to_stay_within_review_time(case, monkeypatch):
+    # 검토 10초 기준: 첫 작성이 REWRITE_WITHIN_SECONDS를 넘기면 다시 쓰지 않고 양식 의견서로 끝낸다.
+    from bjk_review import graph
+
+    now = iter([100.0, 100.0 + graph.REWRITE_WITHIN_SECONDS + 0.1])
+    monkeypatch.setattr(graph, "clock", lambda: next(now))
+    snapshot, order = case("vbelt")
+    writer = Writer("bad", "good")
+    outcome, steps, _ = run(snapshot, order, writer)
+
+    assert len(writer.requests) == 1
+    assert steps.count("opinion") == 1
+    assert (outcome.opinion.source, outcome.opinion.verified) == ("template", True)
+    assert len(outcome.opinion.feedback) == 1
+
+
 @pytest.mark.parametrize("kind", [None, "raise"])
 def test_ai_unavailable_ends_with_template(case, kind):
     snapshot, order = case("vbelt")

@@ -4,9 +4,21 @@ AI·server 영역 작업 기록 색인. 작성 규칙은 [docs/ai-work-rules.md]
 
 | 날짜 | 파일 | 내용 |
 | --- | --- | --- |
-| 2026-11-05 | [2026-11-05-22-hidden-stock-confirmed.md](2026-11-05-22-hidden-stock-confirmed.md) | nightly H_c·H_u 분리, 최근 실사·의심 여부 판정 순수 함수 |
-| 2026-11-05 | [2026-11-05-21-part-detail-dev-merge.md](2026-11-05-21-part-detail-dev-merge.md) | #137 dev 반영, 충돌 양쪽 유지, 마이그레이션 0020~0022로 변경, 647개 통과 |
+| 2026-11-05 | [2026-11-05-29-review-run.md](2026-11-05-29-review-run.md) | 검토 실행·저장 서비스, 스냅샷 수집, 의견서 ai 호출 |
+| 2026-11-05 | [2026-11-05-28-hidden-stock-confirmed.md](2026-11-05-28-hidden-stock-confirmed.md) | nightly H_c·H_u 분리, 최근 실사·의심 여부 판정 순수 함수 |
+| 2026-11-05 | [2026-11-05-27-notifications.md](2026-11-05-27-notifications.md) | 알림 저장·목록·읽음(#183), 중복 방지와 조용한 시간 보류, 마이그레이션 0025 |
+| 2026-11-05 | [2026-11-05-26-part-excel-import.md](2026-11-05-26-part-excel-import.md) | 부품 엑셀 이관 SET-01·02, ai 제안과 정규식 대체 경로, DB 포함 588개 통과 |
+| 2026-11-05 | [2026-11-05-25-part-detail-dev-merge.md](2026-11-05-25-part-detail-dev-merge.md) | #137 dev 반영, 충돌 양쪽 유지, 마이그레이션 0021~0023으로 변경 |
+| 2026-11-05 | [2026-11-05-25-expired-rows-cleanup.md](2026-11-05-25-expired-rows-cleanup.md) | `cleanup` 배치(#185), 호출 제한·PIN 잠금·멱등 키 만료 행 삭제 |
+| 2026-11-05 | [2026-11-05-25-expired-rows-cleanup.md](2026-11-05-25-expired-rows-cleanup.md) | `cleanup` 배치(#185), 호출 제한·PIN 잠금·멱등 키 만료 행 삭제 |
+| 2026-11-05 | [2026-11-05-24-part-detail-dev-merge.md](2026-11-05-24-part-detail-dev-merge.md) | #137 dev 반영, 충돌 양쪽 유지, 마이그레이션 0021~0023으로 변경 |
+| 2026-11-05 | [2026-11-05-24-llm-daily-token-quota.md](2026-11-05-24-llm-daily-token-quota.md) | 회사별 LLM 일일 토큰 상한(#172), `system.llm_daily_tokens`, 초과 시 `quota_exceeded` 대체 |
+| 2026-11-05 | [2026-11-05-23-chat-intent-handlers.md](2026-11-05-23-chat-intent-handlers.md) | 채팅 의도별 처리기 파일 분리와 등록 표(#174), 554개 통과 |
+| 2026-11-05 | [2026-11-05-22-chat-idempotency-port.md](2026-11-05-22-chat-idempotency-port.md) | #68 멱등 요청 사용자·본문 검증 dev 이식, 마이그레이션 0020, 566개 통과 |
+| 2026-11-05 | [2026-11-05-21-llm-usage-docs.md](2026-11-05-21-llm-usage-docs.md) | LLM 사용처 문구를 ai 엔드포인트 네 곳에 맞춤, server 할 일 목록 정정(#170) |
+| 2026-11-05 | [2026-11-05-21-ai-warmup-opinion-budget.md](2026-11-05-21-ai-warmup-opinion-budget.md) | ai 시작 시 Bedrock 워밍업, 의견서 예산 7초, 검토 10초 안에서만 재작성 |
 | 2026-11-05 | [2026-11-05-20-inventory-concurrency-port.md](2026-11-05-20-inventory-concurrency-port.md) | #69 부품 행 잠금 이식, 채팅 기록·원장 정정·실사 응답에 공통 잠금 적용 |
+| 2026-11-05 | [2026-11-05-20-bedrock-runtime-claude.md](2026-11-05-20-bedrock-runtime-claude.md) | 오사카 Mantle 없음 → Claude를 bedrock-runtime·global 추론 프로필로 변경 |
 | 2026-11-05 | [2026-11-05-19-embedding-migration-main.md](2026-11-05-19-embedding-migration-main.md) | main 0012(1024)과 dev 0019 충돌 해결, 0019는 1024가 아닐 때만 변경, 554개 통과 |
 | 2026-11-05 | [2026-11-05-18-server-ai-integration.md](2026-11-05-18-server-ai-integration.md) | server ↔ ai 채팅 해석·임베딩 연동(#154), llm_calls, vector(1024), RRF 매칭, DB 포함 552개 통과 |
 | 2026-11-05 | [2026-11-05-18-embedding-dim-check.md](2026-11-05-18-embedding-dim-check.md) | server 1024차원 변경(#157·#159) 대조, #159 실제 HTTP·DB 확인, 두 PR 충돌 |

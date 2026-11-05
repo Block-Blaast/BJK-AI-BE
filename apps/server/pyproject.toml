@@ -4,8 +4,17 @@ version = "0.1.0"
 description = "발주콕 API 서버"
 requires-python = ">=3.12"
 dependencies = [
+    "alembic>=1.14",
+    "apscheduler>=3.11,<4",
+    "argon2-cffi>=23.1",
     "bjk-contracts",
     "fastapi>=0.115",
+    "numpy>=2.1",
+    "pgvector>=0.4",
+    "psycopg[binary]>=3.2",
+    "pydantic-settings>=2.6",
+    "pyjwt>=2.10",
+    "sqlalchemy>=2.0.36",
     "uvicorn[standard]>=0.32",
 ]
 

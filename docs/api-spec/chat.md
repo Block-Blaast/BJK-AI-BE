@@ -67,7 +67,8 @@
 | `OUT`, `IN` | 위 카드 |
 | `QUERY` | 카드 없음. 부품이 하나면 현재 재고·소진 예상일과 각 기준 시각, 여럿이면 후보 이름 |
 | `OTHER` | 카드 없음. "기록, 조회, 발주 요청을 도와드려요." |
-| `PURCHASE_REQUEST`, `MAINTENANCE_DONE`, `COUNT` | 현재 구현 범위: `OTHER`와 같은 안내. 검토·정비·실사 기능에서 연결 |
+| `MAINTENANCE_DONE` | 설비의 가장 가까운 미완료 정비(오늘과 예정일 차이가 가장 작은 것, 같으면 앞선 일정)를 `confirm` 카드(`maintenance: {id, scheduled_date}`)로 보여준다. 설비를 모르면 "어느 설비의 정비인지 알려 주세요.", 미완료 정비가 없으면 안내만 한다 |
+| `PURCHASE_REQUEST`, `COUNT` | 현재 구현 범위: `OTHER`와 같은 안내. 검토·실사 기능에서 연결 |
 
 - 출고 수량이 장부 재고보다 많아도 기록은 허용한다. 음수 재고는 장부 검증에서 의심 항목으로 다룬다.
 - 현재 구현 범위: ai 채팅 해석 연동 전이라 기본 해석기(`UnconfiguredInterpreter`)가 항상 실패를 알리고, 모든 메시지는 `form` 카드(`reason: "error"`)로 대체된다. 별칭 후보 순위(ai)도 연동 후 매칭에 더한다.
@@ -113,7 +114,8 @@
 | 다른 사람의 카드, 없는 설비 | 404 `NOT_FOUND` |
 
 - `triggered.audit_flag_id`: 이 기록으로 재고가 0 이상에서 0 미만이 되면 만든(또는 묶은) 장부 의심 항목 ID ([audit.md](audit.md)).
-- 현재 구현 범위: `OUT`·`IN`만 처리한다. `triggered.draft_review_id`(재고 부족 초안), `IN`의 `po_match`·`actual_lead_time_days`는 검토·발주 기능에서 채운다.
+- `MAINTENANCE_DONE` 카드 확정은 SET-09와 같이 완료자·완료 시각(확정 시각)을 남기고 `{ "intent": "MAINTENANCE_DONE", "maintenance_id", "equipment_id", "completed_at", "reply": "정비 완료로 기록했어요." }`를 돌려준다. 이미 완료된 정비는 409 `ALREADY_CONFIRMED`(`detail.status: completed`).
+- 현재 구현 범위: `OUT`·`IN`·`MAINTENANCE_DONE`만 처리한다. `triggered.draft_review_id`(재고 부족 초안), `IN`의 `po_match`·`actual_lead_time_days`는 검토·발주 기능에서 채운다.
 
 ## CHAT-04 POST /api/v1/chat/entries/{id}/cancel
 

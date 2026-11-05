@@ -220,6 +220,31 @@ class Maintenance(Base):
     # [{"part_id": ..., "qty": ...}]. 비어 있으면 설비의 qty_per_maintenance를 쓴다.
     required_parts: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    completed_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = _created_at()
+
+
+class CalendarEvent(Base):
+    """연휴 캘린더 (F-EXT-01). 납기 구간과 겹치면 겹친 일수만큼 납기를 늘린다."""
+
+    __tablename__ = "calendar_events"
+    __table_args__ = (
+        CheckConstraint("scope IN ('KR', 'CN', 'supplier')", name="scope"),
+        CheckConstraint("end_date >= start_date", name="date_order"),
+        CheckConstraint("(scope = 'supplier') = (supplier_id IS NOT NULL)", name="supplier_scope"),
+        Index("ix_calendar_events_company_start", "company_id", "start_date"),
+    )
+
+    id: Mapped[uuid.UUID] = _id()
+    company_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("companies.id", ondelete="CASCADE"))
+    name: Mapped[str] = mapped_column(String(100))
+    start_date: Mapped[date] = mapped_column(Date)
+    end_date: Mapped[date] = mapped_column(Date)
+    # KR: 국내 명절, CN: 중국(춘절 등), supplier: 특정 공급사 휴무
+    scope: Mapped[str] = mapped_column(String(16))
+    supplier_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("suppliers.id", ondelete="CASCADE")
+    )
     created_at: Mapped[datetime] = _created_at()
 
 

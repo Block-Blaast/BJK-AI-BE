@@ -3,10 +3,13 @@ from fastapi import APIRouter
 from bjk_server.api import (
     audit,
     auth,
+    calendar,
     categories,
     chat,
+    equipment,
     external,
     health,
+    maintenance,
     parts,
     suppliers,
     users,
@@ -19,6 +22,9 @@ api_router.include_router(users.router)
 api_router.include_router(parts.router)
 api_router.include_router(categories.router)
 api_router.include_router(suppliers.router)
+api_router.include_router(equipment.router)
+api_router.include_router(maintenance.router)
+api_router.include_router(calendar.router)
 api_router.include_router(chat.router)
 api_router.include_router(audit.router)
 api_router.include_router(external.router)

@@ -41,7 +41,7 @@ python -m bjk_server.jobs nightly
 | --- | --- | --- |
 | 외부 지표 | CSV(`seed/data/external_indicators.csv`, 주간) 적재. z = 최근 13주 변화율 ÷ 과거 13주 변화율의 표준편차, r = min(max(0, z), 4). 상승(운임 상승, 원화 약세)만 위험 | `external_indicators` |
 | 카테고리 위험도 | r_lead = 카테고리 `lead_factors` 지표 r 최대, r_price = `price_factors` 지표 r 최대 | `part_metrics.r_lead`, `r_price` |
-| 납기 | 기본 납기 × (1 + k × r_lead, 수입 의존 부품만) + 납기 구간에 겹치는 공급사 휴무일 | `part_supplier_metrics` |
+| 납기 | 기본 납기 × (1 + k × r_lead, 수입 의존 부품만)에 납기 구간과 겹치는 연휴만큼 연장. 연휴 = 공급사 휴무일 + 공급사 범위 캘린더 + 카테고리 납기 요인(`HOLIDAY_KR` → 국내, `HOLIDAY_CN` → 중국)의 캘린더. 같은 날은 한 번만, 늘어난 구간에 걸린 연휴도 센다 | `part_supplier_metrics` |
 | ABC | 최근 12개월 사용 금액 누적 80% A, 95% B, 나머지 C. 단가 없는 부품이 있으면 사용량 기준(`abc_basis: qty`) | `abc` |
 | 수요 분류 | 정비 연결 출고를 뺀 주간 수요(최대 52주)의 ADI·CV² (1.32 / 0.49), 8주 미만 `insufficient` | `demand_class` |
 | 예측 | smooth·erratic 단순 지수평활, intermittent·lumpy SBA (α = 0.1). m = 주간 예측 × 52 ÷ 12 | `forecast_weekly`, `m` |
@@ -54,7 +54,6 @@ python -m bjk_server.jobs nightly
 현재 구현 범위와 명세 차이:
 
 - 납기 표본: 발주 테이블 전이라 모든 공급사가 기본 납기 하나(표본 0건)로 계산되어 LT50 = LT90이다.
-- 캘린더: `calendar_events`(국내 명절·춘절) 전이라 공급사 휴무일만 납기에 더한다.
 - 숨은 재고: 같은 카테고리·같은 규격 부품의 재고를 H_u로 기록한다. 실사 기록 전이라 H_c는 항상 0이다.
 - 입고 예정 O: 열린 발주 전이라 0이다.
 - 수입 의존: 카테고리(또는 부품 예외)의 수입 의존도가 `high`·`medium`이면 수입 의존으로 본다.

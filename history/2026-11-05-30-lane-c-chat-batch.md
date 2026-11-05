@@ -20,7 +20,7 @@
 
 ## 검증
 
-- dev 머지 후 `REQUIRE_DB_TESTS=1 make test` 682개 통과
+- dev 머지 후 `REQUIRE_DB_TESTS=1 make test` 696개 통과
 - `make lint` 통과
 
 ## 남은 일·확인 필요

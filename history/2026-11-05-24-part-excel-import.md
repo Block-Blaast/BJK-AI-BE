@@ -29,7 +29,7 @@
 ## 검증
 
 - `tests/test_part_imports.py` 14개: ai 정상, 시간 초과·연결 실패·대체 응답·미설정, 첫 이관, 재이관 preview·apply·ignore, 줄 오류, xlsx, 잘못된 파일, 권한
-- `REQUIRE_DB_TESTS=1 make test` 571개 통과, `make lint` 통과
+- `REQUIRE_DB_TESTS=1 make test` 583개 통과, `make lint` 통과
 - 실제 ai 서비스(Bedrock) 호출은 미검증
 
 ## 남은 일·확인 필요

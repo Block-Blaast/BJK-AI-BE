@@ -5,6 +5,8 @@ AI·server 영역 작업 기록 색인. 작성 규칙은 [docs/ai-work-rules.md]
 | 날짜 | 파일 | 내용 |
 | --- | --- | --- |
 | 2026-11-05 | [2026-11-05-40-morning-briefing.md](2026-11-05-40-morning-briefing.md) | 아침 브리핑 DSH-01(#182)과 briefing 배치, 검토 만료·브리핑 알림 |
+| 2026-11-05 | [2026-11-05-48-chat-query-incoming.md](2026-11-05-48-chat-query-incoming.md) | 채팅 재고 조회 답변에 입고 예정 추가(#22), 792개 통과 |
+| 2026-11-05 | [2026-11-05-47-review-decision.md](2026-11-05-47-review-decision.md) | 검토 결정 REV-05와 발주 생성, 결정 직전 스냅샷 갱신, DB 포함 802개 통과 |
 | 2026-11-05 | [2026-11-05-46-review-pdf.md](2026-11-05-46-review-pdf.md) | 결재용 PDF API(REV-07), WeasyPrint·한글 글꼴 |
 | 2026-11-05 | [2026-11-05-45-purchase-order-list-cancel.md](2026-11-05-45-purchase-order-list-cancel.md) | 발주 목록·주문 취소 API(PO-01·04), DB 포함 724개 통과 |
 | 2026-11-05 | [2026-11-05-44-receipt-po-match.md](2026-11-05-44-receipt-po-match.md) | 입고와 발주 대조(`po_match`, 실제 납기, `po_id`), DB 포함 753개 통과 |

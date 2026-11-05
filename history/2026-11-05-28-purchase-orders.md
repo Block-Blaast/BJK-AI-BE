@@ -25,7 +25,7 @@
 ## 검증
 
 - `tests/test_purchase_orders.py` 7개(열린 발주·미입고 수량, 단가 통계, 제약 4종, 회사 격리), `price_stats` 단위 테스트 1개
-- `REQUIRE_DB_TESTS=1 make test` 694개 통과, `make lint` 통과
+- `REQUIRE_DB_TESTS=1 make test` 705개 통과, `make lint` 통과
 
 ## 남은 일·확인 필요
 

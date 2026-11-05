@@ -56,7 +56,7 @@ server에서 AI 기능(ai 서비스 HTTP 엔드포인트 4개, 검토 엔진 `bj
 
 - `intent`: `OUT`, `IN`, `COUNT`, `QUERY`, `PURCHASE_REQUEST`, `MAINTENANCE_DONE`, `OTHER`. 실패면 `intent: null`, `items: []`, `ai.fallback: true` → 폼 입력 카드(F-CHAT-07).
 - 표현만 뽑는다. 부품 매칭, "저번 데" 공급사 해석, 박스 → 개 환산, 되묻기는 server.
-- 품목이 여럿이면 `items`에 나뉘어 온다("볼트 200개, 너트 200개 씀"). server의 `Interpretation`이 품목 하나라 처음에는 첫 품목만 쓰고, 여러 품목 카드는 후속으로 한다.
+- 품목이 여럿이면 `items`에 나뉘어 온다("볼트 200개, 너트 200개 씀"). server는 첫 품목을 `Interpretation` 기본 필드에, 나머지를 `more`에 담고 `OUT`·`IN`은 품목마다 확인 카드를 만든다.
 
 server 포트(`bjk_server/chat/interpreter.py`)에 붙이는 예:
 

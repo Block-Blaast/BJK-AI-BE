@@ -60,7 +60,7 @@ def _interpreter(ai: FakeAi) -> tuple[AiInterpreter, list]:
     return AiInterpreter(ai.client(), COMPANY, usages.append), usages
 
 
-def test_interpreter_uses_first_item_and_reports_usage():
+def test_interpreter_keeps_every_item_and_reports_usage():
     response = ChatParseResponse(
         intent="OUT",
         items=[
@@ -72,7 +72,12 @@ def test_interpreter_uses_first_item_and_reports_usage():
     )
     interpreter, usages = _interpreter(FakeAi(chat={"t": response}))
     assert interpreter.interpret("t") == Interpretation(
-        "OUT", part_text="볼트", qty=2, equipment_text="3호기", unit="박스"
+        "OUT",
+        part_text="볼트",
+        qty=2,
+        equipment_text="3호기",
+        unit="박스",
+        more=(Interpretation("OUT", part_text="너트", qty=200),),
     )
     assert [u.purpose for u in usages] == [LlmPurpose.CHAT_PARSE]
 

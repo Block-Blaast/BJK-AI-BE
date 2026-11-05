@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime, timedelta
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, PrivateAttr, model_validator
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
@@ -20,6 +20,7 @@ from bjk_server.domain.ledger import (
 from bjk_server.errors import ApiError, ErrorCode
 from bjk_server.events import publish
 from bjk_server.inventory import lock_part_stock, stock_of
+from bjk_server.purchasing.receipt import PoMatch, ReceiptMatch, match_receipt
 from bjk_server.security import TokenClaims
 
 # 다른 부품으로 확정된 횟수가 이만큼 쌓이면 모호 별칭 (F-MATCH-02)
@@ -35,6 +36,9 @@ class MovementOut(BaseModel):
     qty: int
     equipment_id: uuid.UUID | None
     maintenance_id: uuid.UUID | None
+    # 입고 대조로 연결된 발주 (F-LEDGER-04)
+    po_id: uuid.UUID | None = None
+    _receipt: ReceiptMatch | None = PrivateAttr(default=None)
 
 
 class AliasLearned(BaseModel):
@@ -55,6 +59,17 @@ class RecordResponse(BaseModel):
     reply: str
     alias_learned: AliasLearned | None = None
     triggered: Triggered = Triggered()
+    # IN만: 열린 발주와 대조한 결과와 실제 납기 (주문 완료 시각이 없으면 null, 납기 표본 제외)
+    po_match: PoMatch | None = None
+    actual_lead_time_days: int | None = None
+
+    @model_validator(mode="after")
+    def _fill_receipt(self) -> "RecordResponse":
+        receipt = self.movement._receipt
+        if self.intent == "IN" and receipt is not None and self.po_match is None:
+            self.po_match = receipt.po_match
+            self.actual_lead_time_days = receipt.actual_lead_time_days
+        return self
 
 
 def to_base_qty(qty: int | None, unit: str | None, pack_qty: int | None) -> int | None:
@@ -157,8 +172,13 @@ def record_movement(
         message_id=message_id,
         occurred_at=now,
     )
+    receipt = match_receipt(db, part, qty, user.user_id, now) if intent == "IN" else None
+    if receipt is not None:
+        movement.po_id = receipt.po_id
     db.add(movement)
     db.flush()
+    # 응답(RecordResponse)의 po_match를 채우려고 원장 행에 대조 결과를 붙여 둔다
+    movement.receipt = receipt
     stock = stock_of(db, part.id)
     publish(db, user.company_id, "stock.changed", {"part_id": str(part.id), "stock": stock})
     action = "출고" if intent == "OUT" else "입고"
@@ -167,11 +187,14 @@ def record_movement(
 
 
 def movement_out(movement: Movement) -> MovementOut:
-    return MovementOut(
+    out = MovementOut(
         id=movement.id,
         type=movement.type,
         part_id=movement.part_id,
         qty=movement.qty,
         equipment_id=movement.equipment_id,
         maintenance_id=movement.maintenance_id,
+        po_id=movement.po_id,
     )
+    out._receipt = getattr(movement, "receipt", None)
+    return out

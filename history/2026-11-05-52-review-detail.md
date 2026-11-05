@@ -25,7 +25,8 @@
 
 - `REQUIRE_DB_TESTS=1 uv run pytest apps/server/tests/test_review_detail.py`: 5개 통과
 - `REQUIRE_DB_TESTS=1 make test`: 749개 통과, `make lint` 통과
+- 레인 A 인계 후 dev(#146) 반영: 검토 실행 서비스가 저장한 행으로 상세 조회 확인, R에 P 차감 반영, `make test` 814개 통과(PDF 모듈은 macOS `make` 환경에서 건너뜀), `make lint` 통과
 
 ## 남은 일·확인 필요
 
-- #146 dev 머지 후 dev를 반영해 저장 구조 재확인
+- 없음

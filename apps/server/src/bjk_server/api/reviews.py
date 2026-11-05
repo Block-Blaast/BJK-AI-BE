@@ -193,18 +193,19 @@ def snapshot_values(values: dict[str, Any], request_qty: int | None) -> dict[str
         ),
         None,
     )
+    p = sum(r["qty"] for r in values.get("open_requests", []))
     return {
         "Q": request_qty,
         "S": stock,
         "O": incoming,
         "H_c": h_c,
         "H_u": h_u,
-        "P": sum(r["qty"] for r in values.get("open_requests", [])),
+        "P": p,
         "m": values.get("m", 0.0),
         "F": values.get("f_period", 0),
         "D95": d95,
         "D99": values["d99"],
-        "R": max(0, d95 - stock - incoming - h_c),
+        "R": max(0, d95 - stock - incoming - h_c - p),
         "MOQ": default["moq"] if default else None,
         "p_mean": values.get("price_stats", {}).get("mean"),
     }
@@ -219,7 +220,7 @@ def get_review(review_id: uuid.UUID, user: CurrentUser, db: TenantDB) -> ReviewD
     snap = db.scalar(
         select(ReviewSnapshot)
         .where(ReviewSnapshot.review_id == review.id)
-        .order_by(ReviewSnapshot.created_at.desc())
+        .order_by(ReviewSnapshot.created_at.desc(), ReviewSnapshot.id)
         .limit(1)
     )
     requester = db.get(User, review.requested_by) if review.requested_by else None

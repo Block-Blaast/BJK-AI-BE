@@ -136,6 +136,34 @@ def test_approve_edited_checks_recheck_hash(client, fresh, at):  # noqa: F811
     assert res.json()["purchase_order"]["qty"] == 12
 
 
+def test_stale_snapshot_saves_fresh_one_before_edited_approval(client, fresh, at):  # noqa: F811
+    """미리 본 해시는 이전 스냅샷 기준이다. 새 스냅샷을 저장해 두고 다시 미리 보면 승인된다."""
+    review_id = _reviewed(fresh)
+    edited = {"qty": 12, "supplier_id": str(SUPPLIER_A), "unit_price": 18000}
+
+    def preview_hash():
+        res = client.post(
+            f"/api/v1/reviews/{review_id}/recheck", json=edited, headers=auth_header("manager")
+        )
+        return res.json()["recheck_hash"]
+
+    at(NOW + timedelta(hours=25))
+    stale = preview_hash()
+    res = _decide(
+        client, review_id, {"action": "approve_edited", "edited": edited, "recheck_hash": stale}
+    )
+    assert (res.status_code, res.json()["code"]) == (409, "SNAPSHOT_REFRESHED")
+    with Session(fresh.admin) as s:
+        count = s.scalar(select(func.count()).where(ReviewSnapshot.review_id == review_id))
+    assert count == 2
+    again = preview_hash()
+    assert again != stale
+    res = _decide(
+        client, review_id, {"action": "approve_edited", "edited": edited, "recheck_hash": again}
+    )
+    assert res.status_code == 201, res.text
+
+
 def test_approve_alternative(client, fresh, at):  # noqa: F811
     review_id = _reviewed(fresh)
     alternatives = _review(fresh, review_id).result["alternatives"]

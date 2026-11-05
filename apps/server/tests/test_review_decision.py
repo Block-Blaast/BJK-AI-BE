@@ -204,7 +204,11 @@ def test_reject_requires_reason(client, fresh, at):  # noqa: F811
     res = _decide(client, review_id, {"action": "reject", "reason": "이번 달 예산 초과"})
     assert res.json()["status"] == "closed"
     with Session(fresh.admin) as s:
-        title = s.scalar(select(Notification.title).where(Notification.target_id == review_id))
+        title = s.scalar(
+            select(Notification.title).where(
+                Notification.target_id == review_id, Notification.kind == "decision_result"
+            )
+        )
     assert "이번 달 예산 초과" in title
 
 

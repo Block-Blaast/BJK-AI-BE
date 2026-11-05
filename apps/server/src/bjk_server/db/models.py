@@ -235,6 +235,8 @@ class Movement(Base):
     source_text: Mapped[str | None] = mapped_column(Text)
     equipment_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("equipment.id"))
     maintenance_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("maintenance.id"))
+    # 채팅으로 기록한 경우 원본 메시지. 폼 입력·실사조정 등은 null.
+    message_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("chat_messages.id"))
     # 발주 테이블은 발주 Issue에서 추가하고 외래 키를 건다.
     po_id: Mapped[uuid.UUID | None]
     reason: Mapped[str | None] = mapped_column(Text)

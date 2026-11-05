@@ -4,6 +4,7 @@ import uuid
 from datetime import date, datetime
 from typing import Any
 
+from bjk_contracts import EMBEDDING_DIM
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     ARRAY,
@@ -35,8 +36,7 @@ NAMING = {
     "pk": "pk_%(table_name)s",
 }
 
-# bjk_contracts.embedding.EMBEDDING_DIM과 같게 둔다.
-EMBEDDING_DIM = 1536
+# 임베딩 차원은 ai 계약(bjk_contracts.EMBEDDING_DIM, 1024)을 따른다. 마이그레이션 0019.
 # 모델이 다른 벡터끼리는 비교할 수 없어 벡터와 모델명을 함께 둔다.
 EMBEDDING_PAIR = "(embedding IS NULL) = (embedding_model IS NULL)"
 
@@ -556,3 +556,27 @@ class PartSupplierMetrics(Base):
     samples: Mapped[int] = mapped_column(Integer)
     unit_price: Mapped[int] = mapped_column(Integer)
     moq: Mapped[int] = mapped_column(Integer)
+
+
+class LlmCall(Base):
+    """ai 호출 한 번의 비용·장애 기록. 재시도까지 합친 값이다 (bjk_contracts.LlmUsage)."""
+
+    __tablename__ = "llm_calls"
+    __table_args__ = (
+        CheckConstraint(
+            "purpose IN ('chat_parse', 'import_suggest', 'opinion', 'embedding')", name="purpose"
+        ),
+        # 회사별 일일 토큰 합계 (호출 제한, API 명세서 1-5)
+        Index("ix_llm_calls_company_created", "company_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = _id()
+    company_id: Mapped[uuid.UUID] = _company_id()
+    purpose: Mapped[str] = mapped_column(String(16))
+    model: Mapped[str] = mapped_column(String(100))
+    input_tokens: Mapped[int] = mapped_column(Integer)
+    output_tokens: Mapped[int] = mapped_column(Integer)
+    latency_ms: Mapped[int] = mapped_column(Integer)
+    attempts: Mapped[int] = mapped_column(Integer)
+    success: Mapped[bool] = mapped_column(Boolean)
+    created_at: Mapped[datetime] = _created_at()

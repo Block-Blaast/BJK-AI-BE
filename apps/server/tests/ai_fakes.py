@@ -14,8 +14,11 @@ from bjk_contracts import (
     FallbackReason,
     LlmPurpose,
     LlmUsage,
+    OpinionRequest,
+    OpinionResponse,
     ParsedItem,
 )
+from bjk_review import template_opinion
 from bjk_server.ai.client import AiClient
 
 EMBED_MODEL = "amazon.titan-embed-text-v2:0"
@@ -78,6 +81,8 @@ class FakeAi:
         self.vectors = vectors or {}
         self.fail = fail
         self.embed_fallback = False
+        # 의견서: 기본은 검증을 통과하는 양식 문장. 함수를 넣으면 그 문장(None이면 대체 응답)
+        self.opinion_text = None
         self.llm = "ok"
         self.requests: list[tuple[str, dict | None]] = []
 
@@ -101,6 +106,8 @@ class FakeAi:
             return _json(self.chat[body["text"]])
         if request.url.path == "/v1/embeddings":
             return _json(self._embed(body["texts"]))
+        if request.url.path == "/v1/opinions":
+            return _json(self._opinion(OpinionRequest.model_validate(body)))
         return httpx.Response(404)
 
     def _embed(self, texts: list[str]) -> EmbedResponse:
@@ -114,6 +121,16 @@ class FakeAi:
             ai=AiMeta.ok(),
             usage=usage(LlmPurpose.EMBEDDING),
         )
+
+    def _opinion(self, request: OpinionRequest) -> OpinionResponse:
+        text = self.opinion_text(request) if self.opinion_text else template_opinion(request)
+        if text is None:
+            return OpinionResponse(
+                text=None,
+                ai=AiMeta.failed(FallbackReason.TIMEOUT),
+                usage=usage(LlmPurpose.OPINION, False),
+            )
+        return OpinionResponse(text=text, ai=AiMeta.ok(), usage=usage(LlmPurpose.OPINION))
 
 
 def _json(model) -> httpx.Response:

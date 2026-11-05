@@ -44,6 +44,8 @@ class IntentContext:
 class IntentResult:
     reply: str
     cards: list[Card] = field(default_factory=list)
+    # COUNT: 차이 사유(AUD-04)를 받을 실사 요청
+    count_request_id: uuid.UUID | None = None
 
 
 IntentHandler = Callable[[IntentContext, Interpretation], IntentResult]

@@ -19,15 +19,19 @@ from bjk_contracts import (
     FallbackReason,
     ImportSuggestRequest,
     ImportSuggestResponse,
+    OpinionRequest,
+    OpinionResponse,
 )
 from pydantic import BaseModel, ValidationError
 
 from bjk_server.ai.quota import check_daily_quota
 from bjk_server.config import get_settings
 
-# 클라이언트 시간 제한은 ai 쪽 재시도 포함 예산(채팅 2.5초, 임베딩 10초)보다 조금 길게 둔다.
+# 클라이언트 시간 제한은 ai 쪽 재시도 포함 예산(채팅 2.5초, 임베딩 10초, 의견서 7초)보다
+# 조금 길게 둔다.
 CHAT_TIMEOUT = 3.0
 EMBED_TIMEOUT = 12.0
+OPINION_TIMEOUT = 8.0
 # 채팅 중 부품 표현 하나의 검색용 임베딩. 채팅 응답 3초 목표 안에서 기다린다.
 QUERY_EMBED_TIMEOUT = 2.0
 # 엑셀 이관 제안. ai는 50줄 묶음을 병렬로 돌리며 묶음마다 30초 예산이다.
@@ -79,6 +83,10 @@ class AiClient:
 
     def suggest_import(self, body: ImportSuggestRequest) -> ImportSuggestResponse:
         return self._post("/v1/imports/suggest", body, ImportSuggestResponse, IMPORT_TIMEOUT)
+
+    def write_opinion(self, request: OpinionRequest) -> OpinionResponse:
+        """의견서 문장 (F-REVIEW-08). 재작성 요청이면 previous_text·feedback을 채워 보낸다."""
+        return self._post("/v1/opinions", request, OpinionResponse, OPINION_TIMEOUT)
 
     def _post(
         self, path: str, body: BaseModel, response_model: type[Response], timeout: float

@@ -24,7 +24,7 @@
 
 - `REQUIRE_DB_TESTS=1 uv run pytest apps/server/tests/test_dashboard.py`: 5개 통과
 - `REQUIRE_DB_TESTS=1 make test`: 702개 통과, `make lint` 통과
-- dev 반영 후 `REQUIRE_DB_TESTS=1 make test` 712개 통과
+- dev 반영 후 `REQUIRE_DB_TESTS=1 make test` 729개 통과
 - 시드 DB(`bjk_b`) nightly 후 server :8020 실제 호출로 응답 형식 확인
 
 ## 남은 일·확인 필요

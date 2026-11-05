@@ -24,6 +24,7 @@
 ## 검증
 
 - `REQUIRE_DB_TESTS=1 uv run pytest tests/test_cleanup_job.py tests/test_scheduler.py tests/test_jobs.py`: 22개 통과
+- `REQUIRE_DB_TESTS=1 make test`: 555개 통과
 - `make lint` 통과
 
 ## 남은 일·확인 필요

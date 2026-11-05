@@ -85,3 +85,24 @@ HTTP API가 아니라 채팅 발주 요청(CHAT-04), 재고 부족 초안, 놓�
 | 부품·공급사 둘 다 없음 | 400 `VALIDATION_ERROR`, `detail.fields` |
 | 없는 부품(병합된 부품, 다른 회사 부품 포함)·공급사 | 400 `VALIDATION_ERROR`, `detail.field` |
 | 없는 검토, 다른 회사 검토, 다른 작업자의 검토 | 404 `NOT_FOUND` |
+
+## REV-06 POST /api/v1/reviews/{id}/questions
+
+- 권한: manager 이상. worker는 403 `FORBIDDEN_ROLE`.
+- 질문을 주제(`qty`, `supplier`, `price`, `urgency`, `risk`)로 분류하고, 저장한 판정 결과와 최근 스냅샷의 숫자로 양식 문장을 채운다(`bjk_review.answer_question`). LLM 자유 답변은 확장.
+
+```json
+// Request (1~500자)
+{ "question": "왜 10개야?" }
+
+// 200 Response
+{ "topic": "qty", "answer": "권장 발주량이 10개입니다. ...", "source": "template", "evidence_refs": ["R", "S", "O", "D95"] }
+```
+
+- 분류되지 않거나 근거가 없으면(보류 건 포함) `answer: "근거 데이터에 없습니다."`, `evidence_refs: []`.
+
+| 상황 | 응답 |
+| --- | --- |
+| 검토가 아직 끝나지 않음(`reviewing`) | 409 `REVIEW_NOT_DECIDABLE`, `detail.status` |
+| 없는 검토, 다른 회사 검토 | 404 `NOT_FOUND` |
+| 빈 질문, 500자 초과 | 400 `VALIDATION_ERROR` |

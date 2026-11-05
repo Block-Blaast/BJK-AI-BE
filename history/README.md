@@ -4,6 +4,7 @@ AI·server 영역 작업 기록 색인. 작성 규칙은 [docs/ai-work-rules.md]
 
 | 날짜 | 파일 | 내용 |
 | --- | --- | --- |
+| 2026-11-05 | [2026-11-05-42-review-questions.md](2026-11-05-42-review-questions.md) | 검토 후속 질문 API(REV-06), 양식 답변 |
 | 2026-11-05 | [2026-11-05-41-missed-scan.md](2026-11-05-41-missed-scan.md) | 놓친 발주 스캔 배치(F-MISSED-01), 중복 방지 |
 | 2026-11-05 | [2026-11-05-40-review-clarify.md](2026-11-05-40-review-clarify.md) | 보류 검토 보완 API(REV-03), 같은 검토 재실행 |
 | 2026-11-05 | [2026-11-05-39-dashboard-summary.md](2026-11-05-39-dashboard-summary.md) | 대시보드 요약 DSH-02(#180), 묶인 재고 180일 미출고 기준, 주문 대기는 발주 연결 전 0 |

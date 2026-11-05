@@ -2,7 +2,7 @@
 
 - 날짜: 2026-11-05
 - 영역: AI (검토 엔진)
-- 관련: Issue #79, 브랜치 `feat/review-followup/#79`(#77 브랜치 위에 쌓음), F-REVIEW-09, REV-04·05·06
+- 관련: Issue #79, Draft PR #80(→ #77 브랜치), 브랜치 `feat/review-followup/#79`(#77 브랜치 위에 쌓음), F-REVIEW-09, REV-04·05·06
 
 ## 목적
 

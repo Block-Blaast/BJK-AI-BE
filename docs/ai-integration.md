@@ -62,6 +62,7 @@ server 포트(`bjk_server/chat/interpreter.py`)에 붙이는 예:
 import httpx
 from bjk_contracts import ChatParseRequest, ChatParseResponse
 
+
 class AiInterpreter:
     def __init__(self, client: httpx.Client, company_id: uuid.UUID) -> None:
         self._client, self._company_id = client, company_id
@@ -136,16 +137,16 @@ from bjk_review import OrderRequest, ReviewDeps, ReviewSettings, run_review_flow
 
 deps = ReviewDeps(
     load_snapshot=lambda part_id, order: collect_snapshot(db, company_id, part_id, order),
-    write_opinion=lambda request: call_ai_opinion(client, request),   # 예외 대신 실패면 None
+    write_opinion=lambda request: call_ai_opinion(client, request),  # 예외 대신 실패면 None
 )
 outcome = run_review_flow(
     deps,
     company_id=company_id,
-    entry="staff_request",                 # stock_draft, missed_draft
+    entry="staff_request",  # stock_draft, missed_draft
     part_id=str(part_id),
     order=OrderRequest(qty=30, supplier_id=str(supplier_id), unit_price=18000),
     settings=review_settings(company_settings),
-    on_progress=lambda step: publish_sse(review_id, step),   # review.progress {review_id, step}
+    on_progress=lambda step: publish_sse(review_id, step),  # review.progress {review_id, step}
 )
 # outcome.snapshot, outcome.result(판정), outcome.opinion(의견서)
 ```

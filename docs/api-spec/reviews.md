@@ -33,3 +33,24 @@ HTTP API가 아니라 채팅 발주 요청(CHAT-04), 재고 부족 초안, 놓�
 | 연휴 | 오늘부터 기본 공급사 LT90 사이에 걸치는 연휴(카테고리 납기 요인의 국내·중국 명절, 기본 공급사 휴무) |
 
 - 현재 구현 범위: 열린 발주(O, `open_orders`)와 최근 구매 단가 통계(`price_stats`)는 발주 테이블 연결 전이라 비어 있다(C-03 열린 발주, C-05 건너뜀). 병합 부품 재고는 S에 더하지 않는다. 미확인 숨은 재고의 실사 요청은 결과 `count_requests`에만 담고 `count_requests` 행은 만들지 않는다.
+
+## REV-06 POST /api/v1/reviews/{id}/questions
+
+- 권한: manager 이상. worker는 403 `FORBIDDEN_ROLE`.
+- 질문을 주제(`qty`, `supplier`, `price`, `urgency`, `risk`)로 분류하고, 저장한 판정 결과와 최근 스냅샷의 숫자로 양식 문장을 채운다(`bjk_review.answer_question`). LLM 자유 답변은 확장.
+
+```json
+// Request (1~500자)
+{ "question": "왜 10개야?" }
+
+// 200 Response
+{ "topic": "qty", "answer": "권장 발주량이 10개입니다. ...", "source": "template", "evidence_refs": ["R", "S", "O", "D95"] }
+```
+
+- 분류되지 않거나 근거가 없으면(보류 건 포함) `answer: "근거 데이터에 없습니다."`, `evidence_refs: []`.
+
+| 상황 | 응답 |
+| --- | --- |
+| 검토가 아직 끝나지 않음(`reviewing`) | 409 `REVIEW_NOT_DECIDABLE`, `detail.status` |
+| 없는 검토, 다른 회사 검토 | 404 `NOT_FOUND` |
+| 빈 질문, 500자 초과 | 400 `VALIDATION_ERROR` |

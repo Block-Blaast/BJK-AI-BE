@@ -11,7 +11,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from bjk_server import clock
-from bjk_server.chat.interpreter import Interpreter, UnconfiguredInterpreter, get_interpreter
+from bjk_server.ai.client import AiClient, LlmStatus, get_ai_client
 from bjk_server.db.models import ExternalIndicator, JobRun
 from bjk_server.db.session import get_db
 
@@ -33,8 +33,8 @@ class ExternalStatus(BaseModel):
 
 class HealthResponse(BaseModel):
     db: Literal["ok", "error"]
-    # ai 연동 전에는 not_configured. 연결 상태 점검은 ai 연동 Issue에서 더한다.
-    llm: Literal["ok", "not_configured"]
+    # ai 주소 미설정 또는 ai에 LLM 미설정이면 not_configured, ai에 연결하지 못하면 error.
+    llm: LlmStatus
     last_batch: LastBatch | None
     external_indicators: ExternalStatus | None
 
@@ -42,10 +42,10 @@ class HealthResponse(BaseModel):
 @router.get("/health", response_model=HealthResponse)
 def health(
     db: Annotated[Session, Depends(get_db)],
-    interpreter: Annotated[Interpreter, Depends(get_interpreter)],
+    ai: Annotated[AiClient | None, Depends(get_ai_client)],
 ):
     """SYS-02. DB·LLM·배치·외부 지표 상태. DB에 연결하지 못하면 503."""
-    llm = "not_configured" if isinstance(interpreter, UnconfiguredInterpreter) else "ok"
+    llm: LlmStatus = ai.health() if ai else "not_configured"
     try:
         db.execute(text("SELECT 1"))
         run = db.scalar(

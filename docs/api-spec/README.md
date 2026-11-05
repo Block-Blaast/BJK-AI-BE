@@ -9,6 +9,7 @@ Notion「API 명세서」가 정본이고, 이 디렉터리는 저장소에 구�
 | [parts.md](parts.md) | 부품·기준 정보 (SET) |
 | [imports.md](imports.md) | 부품 엑셀 이관 (SET-01·02) |
 | [master-data.md](master-data.md) | 카테고리·공급사·설비·정비·캘린더 (SET) |
+| [purchase-orders.md](purchase-orders.md) | 발주 (PO) |
 | [chat.md](chat.md) | 채팅 기록 (CHAT) |
 | [events.md](events.md) | 실시간 이벤트 (NOT-03) |
 | [ledger.md](ledger.md) | 원장 정정 (LED-02) |

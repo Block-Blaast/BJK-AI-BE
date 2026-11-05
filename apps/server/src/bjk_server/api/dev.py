@@ -8,14 +8,17 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from bjk_server import clock
 from bjk_server.api.auth import LoginResponse
 from bjk_server.api.schemas import TokenPair, UserBrief
 from bjk_server.auth import TenantDB, require_role
 from bjk_server.clock import KST
-from bjk_server.db.models import User
+from bjk_server.db.models import CompanySettings, User
 from bjk_server.db.session import get_admin_db, get_db
+from bjk_server.domain.external import SHOCK_CODE, SHOCK_R
 from bjk_server.errors import ApiError, ErrorCode
 from bjk_server.jobs import registry  # noqa: F401 - 작업 등록
+from bjk_server.jobs.nightly import compute_company, latest_risks
 from bjk_server.jobs.runner import JobName, run_job
 from bjk_server.security import Role, TokenClaims
 from bjk_server.seed.demo import COMPANY_CODE, demo_id, seed_demo
@@ -90,3 +93,39 @@ def run_job_now(name: JobName, _: Owner, db: Annotated[Session, Depends(get_db)]
         **result.summary,
         **({"error": result.error} if result.error else {}),
     }
+
+
+class ExternalShockRequest(BaseModel):
+    enabled: bool
+
+
+class ExternalShockResponse(BaseModel):
+    enabled: bool
+    indicator: str
+    # 켜져 있으면 고정값, 꺼져 있으면 실제 최신 위험도
+    r: float
+    parts_computed: int
+    computed_at: datetime
+
+
+@router.post("/scenarios/external-shock", response_model=ExternalShockResponse)
+def external_shock(body: ExternalShockRequest, owner: Owner, db: TenantDB) -> ExternalShockResponse:
+    """DEV-02. 외부 충격 스위치 (F-EXT-03). 해상운임 r을 3으로 고정하고 근거 지표를 다시 계산한다.
+
+    스위치는 회사 설정에 남아 다음 새벽 배치도 같은 값을 쓴다. 끄면 실제 위험도로 다시 계산한다.
+    """
+    settings = db.get(CompanySettings, owner.company_id)
+    if settings is None:
+        raise ApiError(ErrorCode.NOT_FOUND, "회사 설정이 없습니다.")
+    settings.scenarios = {**settings.scenarios, "external_shock": body.enabled}
+    db.flush()
+    now = clock.utcnow()
+    risks = latest_risks(db)
+    parts = compute_company(db, owner.company_id, now, risks)
+    return ExternalShockResponse(
+        enabled=body.enabled,
+        indicator=SHOCK_CODE,
+        r=SHOCK_R if body.enabled else risks.get(SHOCK_CODE, 0.0),
+        parts_computed=parts,
+        computed_at=now,
+    )

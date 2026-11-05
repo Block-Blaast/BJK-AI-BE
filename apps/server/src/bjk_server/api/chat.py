@@ -11,10 +11,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from bjk_server import clock, idempotency, ratelimit
+from bjk_server.audit.flags import check_after_record
 from bjk_server.auth import CurrentUser, TenantDB
 from bjk_server.chat.interpreter import Interpreter, get_interpreter
 from bjk_server.chat.records import (
     RecordResponse,
+    Triggered,
     learn_alias,
     movement_out,
     record_movement,
@@ -119,6 +121,7 @@ def confirm_entry(
         stock_after=stock,
         reply=reply,
         alias_learned=learn_alias(db, payload.get("part_text"), part),
+        triggered=Triggered(audit_flag_id=check_after_record(db, part, movement, stock)),
     )
     entry.status, entry.decided_at = "confirmed", now
     entry.result = result.model_dump(mode="json")
@@ -159,7 +162,11 @@ def form_entry(body: FormEntryRequest, user: CurrentUser, db: TenantDB):
         db, user, body.type, part, body.qty, equipment_id, source_text=None
     )
     result = RecordResponse(
-        intent=body.type, movement=movement_out(movement), stock_after=stock, reply=reply
+        intent=body.type,
+        movement=movement_out(movement),
+        stock_after=stock,
+        reply=reply,
+        triggered=Triggered(audit_flag_id=check_after_record(db, part, movement, stock)),
     )
     now = clock.utcnow()
     db.add(

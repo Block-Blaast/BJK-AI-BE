@@ -13,10 +13,11 @@ from bjk_server.db.models import (
     PurchaseOrder,
     Review,
     ReviewSnapshot,
+    Supplier,
 )
 from bjk_server.jobs.runner import run_job
 from bjk_server.seed.demo import COMPANY_CODE, demo_id
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 
 from .conftest import auth_header
@@ -153,3 +154,29 @@ def test_job_notifies_managers_once_and_expires_reviews(demo_db, clean):
 def test_job_sends_nothing_when_nothing_to_check(demo_db, clean):
     result = run_job(demo_db.app, "briefing", "manual", now=NOW)
     assert result.summary == {"reviews_expired": 0, "notifications": 0}
+
+
+def test_order_check_needed_includes_overdue_receipts(client, demo_db, clean):
+    """F-MISSED-02: 미주문(24시간)과 LT90을 넘긴 미입고를 함께 센다. 기준은 order-check와 같다."""
+    manager = demo_id("user", "manager")
+    supplier = demo_id("supplier", "a")
+    with Session(demo_db.admin) as s, s.begin():
+        s.execute(update(Supplier).where(Supplier.id == supplier).values(default_lead_time_days=7))
+        for days, status, received in ((8, "ordered", 0), (6, "ordered", 0), (9, "received", 10)):
+            s.add(
+                PurchaseOrder(
+                    company_id=COMPANY,
+                    part_id=PART,
+                    supplier_id=supplier,
+                    qty=10,
+                    unit_price=1000,
+                    status=status,
+                    approved_at=NOW - timedelta(days=days + 1),
+                    ordered_at=NOW - timedelta(days=days),
+                    ordered_by=manager,
+                    received_qty=received,
+                )
+            )
+    body = _get(client).json()
+    assert body["order_check_needed"] == 1
+    assert body["should_notify"] is True

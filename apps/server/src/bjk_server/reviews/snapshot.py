@@ -20,7 +20,7 @@ from bjk_review import (
     ReviewSnapshot,
     SupplierOffer,
 )
-from sqlalchemy import exists, func, select
+from sqlalchemy import exists, func, or_, select
 from sqlalchemy.orm import Session
 
 from bjk_server.clock import KST
@@ -89,9 +89,15 @@ def _part(src: SnapshotSource) -> dict[str, Any]:
 
 
 def _stock(src: SnapshotSource) -> dict[str, Any]:
-    """S는 검토 시점의 원장 합계. 병합 부품 합산은 아직 하지 않는다."""
+    """S는 검토 시점의 원장 합계. 이 부품에 병합된 부품의 원장도 더한다(F-LEDGER-02)."""
+    merged = select(Part.id).where(Part.merged_into == src.part.id)
     has_out = src.db.scalar(
-        select(exists().where(Movement.part_id == src.part.id, Movement.type == "OUT"))
+        select(
+            exists().where(
+                or_(Movement.part_id == src.part.id, Movement.part_id.in_(merged)),
+                Movement.type == "OUT",
+            )
+        )
     )
     return {"stock": stock_of(src.db, src.part.id), "has_usage_history": bool(has_out)}
 
@@ -187,11 +193,14 @@ def _hidden(src: SnapshotSource) -> dict[str, Any]:
     if not twins:
         return {"hidden": []}
     ids = [o.id for o in twins]
+    # 같은 규격 부품에 이미 병합된 부품의 원장도 그 부품 재고로 센다(F-LEDGER-02).
+    owner = func.coalesce(Part.merged_into, Movement.part_id)
     stock = dict(
         db.execute(
-            select(Movement.part_id, func.sum(Movement.qty))
-            .where(Movement.part_id.in_(ids))
-            .group_by(Movement.part_id)
+            select(owner, func.sum(Movement.qty))
+            .join(Part, Part.id == Movement.part_id)
+            .where(owner.in_(ids))
+            .group_by(owner)
         ).all()
     )
     last_counted = dict(

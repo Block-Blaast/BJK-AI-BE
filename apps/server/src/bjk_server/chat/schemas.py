@@ -57,6 +57,8 @@ class Card(BaseModel):
     unit: str | None = None
     # select: 고를 후보
     candidates: list[CandidateOut] = Field(default_factory=list)
+    # IN confirm·warning: 열린 발주와 대조 미리 보기(complete·partial·mismatch·no_order)
+    po_match: Literal["complete", "partial", "mismatch", "no_order"] | None = None
     # PURCHASE_REQUEST: 요청 단가와 공급사 해석
     unit_price: int | None = None
     supplier_resolution: SupplierResolution | None = None

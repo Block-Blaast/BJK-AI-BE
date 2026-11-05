@@ -860,3 +860,20 @@ class SimReport(Base):
     source: Mapped[str] = mapped_column(String(16))
     summary: Mapped[dict[str, Any]] = mapped_column(server_default=sql_text("'{}'::jsonb"))
     created_at: Mapped[datetime] = _created_at()
+
+
+class TwinLayout(Base):
+    """3D 창고 배치 (화면 W-11, 명세 밖, #281). 회사마다 한 줄.
+
+    `layout`: `size`(바닥 m), `zones`, `racks`, `equipment`(설비 id·모양·좌표),
+    `placements`(부품 id·선반·단·칸). 설비 이름·연결 부품은 설비 테이블에서 읽는다.
+    지금은 시연 시드의 더미 배치만 있고, 편집 API는 배치를 직접 정할 때 더한다.
+    """
+
+    __tablename__ = "twin_layouts"
+
+    company_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("companies.id", ondelete="CASCADE"), primary_key=True
+    )
+    layout: Mapped[dict[str, Any]]
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

@@ -30,6 +30,7 @@ from bjk_server.db.models import (
     SimReport,
     Supplier,
     SupplierPart,
+    TwinLayout,
     User,
 )
 from bjk_server.defaults import DEFAULT_CATEGORIES, default_settings
@@ -200,6 +201,33 @@ ALIASES = (("베어링 작은 거", "6205", 3),)
 SIM_REPORTS = (
     ("[시연용] 검토 기준값 탐지율 평가 (합성 데이터 18개월)", 7),
     ("[시연용] 현장 방식 대비 정책 재생 (결품·재고 금액)", 1),
+)
+
+# 3D 창고 더미 배치 (W-11, #281). 단위 m, 바닥 중심이 원점. 선반은 (id, 단, 칸, x, z, 용도),
+# 설비는 (설비, 모양, x, z), 부품 칸은 (부품, 선반, 단, 칸). 실제 창고 배치를 받기 전 시연용이다.
+TWIN_SIZE = {"width": 22, "depth": 18}
+TWIN_ZONES = (
+    ("zone-a", "storage", "A  베어링", -6.5, -3, 5, 6),
+    ("zone-b", "storage", "B  벨트·볼트", 0, -3, 6, 6),
+    ("zone-c", "storage", "C  씰·유류", 6.5, -3, 5, 6),
+    ("zone-machines", "machines", "설비", 0, 4.5, 18, 5),
+    ("zone-dock", "dock", "입고 도크", 0, -8, 6, 2),
+)
+TWIN_RACKS = (
+    ("A-01", 4, 4, -6.5, -3, "베어링"),
+    ("B-01", 4, 4, -1.5, -3, "벨트"),
+    ("B-02", 4, 4, 1.5, -3, "볼트·너트"),
+    ("C-01", 3, 4, 5, -3, "씰·오링"),
+    ("C-02", 3, 4, 8, -3, "유류"),
+)
+TWIN_EQUIPMENT = (("eq1", "lathe", -5, 4.5), ("eq2", "mill", 0, 4.5), ("eq3", "press", 5, 4.5))
+TWIN_PLACEMENTS = (
+    ("6205", "A-01", 2, 1),
+    ("6204", "A-01", 2, 2),
+    ("a42", "B-01", 1, 1),
+    ("m820", "B-02", 1, 1),
+    ("p20", "C-01", 1, 1),
+    ("oil", "C-02", 1, 1),
 )
 
 # 연휴 캘린더 (이름, 시작, 종료, 범위). 2027년 춘절·설날 연휴.
@@ -431,6 +459,39 @@ def seed_demo(session: Session, scenario: str = "demo_v1", today: date | None = 
                 created_at=_at(today - timedelta(days=days_ago)),
             )
         )
+    session.add(
+        TwinLayout(
+            company_id=company_id,
+            layout={
+                "size": TWIN_SIZE,
+                "zones": [
+                    {"id": i, "kind": k, "label": label, "x": x, "z": z, "width": w, "depth": d}
+                    for i, k, label, x, z, w, d in TWIN_ZONES
+                ],
+                "racks": [
+                    {
+                        "id": rid,
+                        "label": rid,
+                        "levels": levels,
+                        "slots": slots,
+                        "x": x,
+                        "z": z,
+                        "rotation": 0,
+                        "purpose": purpose,
+                    }
+                    for rid, levels, slots, x, z, purpose in TWIN_RACKS
+                ],
+                "equipment": [
+                    {"equipment_id": str(sid("equipment", key)), "kind": kind, "x": x, "z": z}
+                    for key, kind, x, z in TWIN_EQUIPMENT
+                ],
+                "placements": [
+                    {"part_id": str(sid("part", key)), "rack_id": rid, "level": lv, "slot": sl}
+                    for key, rid, lv, sl in TWIN_PLACEMENTS
+                ],
+            },
+        )
+    )
     for alias, part_key, count in ALIASES:
         session.add(
             PartAlias(

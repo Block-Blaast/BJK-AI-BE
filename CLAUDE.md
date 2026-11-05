@@ -22,7 +22,7 @@
 ## 구조
 
 - `apps/server` (`bjk_server`): API 서버. 장부, 계산·판정·검증 엔진, 리포트, 승인
-- `apps/ai` (`bjk_ai`): LLM 게이트웨이. 채팅 해석, 별칭 후보 순위, 리포트 설명 문장
+- `apps/ai` (`bjk_ai`): LLM·임베딩 게이트웨이. 채팅 해석, 검토 의견서 문장, 엑셀 이관 규격·카테고리 제안, 부품 이름 임베딩
 - `packages/contracts` (`bjk_contracts`): server ↔ ai 요청·응답 스키마
 
 uv workspace 하나로 묶는다. 앱끼리 직접 import하지 않고 `bjk_contracts`로만 주고받는다.
@@ -40,6 +40,6 @@ uv workspace 하나로 묶는다. 앱끼리 직접 import하지 않고 `bjk_cont
 ## 설계 원칙
 
 - 계산·판정·검증은 LLM을 쓰지 않는 순수 함수로 만든다. 같은 입력이면 같은 결과.
-- LLM 호출 지점은 채팅 해석, 별칭 후보 순위, 리포트 설명 문장 세 곳뿐이며 모두 `apps/ai`를 거친다.
+- LLM·임베딩 호출 지점은 채팅 해석(`/v1/chat/parse`), 검토 의견서 문장(`/v1/opinions`), 엑셀 이관 제안(`/v1/imports/suggest`), 부품 이름 임베딩(`/v1/embeddings`) 네 곳뿐이며 모두 `apps/ai`를 거친다. 부품 매칭 순위는 LLM이 매기지 않는다(F-MATCH-01).
 - ai 호출이 실패·시간 초과돼도 server는 대체 경로(버튼 입력, 규칙 결과, 템플릿 문장)로 응답한다.
 - 재고는 저장하지 않고 이벤트 합산으로 계산한다. 이벤트는 수정·삭제하지 않고 정정 이벤트를 추가한다.

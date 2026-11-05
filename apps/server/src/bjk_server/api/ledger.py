@@ -11,7 +11,7 @@ from bjk_server import clock
 from bjk_server.auth import TenantDB, require_role
 from bjk_server.db.models import Movement
 from bjk_server.errors import ApiError, ErrorCode
-from bjk_server.inventory import stock_of
+from bjk_server.inventory import lock_part_stock, stock_of
 from bjk_server.security import TokenClaims
 
 router = APIRouter(prefix="/movements", tags=["ledger"])
@@ -70,6 +70,8 @@ def correct_movement(
         )
     # 원장은 UPDATE 권한이 없어 행 잠금 대신 원본별 advisory lock으로 동시 정정을 막는다.
     db.execute(select(func.pg_advisory_xact_lock(func.hashtext(f"correction:{original.id}"))))
+    if not lock_part_stock(db, original.company_id, original.part_id):
+        raise ApiError(ErrorCode.NOT_FOUND, "원장 기록을 찾을 수 없습니다.")
     corrected_so_far = db.scalar(
         select(func.coalesce(func.sum(Movement.qty), 0)).where(Movement.corrects_id == original.id)
     )

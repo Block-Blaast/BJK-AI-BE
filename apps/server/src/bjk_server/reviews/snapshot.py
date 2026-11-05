@@ -1,7 +1,7 @@
 """검토 근거 스냅샷 수집 (F-REVIEW-02, docs/ai-integration.md 5-2).
 
 항목별 수집 함수가 스냅샷 필드 일부를 dict로 돌려주고, 이를 합쳐 `bjk_review.ReviewSnapshot`을
-만든다. 아직 비어 있는 근거(병합 부품 재고)는 수집 함수를 `COLLECTORS`에
+만든다. 새 근거는 수집 함수를 `COLLECTORS`에
 더해 붙인다. 비어 있는 값은 오류가 아니라 해당 체크를 건너뛰는 쪽으로 동작한다.
 """
 
@@ -20,7 +20,7 @@ from bjk_review import (
     ReviewSnapshot,
     SupplierOffer,
 )
-from sqlalchemy import exists, func, select
+from sqlalchemy import exists, func, or_, select
 from sqlalchemy.orm import Session
 
 from bjk_server.clock import KST
@@ -40,7 +40,7 @@ from bjk_server.db.models import (
     SupplierPart,
 )
 from bjk_server.domain import hidden_stock as hs
-from bjk_server.inventory import stock_of
+from bjk_server.inventory import stock_of, stock_subquery
 from bjk_server.jobs.nightly import FALLBACK_LEAD_DAYS, HOLIDAY_FACTORS, IMPORT_DEPENDENT
 from bjk_server.purchasing.orders import open_orders, recent_price_stats, remaining_qty
 
@@ -89,9 +89,15 @@ def _part(src: SnapshotSource) -> dict[str, Any]:
 
 
 def _stock(src: SnapshotSource) -> dict[str, Any]:
-    """S는 검토 시점의 원장 합계. 병합 부품 합산은 아직 하지 않는다."""
+    """S는 검토 시점의 원장 합계. 이 부품으로 병합된 부품의 원장도 더한다(F-LEDGER-02)."""
+    merged = select(Part.id).where(Part.merged_into == src.part.id)
     has_out = src.db.scalar(
-        select(exists().where(Movement.part_id == src.part.id, Movement.type == "OUT"))
+        select(
+            exists().where(
+                or_(Movement.part_id == src.part.id, Movement.part_id.in_(merged)),
+                Movement.type == "OUT",
+            )
+        )
     )
     return {"stock": stock_of(src.db, src.part.id), "has_usage_history": bool(has_out)}
 
@@ -187,12 +193,10 @@ def _hidden(src: SnapshotSource) -> dict[str, Any]:
     if not twins:
         return {"hidden": []}
     ids = [o.id for o in twins]
+    # 다른 등록 부품의 재고에도 그 부품으로 병합된 부품의 원장을 더한다(F-LEDGER-02)
+    totals = stock_subquery()
     stock = dict(
-        db.execute(
-            select(Movement.part_id, func.sum(Movement.qty))
-            .where(Movement.part_id.in_(ids))
-            .group_by(Movement.part_id)
-        ).all()
+        db.execute(select(totals.c.part_id, totals.c.stock).where(totals.c.part_id.in_(ids))).all()
     )
     last_counted = dict(
         db.execute(

@@ -25,6 +25,7 @@ TABLES = {
     "events",
     "reviews",
     "review_snapshots",
+    "part_imports",
 }
 
 

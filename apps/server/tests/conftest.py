@@ -12,6 +12,7 @@ from alembic.config import Config
 from bjk_server import ratelimit
 from bjk_server.ai.client import get_ai_client
 from bjk_server.chat.interpreter import get_interpreter
+from bjk_server.config import get_settings
 from bjk_server.db.models import PurchaseOrder
 from bjk_server.db.session import get_admin_db, get_db, get_session_scope
 from bjk_server.main import create_app
@@ -28,6 +29,15 @@ SERVER_DIR = Path(__file__).resolve().parents[1]
 # 테스트 DB 정렬 로케일. compose·CI의 pgvector/pgvector:pg16 기본값과 같게 둔다.
 TEST_DB_LOCALE = os.environ.get("TEST_DB_LOCALE", "en_US.UTF-8")
 CHAT_URL = "/api/v1/chat/messages"
+
+
+@pytest.fixture(autouse=True)
+def _no_external_fetch(monkeypatch):
+    """로컬 설정과 관계없이 새벽 배치가 외부 사이트를 부르지 않는다. 수집 테스트는 가짜를 쓴다."""
+    monkeypatch.setenv("EXTERNAL_FETCH", "false")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
 
 
 def _base_url() -> str:

@@ -8,7 +8,7 @@ python -m bjk_server.jobs nightly
 
 | 이름 | 시각 (Asia/Seoul) | 구현 |
 | --- | --- | --- |
-| `nightly` | 매일 03:00 | 외부 지표 위험도 → 부품 근거 지표 → 장부 검증 → 빈 임베딩 채우기 |
+| `nightly` | 매일 03:00 | 외부 지표·연휴 수집과 위험도 → 부품 근거 지표 → 장부 검증 → 빈 임베딩 채우기 |
 | `missed-scan` | 매일 07:00 | 놓친 발주 초안 생성 → 검토 |
 | `order-check` | 매일 07:00 | 승인 후 24시간 지나도 주문 전인 발주 → 승인자(없으면 관리자·사장님)에게 `order_check` 알림, 주문 후 기본 공급사 LT90(근거 지표, 없으면 공급사 기본 납기, 그것도 없으면 7일)을 넘겨 다 들어오지 않은 발주 → 관리자·사장님에게 `receipt_check` 알림. 배치 알림은 발주마다 한 번만. 요약 `{ "order_check": n, "receipt_check": n }`의 n은 새로 만든 알림 수(받는 사람 수 합)이고 이미 알린 발주는 세지 않는다. 입고 수량이 잔량보다 많을 때(CHAT-03 `po_match: mismatch`)도 `receipt_check`를 보내며 이 알림은 입고마다 나간다 |
 | `briefing` | 매일 07:30 | 결정 대기 검토 만료(요청자 알림) → 브리핑 계산, 확인할 일이 있으면 사장님·관리자 알림(하루 1회) |
@@ -35,13 +35,15 @@ python -m bjk_server.jobs nightly
 - 워커 수를 늘리면 DB 연결 풀도 같이 늘어난다(`SCHEDULER_WORKERS` 하나로 조절).
 - 작업 목록은 코드에 있고 메모리에만 둔다. 스케줄러가 꺼져 있던 동안의 실행은 다시 하지 않는다(필요하면 DEV-01·CLI로 수동 실행).
 
-## nightly: 외부 지표 위험도 → 부품 근거 지표
+## nightly: 외부 지표·연휴 수집과 위험도 → 부품 근거 지표
 
-기능명세서 F-EXT-02, F-ANAL 기준. 계산은 `bjk_server.domain`의 순수 함수(numpy)이고 LLM을 쓰지 않는다. 난수 시드는 hash(회사, 부품, 날짜)라 같은 날 다시 돌려도 같은 값이 나오며, 같은 날짜 스냅샷은 덮어쓴다.
+기능명세서 F-EXT-01·02, F-ANAL 기준. 계산은 `bjk_server.domain`의 순수 함수(numpy)이고 LLM을 쓰지 않는다. 난수 시드는 hash(회사, 부품, 날짜)라 같은 날 다시 돌려도 같은 값이 나오며, 같은 날짜 스냅샷은 덮어쓴다.
 
 | 단계 | 방법 | 저장 |
 | --- | --- | --- |
-| 외부 지표 | CSV(`seed/data/external_indicators.csv`, 주간) 적재. z = 최근 13주 변화율 ÷ 과거 13주 변화율의 표준편차, r = min(max(0, z), 4). 상승(운임 상승, 원화 약세)만 위험 | `external_indicators` |
+| 외부 지표 수집 | `EXTERNAL_FETCH`(기본 켜짐)일 때 2년치를 받아 그 주 월요일 날짜로 저장. 환율 `USDKRW`는 Frankfurter API(ECB 기준 환율, 키 없음), 해상운임 `FREIGHT`는 한국해양진흥공사 KCCI 시계열 페이지 수집(종합지수). 받은 지표는 통째로 바꾸고, 실패한 지표는 직전 값 유지, 값이 없을 때만 시드 CSV(`seed/data/external_indicators.csv`) 적재 | `external_indicators` |
+| 위험도 | 지표마다 날짜순으로 z = 최근 13주 변화율 ÷ 과거 13주 변화율의 표준편차, r = min(max(0, z), 4). 상승(운임 상승, 원화 약세)만 위험 | `external_indicators.z`, `r`, `level` |
+| 연휴 수집 | Nager.Date 공휴일 API(키 없음)로 올해·내년 국내(`KR`)·중국(`CN`) 공휴일을 받아 회사 연휴 캘린더에 추가. 국내는 이어지는 같은 이름을 한 연휴로 묶고(사이 2일 이하), 중국 춘절은 전날부터 8일, 국경절은 7일로 넓힌다. 같은 범위에 겹치는 일정(직접 등록 포함)이 있거나 이미 지난 연휴는 넣지 않는다 | `calendar_events` |
 | 카테고리 위험도 | r_lead = 카테고리 `lead_factors` 지표 r 최대, r_price = `price_factors` 지표 r 최대 | `part_metrics.r_lead`, `r_price` |
 | 납기 | 기본 납기 × (1 + k × r_lead, 수입 의존 부품만)에 납기 구간과 겹치는 연휴만큼 연장. 연휴 = 공급사 휴무일 + 공급사 범위 캘린더 + 카테고리 납기 요인(`HOLIDAY_KR` → 국내, `HOLIDAY_CN` → 중국)의 캘린더. 같은 날은 한 번만, 늘어난 구간에 걸린 연휴도 센다 | `part_supplier_metrics` |
 | ABC | 최근 12개월 사용 금액 누적 80% A, 95% B, 나머지 C. 단가 없는 부품이 있으면 사용량 기준(`abc_basis: qty`) | `abc` |

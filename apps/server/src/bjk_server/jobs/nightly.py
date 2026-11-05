@@ -1,7 +1,8 @@
-"""새벽 배치 (매일 03:00): 외부 지표 위험도 → 부품 근거 지표 → 장부 검증 → 빈 임베딩 채우기.
+"""새벽 배치 (매일 03:00): 외부 지표·연휴 수집과 위험도 → 부품 근거 지표 → 장부 검증 →
+빈 임베딩 채우기.
 
-기능명세서 F-EXT-02, F-ANAL, F-AUDIT, F-SETUP-02 5단계. 재고 요약 대조(F-LEDGER-02)는 요약 도입 시
-더한다.
+기능명세서 F-EXT-01·02, F-ANAL, F-AUDIT, F-SETUP-02 5단계. 재고 요약 대조(F-LEDGER-02)는
+요약 도입 시 더한다.
 """
 
 import csv
@@ -24,6 +25,7 @@ from bjk_server.ai.embeddings import fill_missing
 from bjk_server.audit.flags import audit_company
 from bjk_server.auth import set_tenant
 from bjk_server.clock import KST
+from bjk_server.config import get_settings
 from bjk_server.db.models import (
     AuditFlag,
     CalendarEvent,
@@ -52,6 +54,8 @@ from bjk_server.domain.external import (
     indicator_risk,
     risk_level,
 )
+from bjk_server.external_sources import ExternalData, Holiday
+from bjk_server.external_sources import collect as collect_external
 from bjk_server.inventory import merged_owners
 from bjk_server.jobs.runner import company_ids, job
 from bjk_server.purchasing.orders import open_qty
@@ -71,45 +75,107 @@ HOLIDAY_FACTORS = {"HOLIDAY_KR": "KR", "HOLIDAY_CN": "CN"}
 CALENDAR_HORIZON_DAYS = 365
 
 
-def load_indicators(session: Session, path: Path = INDICATOR_CSV) -> dict[str, float]:
-    """CSV 지표를 적재하고 지표별 최신 위험도 r을 돌려준다. 파일이 없으면 직전 값을 유지한다."""
+def read_indicator_csv(path: Path = INDICATOR_CSV) -> dict[str, list[tuple[date, float]]]:
+    series: dict[str, list[tuple[date, float]]] = defaultdict(list)
     if path.exists():
-        series: dict[str, list[tuple[date, float]]] = defaultdict(list)
         with path.open(encoding="utf-8") as f:
             for row in csv.DictReader(f):
                 if row["code"] in INDICATORS:
                     series[row["code"]].append(
                         (date.fromisoformat(row["as_of"]), float(row["value"]))
                     )
-        for code, points in series.items():
-            points.sort()
-            name, kind = INDICATORS[code]
-            values = [v for _, v in points]
-            for i, (as_of, value) in enumerate(points):
-                z, r = indicator_risk(values[: i + 1])
-                stmt = insert(ExternalIndicator).values(
-                    code=code,
-                    name=name,
-                    series=kind,
-                    as_of=as_of,
-                    value=value,
-                    z=z,
-                    r=r,
-                    level=risk_level(r),
+    return series
+
+
+def load_indicators(
+    session: Session,
+    fetched: dict[str, list[tuple[date, float]]] | None = None,
+    path: Path = INDICATOR_CSV,
+) -> dict[str, float]:
+    """지표를 적재하고 지표별 최신 위험도 r을 돌려준다.
+
+    외부에서 받은 지표는 받은 값으로 통째로 바꾼다(2년치를 매번 받으므로, 출처가 다른 시드 값과
+    섞어 변화율이 튀지 않게 한다). 받지 못한 지표는 직전 값을 유지하고, 아직 값이 없을 때만 시드
+    CSV를 넣는다.
+    """
+    fetched = fetched or {}
+    seed = None
+    for code in INDICATORS:
+        points = sorted(fetched.get(code) or [])
+        if points:
+            session.execute(
+                delete(ExternalIndicator).where(
+                    ExternalIndicator.code == code,
+                    ExternalIndicator.as_of.not_in([d for d, _ in points]),
                 )
-                session.execute(
-                    stmt.on_conflict_do_update(
-                        index_elements=[ExternalIndicator.code, ExternalIndicator.as_of],
-                        set_={
-                            "value": value,
-                            "z": z,
-                            "r": r,
-                            "level": risk_level(r),
-                            "updated_at": func.now(),
-                        },
-                    )
-                )
+            )
+        elif session.scalar(select(func.count()).where(ExternalIndicator.code == code)) == 0:
+            seed = read_indicator_csv(path) if seed is None else seed
+            points = sorted(seed.get(code, []))
+        if points:
+            _upsert_series(session, code, points)
     return latest_risks(session)
+
+
+def _upsert_series(session: Session, code: str, points: list[tuple[date, float]]) -> None:
+    """값을 넣고 그 지표 전체의 위험도를 날짜순으로 다시 계산한다. 각 날짜는 그날까지 값만 쓴다."""
+    name, kind = INDICATORS[code]
+    for as_of, value in points:
+        stmt = insert(ExternalIndicator).values(
+            code=code, name=name, series=kind, as_of=as_of, value=value
+        )
+        session.execute(
+            stmt.on_conflict_do_update(
+                index_elements=[ExternalIndicator.code, ExternalIndicator.as_of],
+                set_={"value": value, "updated_at": func.now()},
+            )
+        )
+    rows = session.scalars(
+        select(ExternalIndicator)
+        .where(ExternalIndicator.code == code)
+        .order_by(ExternalIndicator.as_of)
+        .execution_options(populate_existing=True)
+    ).all()
+    values = [row.value for row in rows]
+    for i, row in enumerate(rows):
+        row.z, row.r = indicator_risk(values[: i + 1])
+        row.level = risk_level(row.r)
+    session.flush()
+
+
+def sync_holidays(
+    session: Session, company_id: uuid.UUID, holidays: Collection[Holiday], today: date
+) -> int:
+    """받아 온 공휴일을 회사 연휴 캘린더에 더한다. 같은 범위(KR·CN)에 겹치는 일정이 있으면 건너뛴다.
+
+    직접 등록한 연휴(예: 공장 휴무를 넓힌 춘절)를 덮어쓰지 않는다. 지난 연휴는 넣지 않는다.
+    """
+    added = 0
+    for h in holidays:
+        if h.end < today:
+            continue
+        overlap = session.scalar(
+            select(func.count()).where(
+                CalendarEvent.company_id == company_id,
+                CalendarEvent.scope == h.scope,
+                CalendarEvent.start_date <= h.end,
+                CalendarEvent.end_date >= h.start,
+            )
+        )
+        if overlap:
+            continue
+        session.add(
+            CalendarEvent(
+                company_id=company_id,
+                name=h.name,
+                start_date=h.start,
+                end_date=h.end,
+                scope=h.scope,
+            )
+        )
+        session.flush()
+        added += 1
+    return added
 
 
 def latest_risks(session: Session) -> dict[str, float]:
@@ -517,11 +583,16 @@ def compute_company(
 
 @job("nightly")
 def nightly(session: Session, now: datetime) -> dict[str, Any]:
-    r_by_code = load_indicators(session)
+    today = now.astimezone(KST).date()
+    external = collect_external(today) if get_settings().external_fetch else ExternalData()
+    r_by_code = load_indicators(session, external.indicators)
+    holidays = [h for scope in external.holidays.values() for h in scope]
     companies = company_ids(session)
     ai = get_ai_client()
-    parts = flags = embedded = 0
+    parts = flags = embedded = added = 0
     for cid in companies:
+        set_tenant(session, cid)
+        added += sync_holidays(session, cid, holidays, today)
         parts += compute_company(session, cid, now, r_by_code)
         flags += audit_company(session, cid, now)
         if ai:
@@ -532,5 +603,7 @@ def nightly(session: Session, now: datetime) -> dict[str, Any]:
         "parts_computed": parts,
         "audit_flags_created": flags,
         "indicators": len(r_by_code),
+        "external_fetched": sorted([*external.indicators, *external.holidays]),
+        "holidays_added": added,
         "embeddings_filled": embedded,
     }

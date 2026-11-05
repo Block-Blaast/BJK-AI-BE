@@ -73,7 +73,7 @@ def test_embed_request_rejects_blank_text():
         EmbedRequest(company_id=uuid4(), task=EmbedTask.QUERY, texts=[])
 
 
-def test_embed_response_requires_1536_dims():
+def test_embed_response_requires_embedding_dim():
     EmbedResponse(model="m", vectors=[[0.0] * EMBEDDING_DIM], ai=AiMeta.ok())
     with pytest.raises(ValidationError):
         EmbedResponse(model="m", vectors=[[0.0] * 768], ai=AiMeta.ok())

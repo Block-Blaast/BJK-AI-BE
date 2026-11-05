@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from bjk_contracts.common import AiMeta, LlmUsage
 
-EMBEDDING_DIM = 1536
+EMBEDDING_DIM = 1024
 EMBED_MAX_TEXTS = 100
 EMBED_TEXT_MAX_LEN = 500
 

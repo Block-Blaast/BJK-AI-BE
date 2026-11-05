@@ -1,10 +1,14 @@
 # 작업 기록
 
-AI 영역 작업 기록 색인. 작성 규칙은 [docs/ai-work-rules.md](../docs/ai-work-rules.md) 3장을 따른다. 최신 항목이 위로 온다.
+AI·server 영역 작업 기록 색인. 작성 규칙은 [docs/ai-work-rules.md](../docs/ai-work-rules.md) 3장을 따른다. 최신 항목이 위로 온다.
 
 | 날짜 | 파일 | 내용 |
 | --- | --- | --- |
+| 2026-11-05 | [2026-11-05-07-server-todo.md](2026-11-05-07-server-todo.md) | server 스택 앞으로 할 일 31단계 (시연 경로 나머지, ai 연동, B 단계, 운영 준비) |
+| 2026-11-05 | [2026-11-05-06-server-deferred.md](2026-11-05-06-server-deferred.md) | server 스택 남겨둔 점 (ai 파트, 선행 기능 대기 항목, 미검증 항목) |
 | 2026-11-05 | [2026-11-05-05-worktree-cleanup.md](2026-11-05-05-worktree-cleanup.md) | 원래 폴더의 복사본 정리, 작업 위치 규칙 추가 |
+| 2026-11-05 | [2026-11-05-05-server-considerations.md](2026-11-05-05-server-considerations.md) | server 스택 추가로 고려할 점 (스택 운영, 팀 작업 경계, 매칭, 환경, 보안·운영) |
+| 2026-11-05 | [2026-11-05-04-server-progress.md](2026-11-05-04-server-progress.md) | server 스택 진행 상황 (PR 26개, API 15종, 테스트 230개, CI 통과) |
 | 2026-11-05 | [2026-11-05-04-gemini-chat-embedding-endpoints.md](2026-11-05-04-gemini-chat-embedding-endpoints.md) | Gemini 채팅 해석·임베딩 엔드포인트, 재시도·대체 응답, 테스트 |
 | 2026-11-05 | [2026-11-05-03-contracts-chat-embedding-draft.md](2026-11-05-03-contracts-chat-embedding-draft.md) | 채팅 해석·임베딩(1536차원) 계약 스키마 초안, 테스트 8건 |
 | 2026-11-05 | [2026-11-05-02-llm-scope-decision.md](2026-11-05-02-llm-scope-decision.md) | LLM 사용처는 정본 명세로 확정, LLM·임베딩 모두 Gemini API로 결정 |

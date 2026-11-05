@@ -1,6 +1,6 @@
-"""새벽 배치 (매일 03:00): 외부 지표 위험도 → 부품 근거 지표 (기능명세서 F-EXT-02, F-ANAL).
+"""새벽 배치 (매일 03:00): 외부 지표 위험도 → 부품 근거 지표 → 장부 검증.
 
-장부 검증(F-AUDIT)·재고 요약 대조(F-LEDGER-02)는 해당 기능에서 이 작업에 더한다.
+기능명세서 F-EXT-02, F-ANAL, F-AUDIT. 재고 요약 대조(F-LEDGER-02)는 요약 도입 시 더한다.
 """
 
 import csv
@@ -17,6 +17,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import distinct_on, insert
 from sqlalchemy.orm import Session
 
+from bjk_server.audit.flags import audit_company
 from bjk_server.auth import set_tenant
 from bjk_server.clock import KST
 from bjk_server.db.models import (
@@ -391,5 +392,13 @@ def compute_company(
 def nightly(session: Session, now: datetime) -> dict[str, Any]:
     r_by_code = load_indicators(session)
     companies = company_ids(session)
-    parts = sum(compute_company(session, cid, now, r_by_code) for cid in companies)
-    return {"companies": len(companies), "parts_computed": parts, "indicators": len(r_by_code)}
+    parts = flags = 0
+    for cid in companies:
+        parts += compute_company(session, cid, now, r_by_code)
+        flags += audit_company(session, cid, now)
+    return {
+        "companies": len(companies),
+        "parts_computed": parts,
+        "audit_flags_created": flags,
+        "indicators": len(r_by_code),
+    }

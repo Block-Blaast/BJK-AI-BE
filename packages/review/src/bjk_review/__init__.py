@@ -23,10 +23,13 @@ from bjk_review.models import (
     SupplierOffer,
 )
 from bjk_review.opinion import Opinion, finalize_opinion, template_opinion, to_opinion_request
+from bjk_review.questions import Answer, answer_question, classify
+from bjk_review.recheck import decision_changed, needs_refresh, recheck
 from bjk_review.verify import verify_opinion
 
 __all__ = [
     "AlternativeLine",
+    "Answer",
     "Check",
     "CountRequest",
     "HiddenStock",
@@ -43,7 +46,12 @@ __all__ = [
     "RiskIfNotOrdered",
     "Opinion",
     "SupplierOffer",
+    "answer_question",
+    "classify",
+    "decision_changed",
     "finalize_opinion",
+    "needs_refresh",
+    "recheck",
     "review_hash",
     "run_review",
     "template_opinion",

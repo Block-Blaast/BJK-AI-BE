@@ -12,7 +12,7 @@ python -m bjk_server.jobs nightly
 | `missed-scan` | 매일 07:00 | 미구현 |
 | `order-check` | 매일 07:00 | 미구현 |
 | `briefing` | 매일 07:30 | 미구현 |
-| `weekly-merge` | 월요일 03:30 | 미구현 |
+| `weekly-merge` | 월요일 03:30 | 중복 부품 후보 저장, 한쪽이 병합된 열린 후보 종료([merge.md](merge.md)) |
 | `cleanup` | 매일 04:00 | 만료 행 삭제: `rate_limits` 창 종료 1시간 뒤, `pin_attempts` 잠금 해제·마지막 실패 1일 뒤, `idempotency_keys` 7일 뒤 (명세 밖, #185) |
 
 - 플랫폼 cron을 쓰는 환경이면 스케줄러 대신 `infra/cron/crontab`처럼 CLI를 예약해도 된다. 둘을 같이 켜도 advisory lock으로 한 번만 실행된다.

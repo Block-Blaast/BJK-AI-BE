@@ -1,7 +1,7 @@
 """invites
 
-Revision ID: 0018
-Revises: 0017
+Revision ID: 0020
+Revises: 0019
 Create Date: 2026-11-05
 
 직원 초대 토큰 (API 명세서 AUTH-06·07). 토큰 원문은 저장하지 않고 SHA-256 해시만 둔다.
@@ -13,8 +13,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0018"
-down_revision: str | Sequence[str] | None = "0017"
+revision: str = "0020"
+down_revision: str | Sequence[str] | None = "0019"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

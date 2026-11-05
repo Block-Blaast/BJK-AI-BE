@@ -6,3 +6,4 @@ CRON_TZ=Asia/Seoul
 0 7 * * *    python -m bjk_server.jobs order-check
 30 7 * * *   python -m bjk_server.jobs briefing
 30 3 * * 1   python -m bjk_server.jobs weekly-merge
+0 4 * * *    python -m bjk_server.jobs cleanup

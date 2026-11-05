@@ -4,7 +4,7 @@ import json
 from types import SimpleNamespace
 
 import pytest
-from bjk_ai.config import Settings
+from bjk_ai.config import HAIKU_4_5, Settings
 from bjk_ai.gateway import (
     BedrockGateway,
     GeminiGateway,
@@ -17,9 +17,9 @@ from bjk_contracts import EmbedTask, LlmPurpose
 from pydantic import BaseModel
 
 MODELS = {
-    LlmPurpose.CHAT_PARSE: "anthropic.claude-haiku-4-5",
-    LlmPurpose.OPINION: "anthropic.claude-haiku-4-5",
-    LlmPurpose.IMPORT_SUGGEST: "anthropic.claude-haiku-4-5",
+    LlmPurpose.CHAT_PARSE: HAIKU_4_5,
+    LlmPurpose.OPINION: HAIKU_4_5,
+    LlmPurpose.IMPORT_SUGGEST: HAIKU_4_5,
 }
 
 
@@ -31,6 +31,10 @@ class FakeMessages:
     def __init__(self, stop_reason="end_turn"):
         self.calls = []
         self.stop_reason = stop_reason
+
+    async def create(self, **kwargs):
+        self.calls.append(kwargs)
+        return SimpleNamespace(stop_reason="max_tokens")
 
     async def parse(self, **kwargs):
         self.calls.append(kwargs)
@@ -83,13 +87,13 @@ def test_bedrock_generate_uses_structured_output():
     result = generate(bedrock(messages))
 
     [call] = messages.calls
-    assert call["model"] == "anthropic.claude-haiku-4-5"
+    assert call["model"] == HAIKU_4_5
     assert call["output_format"] is Output
     assert call["system"] == "sys"
     assert call["messages"] == [{"role": "user", "content": "3호기 베어링 두 개 씀"}]
     assert "output_config" not in call
     assert (result.text, result.input_tokens, result.output_tokens) == ('{"intent": "OUT"}', 12, 7)
-    assert result.model == "anthropic.claude-haiku-4-5"
+    assert result.model == HAIKU_4_5
 
 
 def test_bedrock_effort_is_sent_only_when_set():
@@ -97,6 +101,27 @@ def test_bedrock_effort_is_sent_only_when_set():
     generate(bedrock(messages, effort="low"))
 
     assert messages.calls[0]["output_config"] == {"effort": "low"}
+
+
+def test_bedrock_claude_uses_runtime_endpoint_in_region(monkeypatch):
+    # 오사카에는 Mantle 엔드포인트가 없어 Claude도 bedrock-runtime InvokeModel로 부른다.
+    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "test")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "test")
+    gateway = BedrockGateway(
+        region="ap-northeast-3",
+        models=MODELS,
+        embedding_model="amazon.titan-embed-text-v2:0",
+        runtime_client=FakeRuntime(),
+    )
+
+    async def current_client():
+        return gateway._claude.get()
+
+    client = asyncio.run(current_client())
+
+    assert str(client.base_url) == "https://bedrock-runtime.ap-northeast-3.amazonaws.com"
+    assert Settings(_env_file=None).bedrock_chat_model == HAIKU_4_5
+    assert HAIKU_4_5.startswith("global.anthropic.")
 
 
 @pytest.mark.parametrize("stop_reason", ["refusal", "max_tokens"])
@@ -202,3 +227,28 @@ def test_build_gateway_checks_configured_region():
     build_gateway(settings(aws_region="ap-northeast-1"), aws_available=seen.append)
 
     assert seen == ["ap-northeast-1"]
+
+
+def test_bedrock_warm_up_calls_claude_once_and_titan_once():
+    messages, runtime = FakeMessages(), FakeRuntime()
+    asyncio.run(bedrock(messages, runtime).warm_up())
+
+    [claude] = messages.calls
+    assert (claude["model"], claude["max_tokens"]) == (HAIKU_4_5, 1)
+    [titan] = runtime.calls
+    assert titan["modelId"] == "amazon.titan-embed-text-v2:0"
+
+
+def test_routed_gateway_warms_each_provider_once():
+    class Warmable:
+        def __init__(self):
+            self.warmed = 0
+
+        async def warm_up(self):
+            self.warmed += 1
+
+    shared, plain = Warmable(), SimpleNamespace()
+    asyncio.run(RoutedGateway(llm=shared, embedder=shared, llm_fallback=plain).warm_up())
+    asyncio.run(RoutedGateway(llm=plain, embedder=None).warm_up())
+
+    assert shared.warmed == 1

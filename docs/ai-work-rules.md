@@ -24,7 +24,7 @@ MVP의 LLM 사용처는 `about_project/01-functional-spec.md` 기준으로 아�
 | 의견서 문장 | F-REVIEW-08 | 정해진 양식 의견서 |
 | 부품 이름 임베딩(매칭·중복 후보용 벡터) | F-SETUP-02 5단계, F-MATCH-01 4단계 | (제안, 명세에 없음) 임베딩 없이 규격 필터 + 자모 유사도만으로 후보 제시 |
 
-LLM과 임베딩은 모두 **Amazon Bedrock**으로 한다(2026-11-05 결정, 인프라 보안 요청). EC2 IAM Role로 인증해 API 키가 없다. LLM은 Claude(Mantle Messages API), 임베딩은 Titan Text Embeddings V2 **1024차원**. Gemini는 키가 있을 때만 LLM 재시도 폴백으로 쓰고, 임베딩은 폴백하지 않는다(다른 모델 벡터끼리 비교 불가). 처음 결정(Gemini)은 `history/2026-11-05-02-llm-scope-decision.md`.
+LLM과 임베딩은 모두 **Amazon Bedrock**으로 한다(2026-11-05 결정, 인프라 보안 요청). EC2 IAM Role로 인증해 API 키가 없다. LLM은 Claude(bedrock-runtime InvokeModel, global 추론 프로필. 오사카에는 Mantle 엔드포인트가 없음), 임베딩은 Titan Text Embeddings V2 **1024차원**. Gemini는 키가 있을 때만 LLM 재시도 폴백으로 쓰고, 임베딩은 폴백하지 않는다(다른 모델 벡터끼리 비교 불가). 처음 결정(Gemini)은 `history/2026-11-05-02-llm-scope-decision.md`.
 
 ### 실행 설정 (`apps/ai`)
 
@@ -33,17 +33,19 @@ LLM과 임베딩은 모두 **Amazon Bedrock**으로 한다(2026-11-05 결정, �
 | `LLM_PROVIDER` | `bedrock` | LLM 주 제공자(`bedrock`·`gemini`). 쓸 수 없으면 다른 쪽으로 대신 |
 | `EMBEDDING_PROVIDER` | `bedrock` | 임베딩 제공자. 대신하지 않음(server DB 벡터와 같은 모델이어야 함) |
 | `AWS_REGION` | `ap-northeast-3` | Bedrock 리전. 자격 증명은 AWS 기본 체인(EC2 IAM Role) |
-| `BEDROCK_CHAT_MODEL` | `anthropic.claude-haiku-4-5` | 채팅 해석 모델 |
-| `BEDROCK_OPINION_MODEL` | `anthropic.claude-haiku-4-5` | 의견서 문장 모델 |
-| `BEDROCK_IMPORT_MODEL` | `anthropic.claude-haiku-4-5` | 엑셀 이관 규격·카테고리 제안 모델 |
+| `BEDROCK_CHAT_MODEL` | `global.anthropic.claude-haiku-4-5-20251001-v1:0` | 채팅 해석 모델 |
+| `BEDROCK_OPINION_MODEL` | `global.anthropic.claude-haiku-4-5-20251001-v1:0` | 의견서 문장 모델 |
+| `BEDROCK_IMPORT_MODEL` | `global.anthropic.claude-haiku-4-5-20251001-v1:0` | 엑셀 이관 규격·카테고리 제안 모델 |
 | `BEDROCK_EMBEDDING_MODEL` | `amazon.titan-embed-text-v2:0` | 임베딩 모델(1024차원, 정규화) |
-| `BEDROCK_EFFORT` | 없음 | Haiku 4.5는 비워 둠. Haiku 5.5 이상으로 바꾸면 `low` 권장 |
+| `BEDROCK_EFFORT` | 없음 | Haiku 4.5는 비워 둠. 대회 계정은 `jp.` 프로필·Haiku 5.5 권한 없음, `global.anthropic.claude-sonnet-4-6`은 가능 |
 | `GEMINI_API_KEY` | 없음 | 있으면 LLM 재시도 폴백. 없으면 Gemini를 쓰지 않음 |
 | `GEMINI_CHAT_MODEL` 등 | `gemini-3.5-flash-lite` | Gemini 폴백 모델(채팅·의견서·이관), 임베딩은 `gemini-embedding-2` |
 | `CHAT_BUDGET_SECONDS` | 2.5 | 채팅 해석 재시도 포함 시간 예산 |
 | `EMBED_BUDGET_SECONDS` | 10 | 임베딩 재시도 포함 시간 예산 |
-| `OPINION_BUDGET_SECONDS` | 3 | 의견서 한 번 호출의 재시도 포함 시간 예산 |
+| `OPINION_BUDGET_SECONDS` | 7 | 의견서 한 번 호출의 재시도 포함 시간 예산(Bedrock Haiku 4.5가 3초로는 부족했음) |
 | `IMPORT_BUDGET_SECONDS` | 30 | 엑셀 이관 제안 50줄 묶음 하나의 재시도 포함 시간 예산 |
+| `WARM_UP` | `true` | 시작 시 Bedrock Claude(1토큰)·Titan을 한 번 불러 첫 요청 지연을 없앰. 백그라운드로 돌고 실패해도 서비스는 뜸 |
+| `WARM_UP_TIMEOUT_SECONDS` | 15 | 워밍업 제한 시간 |
 
 실제 제공자 확인: `uv run --package bjk-ai python apps/ai/scripts/smoke.py`(쓰인 모델·지연·대체 여부 출력).
 

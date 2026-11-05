@@ -5,7 +5,6 @@
 """
 
 import io
-import os
 from dataclasses import dataclass
 from datetime import date, datetime
 from html import escape
@@ -175,10 +174,21 @@ svg {{ width: 100%; height: auto; }}
 </body></html>"""
 
 
+# 부분 글꼴의 head.modified. 렌더링 시각 대신 고정 값을 써서 같은 검토는 같은 바이트가 된다.
+FONT_TIMESTAMP = 0
+
+
+def _fix_font_timestamp() -> None:
+    """WeasyPrint는 부분 글꼴을 fontTools로 저장하고, fontTools는 그때 head.modified를 현재
+    시각으로 바꾼다. 그대로 두면 렌더링이 다른 초에 끝날 때마다 PDF 바이트가 달라진다.
+    """
+    from fontTools.ttLib.tables import _h_e_a_d
+
+    _h_e_a_d.timestampNow = lambda: FONT_TIMESTAMP
+
+
 def render_pdf(html: str) -> bytes:
     from weasyprint import HTML
 
-    # harfbuzz-subset이 없는 환경(CI, slim 이미지)에서는 fontTools가 글꼴을 줄이며 head.modified에
-    # 현재 시각을 넣어 같은 검토도 바이트가 달라진다. 재현 빌드 규약 SOURCE_DATE_EPOCH로 고정한다.
-    os.environ.setdefault("SOURCE_DATE_EPOCH", "0")
+    _fix_font_timestamp()
     return HTML(string=html).write_pdf()

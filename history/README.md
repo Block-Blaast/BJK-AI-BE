@@ -4,6 +4,7 @@ AI·server 영역 작업 기록 색인. 작성 규칙은 [docs/ai-work-rules.md]
 
 | 날짜 | 파일 | 내용 |
 | --- | --- | --- |
+| 2026-11-05 | [2026-11-05-61-chat-receipt-supplier-price.md](2026-11-05-61-chat-receipt-supplier-price.md) | 채팅 입고 공급사·단가를 발주 대조에 전달, 다르면 mismatch |
 | 2026-11-05 | [2026-11-05-60-web-push-send.md](2026-11-05-60-web-push-send.md) | 웹 푸시 발송(NOT-04), 만료 구독 정리, push 배치 |
 | 2026-11-05 | [2026-11-05-59-chat-last-order-supplier.md](2026-11-05-59-chat-last-order-supplier.md) | 채팅 발주 요청 "저번 데"를 최근 발주 공급사로 해석(#238), 875개 통과 |
 | 2026-11-05 | [2026-11-05-58-snapshot-merged-stock.md](2026-11-05-58-snapshot-merged-stock.md) | 검토 스냅샷 S·H에 병합 부품 재고 연결(#209 후속), 845개 통과 |

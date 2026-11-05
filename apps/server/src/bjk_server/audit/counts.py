@@ -11,6 +11,7 @@ from bjk_server.clock import KST
 from bjk_server.db.models import AuditFlag, CompanySettings, CountRequest, Movement, Part, User
 from bjk_server.defaults import DEFAULT_SETTINGS
 from bjk_server.errors import ApiError, ErrorCode
+from bjk_server.events import publish_stock_changed
 from bjk_server.inventory import lock_part_stock, stock_of
 from bjk_server.notify.service import notify
 from bjk_server.security import TokenClaims
@@ -193,7 +194,7 @@ def answer_count(
             reason=COUNT_ADJUST_REASON,
         )
         db.add(movement)
-        db.flush()
+        publish_stock_changed(db, request.company_id, part.id)
         request.adjust_movement_id = movement.id
     request.counted_qty, request.book_qty_before, request.diff = counted_qty, book, diff
     request.answered_at = now

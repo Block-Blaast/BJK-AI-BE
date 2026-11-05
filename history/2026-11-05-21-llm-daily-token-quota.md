@@ -25,6 +25,7 @@
 ## 검증
 
 - `REQUIRE_DB_TESTS=1 uv run pytest apps/server/tests/test_ai_quota.py`: 5개 통과
+- `REQUIRE_DB_TESTS=1 make test`: 559개 통과
 - `make lint` 통과
 
 ## 남은 일·확인 필요

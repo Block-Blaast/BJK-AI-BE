@@ -6,5 +6,6 @@ from bjk_server.jobs import (
     missed_scan,  # noqa: F401
     nightly,  # noqa: F401
     order_check,  # noqa: F401
+    push,  # noqa: F401
     weekly_merge,  # noqa: F401
 )

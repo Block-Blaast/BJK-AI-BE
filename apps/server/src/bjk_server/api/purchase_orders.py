@@ -1,7 +1,7 @@
-"""발주 API (API 명세서 8장 PO-01·04, F-APPROVAL-02·03)."""
+"""발주 API (API 명세서 8장 PO-01~04, F-APPROVAL-02·03)."""
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
@@ -11,8 +11,14 @@ from sqlalchemy.orm import Session, aliased
 
 from bjk_server import clock
 from bjk_server.auth import TenantDB, require_role
-from bjk_server.db.models import Part, PurchaseOrder, Supplier, User
-from bjk_server.domain.purchase_order import OrderStateConflict, PoStatus, cancel
+from bjk_server.db.models import Part, PurchaseOrder, ReviewSnapshot, Supplier, User
+from bjk_server.domain.purchase_order import (
+    OrderStateConflict,
+    PoStatus,
+    cancel,
+    mark_ordered,
+    order_message,
+)
 from bjk_server.errors import ApiError, ErrorCode
 from bjk_server.pagination import Page, PageParams, keyset_page, page_params
 from bjk_server.purchasing.receipt import lead_time_days
@@ -156,3 +162,68 @@ def cancel_order(
     order.cancelled_at = clock.utcnow()
     order.cancel_reason = (body.reason or "").strip() or None
     return CancelResponse(id=order.id, status="cancelled")
+
+
+class PurchaseOrderDetail(PurchaseOrderOut):
+    # 공급사에 보낼 문자 문구 (F-APPROVAL-03). 희망 납기는 검토 스냅샷의 필요 시점
+    order_message: str
+
+
+def _need_by(db: Session, review_id: uuid.UUID | None) -> date | None:
+    if review_id is None:
+        return None
+    values = db.scalar(
+        select(ReviewSnapshot.values)
+        .where(ReviewSnapshot.review_id == review_id)
+        .order_by(ReviewSnapshot.created_at.desc(), ReviewSnapshot.id)
+        .limit(1)
+    )
+    t_out = (values or {}).get("t_out")
+    return date.fromisoformat(t_out) if t_out else None
+
+
+@router.get("/{order_id}", response_model=PurchaseOrderDetail)
+def get_order(order_id: uuid.UUID, _: Manager, db: TenantDB) -> PurchaseOrderDetail:
+    """PO-02. 발주 상세와 공급사 문자 문구."""
+    row = db.execute(_select().where(PurchaseOrder.id == order_id)).first()
+    if row is None:
+        raise ApiError(ErrorCode.NOT_FOUND, "발주를 찾을 수 없습니다.")
+    po: PurchaseOrder = row.PurchaseOrder
+    unit = db.scalar(select(Part.unit).where(Part.id == po.part_id))
+    message = order_message(row.part_name, po.qty, unit, _need_by(db, po.review_id))
+    return PurchaseOrderDetail(**order_out(row).model_dump(), order_message=message)
+
+
+class MarkOrderedRequest(BaseModel):
+    ordered_at: datetime | None = None
+
+
+class MarkOrderedResponse(BaseModel):
+    id: uuid.UUID
+    status: PoStatus
+    ordered_at: datetime
+
+
+@router.post("/{order_id}/mark-ordered", response_model=MarkOrderedResponse)
+def mark_order_placed(
+    order_id: uuid.UUID, body: MarkOrderedRequest, user: Manager, db: TenantDB
+) -> MarkOrderedResponse:
+    """PO-03. 전화·문자로 주문했다고 표시한다. 이 시각부터 실제 납기를 잰다 (F-LEDGER-04).
+
+    `ordered_at`을 비우면 지금. 승인 시각보다 이르거나 미래면 400. 승인됨에서만, 그 밖은 409.
+    """
+    order = locked_order(db, order_id)
+    try:
+        status = mark_ordered(order.status)  # type: ignore[arg-type]
+    except OrderStateConflict as e:
+        raise state_conflict(e) from None
+    now = clock.utcnow()
+    ordered_at = body.ordered_at or now
+    if ordered_at.tzinfo is None or ordered_at > now or ordered_at < order.approved_at:
+        raise ApiError(
+            ErrorCode.VALIDATION_ERROR,
+            "주문 시각은 승인 이후 지금까지의 시간대 포함 시각이어야 합니다.",
+            {"field": "ordered_at"},
+        )
+    order.status, order.ordered_at, order.ordered_by = status, ordered_at, user.user_id
+    return MarkOrderedResponse(id=order.id, status=status, ordered_at=ordered_at)

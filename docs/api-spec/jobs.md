@@ -14,6 +14,7 @@ python -m bjk_server.jobs nightly
 | `briefing` | 매일 07:30 | 결정 대기 검토 만료(요청자 알림) → 브리핑 계산, 확인할 일이 있으면 사장님·관리자 알림(하루 1회) |
 | `weekly-merge` | 월요일 03:30 | 중복 부품 후보 저장, 한쪽이 병합된 열린 후보 종료([merge.md](merge.md)) |
 | `cleanup` | 매일 04:00 | 만료 행 삭제: `rate_limits` 창 종료 1시간 뒤, `pin_attempts` 잠금 해제·마지막 실패 1일 뒤, `idempotency_keys` 7일 뒤 (명세 밖, #185) |
+| `push` | 10분마다 | 보낼 시각이 된 웹 푸시 발송(조용한 시간으로 미룬 알림 포함, NOT-04). VAPID 키 없으면 `skipped` 요약 |
 
 - 플랫폼 cron을 쓰는 환경이면 스케줄러 대신 `infra/cron/crontab`처럼 CLI를 예약해도 된다. 둘을 같이 켜도 advisory lock으로 한 번만 실행된다.
 - RLS가 적용되는 앱 계정(`DATABASE_URL`)으로 실행한다. 회사 ID 목록만 `system_company_ids()` 함수로 받고, 회사마다 `app.company_id`를 지정한 뒤 그 회사 데이터만 읽고 쓴다.

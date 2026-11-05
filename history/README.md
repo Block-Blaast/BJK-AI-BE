@@ -5,6 +5,15 @@ AI·server 영역 작업 기록 색인. 작성 규칙은 [docs/ai-work-rules.md]
 | 날짜 | 파일 | 내용 |
 | --- | --- | --- |
 | 2026-11-05 | [2026-11-05-42-demo-order-history.md](2026-11-05-42-demo-order-history.md) | 시연 시드 입고 완료 발주 이력·납기 표본(#12), V벨트 단가 예시 맞춤 |
+| 2026-11-05 | [2026-11-05-62-briefing-order-check.md](2026-11-05-62-briefing-order-check.md) | 브리핑 `order_check_needed`에 납기 지난 미입고 포함(#182) |
+| 2026-11-05 | [2026-11-05-61-chat-receipt-supplier-price.md](2026-11-05-61-chat-receipt-supplier-price.md) | 채팅 입고 공급사·단가를 발주 대조에 전달, 다르면 mismatch |
+| 2026-11-05 | [2026-11-05-60-web-push-send.md](2026-11-05-60-web-push-send.md) | 웹 푸시 발송(NOT-04), 만료 구독 정리, push 배치 |
+| 2026-11-05 | [2026-11-05-59-chat-last-order-supplier.md](2026-11-05-59-chat-last-order-supplier.md) | 채팅 발주 요청 "저번 데"를 최근 발주 공급사로 해석(#238), 875개 통과 |
+| 2026-11-05 | [2026-11-05-58-snapshot-merged-stock.md](2026-11-05-58-snapshot-merged-stock.md) | 검토 스냅샷 S·H에 병합 부품 재고 연결(#209 후속), 845개 통과 |
+| 2026-11-05 | [2026-11-05-57-purchase-order-detail.md](2026-11-05-57-purchase-order-detail.md) | 발주 상세(문자 문구)·주문 완료 표시 API(PO-02·03) |
+| 2026-11-05 | [2026-11-05-56-nightly-orders-lead-time.md](2026-11-05-56-nightly-orders-lead-time.md) | 새벽 배치 실제 납기 LT50·LT90와 입고 예정 O 반영, DB 포함 832개 통과 |
+| 2026-11-05 | [2026-11-05-55-chat-po-match-preview.md](2026-11-05-55-chat-po-match-preview.md) | 입고 확인 카드 `po_match` 미리 보기(#164 후속), 827개 통과 |
+| 2026-11-05 | [2026-11-05-54-push-subscriptions.md](2026-11-05-54-push-subscriptions.md) | 웹 푸시 구독 저장·조회·해지와 VAPID 설정(#184 1단계), 마이그레이션 0028 |
 | 2026-11-05 | [2026-11-05-53-review-list.md](2026-11-05-53-review-list.md) | 검토 목록 API(REV-01), 긴급·손실 순 커서 목록 |
 | 2026-11-05 | [2026-11-05-52-review-detail.md](2026-11-05-52-review-detail.md) | 검토 상세 REV-02(#147), #206 저장 구조 기준, worker 본인 요청만 |
 | 2026-11-05 | [2026-11-05-51-order-check.md](2026-11-05-51-order-check.md) | order-check 주문·입고 확인 알림 배치(#226), 812개 통과 |

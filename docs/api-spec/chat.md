@@ -56,6 +56,9 @@
 | --- | --- |
 | 확정(별칭 일치, 규격 일치 후보 1개, 또는 코사인 확정) | `confirm` (`part_id`, `name`, `stock`, `unit`) |
 | 위 조건에서 1회 수량 > 같은 부품·같은 방향 과거 1회 최대 × 5 | `warning` |
+
+- `IN`의 `confirm`·`warning` 카드는 `po_match` 미리 보기를 담는다. 확정(CHAT-03)과 같은 규칙(남은 수량이 입고 수량과 같은 열린 발주 먼저, 없으면 가장 오래된 승인)으로 고르되 발주를 바꾸거나 알림을 보내지 않는다. 카드에는 공급사·단가가 없어 수량만 비교한다. 수량이 없거나 `OUT`이면 `null`. 실제 결과는 확정 응답의 `po_match`가 정본이다.
+
 | 확정은 아니지만 후보가 있음 (하나여도) | `select` (`candidates`, 설비에 연결된 부품 먼저, 최대 3개) |
 | 후보 없음 | `unregistered` |
 | 해석 실패 | `form` (`ai.fallback: true`, `ai.reason`) |
@@ -71,8 +74,7 @@
 | `COUNT` | 카드 없음. 담당자 본인의 응답 대기 실사 요청에 AUD-03과 같은 처리. 응답의 `count_request_id`로 차이 사유(AUD-04)를 보낸다 |
 | `PURCHASE_REQUEST` | 부품이 확정되면 `confirm` 카드(`part_id`, `qty`, `unit_price`, `supplier_resolution`), 후보만 있으면 `select` 카드, 없으면 카드 없이 미등록 안내 |
 
-- `PURCHASE_REQUEST` 공급사 해석 `supplier_resolution: { text, supplier_id, name, method }`: 공급사 이름이 표현을 포함하면(또는 그 반대) `named`(이 부품을 파는 곳 먼저), 표현이 없거나 "저번 데"·"늘 사던 곳"처럼 최근 발주처를 가리키면 기본 공급사 `default`, 해석하지 못하면 `none`.
-- 현재 구현 범위: 최근 발주 공급사(`last_order`)는 발주 기록(#161) 반영 후 채운다. 그전에는 최근 발주처 표현도 기본 공급사(`default`)로 해석한다.
+- `PURCHASE_REQUEST` 공급사 해석 `supplier_resolution: { text, supplier_id, name, method }`: 공급사 이름이 표현을 포함하면(또는 그 반대) `named`(이 부품을 파는 곳 먼저), "저번 데"·"늘 사던 곳"처럼 최근 발주처를 가리키면 이 부품을 가장 최근에 승인한 발주(취소 제외)의 공급사 `last_order`, 발주 이력이 없거나 표현이 없으면 기본 공급사 `default`, 해석하지 못하면 `none`.
 - 답변 예: "V벨트 A-42 30개, 공급사 A로 요청하셨나요?"
 
 - `COUNT`: 응답 대기 요청이 없으면 "답할 실사 요청이 없어요.", 수량이 없으면 "센 수량을 숫자로 알려 주세요.". 요청이 여럿이면 부품 표현으로 고르고, 고르지 못하면 후보 이름을 되묻는다. 응답 전에는 원장을 바꾸지 않는다.
@@ -127,7 +129,7 @@
   - `actual_lead_time_days`: 이번 입고로 발주를 채웠을 때 주문 완료 시각부터 입고까지 일수. 주문 완료 표시 없이 입고되면 서버가 `ordered`로 바꾸고(`implicit_order`) 납기 표본에서 빼서 `null`.
 - `MAINTENANCE_DONE` 카드 확정은 SET-09와 같이 완료자·완료 시각(확정 시각)을 남기고 `{ "intent": "MAINTENANCE_DONE", "maintenance_id", "equipment_id", "completed_at", "reply": "정비 완료로 기록했어요." }`를 돌려준다. 이미 완료된 정비는 409 `ALREADY_CONFIRMED`(`detail.status: completed`).
 - `PURCHASE_REQUEST` 카드 확정은 직원 요청 검토(`entry: staff_request`, 요청자 본인, 원본 메시지 연결)를 만들고 `{ "intent": "PURCHASE_REQUEST", "review_id", "status": "reviewing", "reply": "검토해서 사장님께 올렸어요." }`를 돌려준다. 검토는 커밋 뒤 실행된다(`review.progress` 이벤트). 요청에서 `part_id`(선택 카드), `qty`, `supplier_id`, `unit_price`를 바꿀 수 있다. 공급사가 비면 검토가 기본 공급사를, 단가가 비면 등록 단가를 쓴다. 선택 카드는 고른 부품의 기본 공급사를 쓴다. 없는 공급사는 404.
-- 현재 구현 범위: `OUT`·`IN`·`MAINTENANCE_DONE`·`PURCHASE_REQUEST`를 처리한다. `triggered.draft_review_id`(재고 부족 초안)는 검토 기능에서 채운다. `IN`은 열린 발주와 대조해 `po_match`·`actual_lead_time_days`를 채우고, 확인 카드(CHAT-01)의 `po_match` 미리 보기는 아직 붙이지 않았다.
+- 현재 구현 범위: `OUT`·`IN`·`MAINTENANCE_DONE`·`PURCHASE_REQUEST`를 처리한다. `triggered.draft_review_id`(재고 부족 초안)는 검토 기능에서 채운다. `IN`은 열린 발주와 대조해 `po_match`·`actual_lead_time_days`를 채운다.
 - 확인 카드 확정과 폼 입력은 같은 회사·부품의 원장 추가와 재고 합산을 트랜잭션 단위로 직렬화한다. `stock_after`는 해당 요청이 반영된 시점의 합산값이며, 이후 다른 요청이 재고를 바꿀 수 있다.
 
 ### 재고 동시성 검증 (#69)

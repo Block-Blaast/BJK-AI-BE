@@ -1,14 +1,17 @@
 # AI 영역 작업 규칙
 
-AI 영역(`apps/ai`, `packages/contracts`의 ai 관련 스키마)을 맡은 에이전트가 따르는 규칙이다. server 로직은 다른 에이전트가 맡으며, 이 문서는 협업 공통 규칙(`AGENTS.md`, `docs/collaboration.md`, `docs/reference/dev-harness.md`)에 더해 지킨다.
+AI 영역(`apps/ai`, `packages/review`, `packages/contracts`의 ai·검토 관련 스키마)을 맡은 에이전트가 따르는 규칙이다. server 로직은 다른 에이전트가 맡으며, 이 문서는 협업 공통 규칙(`AGENTS.md`, `docs/collaboration.md`, `docs/reference/dev-harness.md`)에 더해 지킨다.
 
 ## 1. 담당 범위
 
 | 구분 | 내용 |
 | --- | --- |
 | 담당 | `apps/ai`(`bjk_ai`) LLM 게이트웨이, server ↔ ai 계약 중 ai 호출 스키마(`packages/contracts`) |
-| 담당 아님 | `apps/server`의 장부·계산·체크·판정·수정안·숫자 검증·승인 로직 |
-| 공동 | 계약 스키마. 바꾸기 전에 사람에게 확인한다(dev-harness §0) |
+| 담당 | 발주 검토 판정 엔진 `packages/review`(`bjk_review`): 보류·체크 9개·수정안·판정, 의견서 숫자 검증·양식 의견서, 재검토, 후속 질문 양식 답변(F-REVIEW, 2026-11-05 사용자 결정) |
+| 담당 아님 | `apps/server`의 장부·근거 지표 계산(F-ANAL)·스냅샷 수집·검토 저장·승인·알림 |
+| 공동 | 계약 스키마와 검토 스냅샷 형식. 바꾸기 전에 사람에게 확인한다(dev-harness §0) |
+
+검토 엔진은 server가 같은 프로세스에서 실행하는 순수 함수 패키지다. ai 서비스가 멈춰도 판정은 나와야 하기 때문이다(설계 원칙 7). LLM은 의견서 문장만 맡는다.
 
 MVP의 LLM 사용처는 `about_project/01-functional-spec.md` 기준으로 아래 셋이며, 모두 실패 시 대체 경로가 있어야 한다.
 
@@ -17,7 +20,6 @@ MVP의 LLM 사용처는 `about_project/01-functional-spec.md` 기준으로 아�
 | 채팅 해석(tool calling 구조화 추출) | F-CHAT-01 | 폼 입력 카드(F-CHAT-07) |
 | 엑셀 이관 규격·카테고리 제안 | F-SETUP-02 | 규격은 정규식만, 카테고리는 직접 선택 |
 | 의견서 문장 | F-REVIEW-08 | 정해진 양식 의견서 |
-
 | 부품 이름 임베딩(매칭·중복 후보용 벡터) | F-SETUP-02 5단계, F-MATCH-01 4단계 | (제안, 명세에 없음) 임베딩 없이 규격 필터 + 자모 유사도만으로 후보 제시 |
 
 LLM과 임베딩은 모두 **Gemini API**로 하고, API 키 하나를 `apps/ai`에서만 관리한다(2026-11-05 결정). 로컬 임베딩 모델(BGE-M3 등)은 쓰지 않는다.

@@ -95,3 +95,29 @@
 | PIN 불일치 (1~4회째) | 401 `INVALID_PIN`, `remaining_attempts` |
 | 5회째 실패, 잠금 중 요청 | 423 `PIN_LOCKED`, `Retry-After` 헤더 |
 | 없는 회사 코드, 없는 사용자, PIN 미등록 사용자 | 404 `NOT_FOUND` |
+
+## AUTH-09 GET /api/v1/users, PATCH /api/v1/users/{id}
+
+- 권한: owner. 다른 역할은 403 `FORBIDDEN_ROLE`.
+- 목록은 우리 회사 사용자 전체를 이름순(C 정렬)으로 준다. 비활성 사용자도 `active: false`로 포함한다.
+- 역할 변경은 `worker`·`manager` 사이만 받는다. 이미 발급된 액세스 토큰은 만료(15분)까지 이전 역할이고, 토큰 갱신부터 새 역할이 적용된다.
+
+```json
+// GET 200 Response
+{ "items": [ { "id": "...", "name": "이현장", "role": "worker", "email": null, "has_pin": true, "active": true } ] }
+
+// PATCH Request
+{ "role": "manager" }
+
+// PATCH 200 Response
+{ "id": "...", "name": "이현장", "role": "manager", "email": null, "has_pin": true, "active": true }
+```
+
+| 상황 | 응답 |
+| --- | --- |
+| `role`이 `worker`·`manager`가 아님 | 400 `VALIDATION_ERROR` |
+| 본인 역할 변경 | 400 `VALIDATION_ERROR`, `detail.reason: "self"` |
+| 사장님(owner) 계정 변경 | 400 `VALIDATION_ERROR`, `detail.reason: "owner"` |
+| 없는 사용자, 다른 회사 사용자 | 404 `NOT_FOUND` |
+
+- 명세에 없어 정한 것: owner 지정·해제와 본인 변경을 받지 않음. 목록은 회사 인원이 적어 페이지네이션 없이 전부 준다.

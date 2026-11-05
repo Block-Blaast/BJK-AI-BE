@@ -76,10 +76,15 @@ def notify(
     channels: Iterable[Channel] = ("push", "in_app"),
     target: tuple[TargetType, uuid.UUID] | None = None,
     dedupe_key: str | None = None,
+    at: datetime | None = None,
 ) -> list[uuid.UUID]:
-    """받는 사람마다 알림을 만든다. 이미 같은 키로 받은 사람은 건너뛰고, 새로 만든 ID를 돌려준다."""
+    """받는 사람마다 알림을 만든다. 이미 같은 키로 받은 사람은 건너뛰고, 새로 만든 ID를 돌려준다.
+
+    `at`을 주면 그 시각(조용한 시간이면 끝나는 시각)부터 보인다. 예약 실사 요청처럼 나중에
+    보낼 알림에 쓴다.
+    """
     channels = list(channels)
-    sent_at = release_at(now, quiet_hours_of(db, company_id))
+    sent_at = release_at(at or now, quiet_hours_of(db, company_id))
     target_type, target_id = target if target else (None, None)
     created: list[uuid.UUID] = []
     for user_id in user_ids:

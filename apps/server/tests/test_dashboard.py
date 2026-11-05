@@ -5,7 +5,16 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from bjk_server.api import dashboard
-from bjk_server.db.models import Movement, Part, Review, SupplierPart
+from bjk_server.db.models import (
+    AuditFlag,
+    Company,
+    Movement,
+    Part,
+    PurchaseOrder,
+    Review,
+    Supplier,
+    SupplierPart,
+)
 from bjk_server.jobs.runner import run_job
 from bjk_server.seed.demo import COMPANY_CODE, demo_id
 from sqlalchemy.orm import Session
@@ -140,3 +149,73 @@ def test_today_movements_counted_from_kst_midnight(summary, demo_db):
         ):
             s.add(Movement(company_id=COMPANY, part_id=part, type="IN", qty=1, occurred_at=at))
     assert summary().json()["today"]["movements"] == base + 1
+
+
+def _order(company_id, part_id, supplier_id, status, **kw) -> PurchaseOrder:
+    return PurchaseOrder(
+        company_id=company_id,
+        part_id=part_id,
+        supplier_id=supplier_id,
+        qty=10,
+        unit_price=1000,
+        status=status,
+        approved_at=NOW - timedelta(days=1),
+        **kw,
+    )
+
+
+def test_awaiting_order_counts_approved_orders_only(summary, demo_db):
+    part, supplier, owner = (
+        demo_id("part", "6205"),
+        demo_id("supplier", "a"),
+        demo_id("user", "owner"),
+    )
+    with Session(demo_db.admin) as s, s.begin():
+        s.add_all(
+            [
+                _order(COMPANY, part, supplier, "approved"),
+                _order(COMPANY, part, supplier, "approved"),
+                _order(COMPANY, part, supplier, "ordered", ordered_at=NOW, ordered_by=owner),
+                _order(COMPANY, part, supplier, "cancelled", cancelled_at=NOW),
+            ]
+        )
+    assert summary().json()["awaiting_order"] == 2
+
+
+def test_owner_allowed_and_other_company_excluded(summary, demo_db):
+    before = summary("owner")
+    assert before.status_code == 200
+    other = uuid.uuid4()
+    with Session(demo_db.admin) as s, s.begin():
+        s.add(Company(id=other, name="다른회사", code="OTH001"))
+        s.flush()
+        supplier = Supplier(id=uuid.uuid4(), company_id=other, name="다른 공급사")
+        part = Part(id=uuid.uuid4(), company_id=other, name="다른 부품", unit="개")
+        s.add_all([supplier, part])
+        s.flush()
+        s.add_all(
+            [
+                _order(other, part.id, supplier.id, "approved"),
+                Review(company_id=other, entry="missed_draft", status="reviewed", request={}),
+                AuditFlag(
+                    company_id=other,
+                    part_id=part.id,
+                    rule="NEGATIVE_STOCK",
+                    level="high",
+                    status="open",
+                    evidence={},
+                    keys=[],
+                ),
+                Movement(
+                    company_id=other,
+                    part_id=part.id,
+                    type="ADJUST",
+                    qty=5,
+                    occurred_at=NOW,
+                    reason="test",
+                ),
+            ]
+        )
+    after = summary("owner").json()
+    keys = ("awaiting_order", "pending_reviews", "audit_flags", "today", "tied_up_stock_amount")
+    assert {k: after[k] for k in keys} == {k: before.json()[k] for k in keys}

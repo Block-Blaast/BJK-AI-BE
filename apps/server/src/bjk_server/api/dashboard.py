@@ -12,7 +12,7 @@ from bjk_server import clock
 from bjk_server.api.external import external_status
 from bjk_server.auth import TenantDB, require_role
 from bjk_server.clock import KST
-from bjk_server.db.models import AuditFlag, Movement, Part, Review, SupplierPart
+from bjk_server.db.models import AuditFlag, Movement, Part, PurchaseOrder, Review, SupplierPart
 from bjk_server.domain.external import Level
 from bjk_server.inventory import latest_metrics_subquery, stock_subquery
 from bjk_server.security import TokenClaims
@@ -137,7 +137,7 @@ def _external(user: TokenClaims, db) -> ExternalSummary:
 
 @router.get("/summary", response_model=DashboardSummary)
 def dashboard_summary(user: Manager, db: TenantDB) -> DashboardSummary:
-    """DSH-02. 발주 테이블 연결 전이라 `awaiting_order`는 0이다."""
+    """DSH-02. `awaiting_order`는 승인 후 주문 완료 표시를 기다리는 발주(`approved`) 수."""
     now = clock.utcnow()
     start = datetime.combine(now.astimezone(KST).date(), time.min, tzinfo=KST)
     risk_top5, computed_at = _risk_top(db)
@@ -162,7 +162,8 @@ def dashboard_summary(user: Manager, db: TenantDB) -> DashboardSummary:
         risk_top5=risk_top5,
         pending_reviews=PendingReviews(count=pending[0], urgent=pending[1]),
         audit_flags=AuditSummary(open=flags[0], high=flags[1]),
-        awaiting_order=0,
+        awaiting_order=db.scalar(select(func.count()).where(PurchaseOrder.status == "approved"))
+        or 0,
         tied_up_stock_amount=_tied_up_amount(db, now),
         external=_external(user, db),
         today=today,

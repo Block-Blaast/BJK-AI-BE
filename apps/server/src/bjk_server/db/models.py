@@ -326,3 +326,23 @@ class ChatEntry(Base):
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     result: Mapped[dict[str, Any] | None]
     created_at: Mapped[datetime] = _created_at()
+
+
+class JobRun(Base):
+    """배치 실행 기록 (API 명세서 14장). 회사 단위가 아닌 시스템 기록이라 RLS를 걸지 않는다."""
+
+    __tablename__ = "job_runs"
+    __table_args__ = (
+        CheckConstraint("status IN ('ok', 'error', 'skipped')", name="status"),
+        CheckConstraint("trigger IN ('schedule', 'manual')", name="trigger"),
+        Index("ix_job_runs_name_started", "name", "started_at"),
+    )
+
+    id: Mapped[uuid.UUID] = _id()
+    name: Mapped[str] = mapped_column(String(32))
+    trigger: Mapped[str] = mapped_column(String(16))
+    status: Mapped[str] = mapped_column(String(16))
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    summary: Mapped[dict[str, Any]] = mapped_column(server_default=sql_text("'{}'::jsonb"))
+    error: Mapped[str | None] = mapped_column(Text)

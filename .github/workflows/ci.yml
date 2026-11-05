@@ -16,6 +16,23 @@ jobs:
   test:
     name: CI / lint·test
     runs-on: ubuntu-latest
+    services:
+      # DB 테스트용. 테스트마다 임시 DB를 만들고 지운다.
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
+    env:
+      TEST_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/postgres
+      # DB 테스트를 건너뛰지 않고 반드시 실행한다.
+      REQUIRE_DB_TESTS: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6

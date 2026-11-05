@@ -12,6 +12,7 @@ from bjk_server.db.models import AuditFlag, CompanySettings, CountRequest, Movem
 from bjk_server.defaults import DEFAULT_SETTINGS
 from bjk_server.errors import ApiError, ErrorCode
 from bjk_server.inventory import lock_part_stock, stock_of
+from bjk_server.notify.service import notify
 from bjk_server.security import TokenClaims
 
 # 실사조정 원장 기록의 사유. 차이 사유(AUD-04)는 실사 요청에 남긴다.
@@ -103,6 +104,19 @@ def request_count(
     db.add(request)
     flag.status, flag.updated_at = "count_requested", now
     db.flush()
+    # 담당 작업자에게 채팅·웹 푸시 (F-NOTI-04). 예약 요청은 예약 시각부터 보인다.
+    notify(
+        db,
+        user.company_id,
+        [assignee_id],
+        "count_request",
+        request.message,
+        now,
+        channels=("chat", "push"),
+        target=("count", request.id),
+        dedupe_key=f"count_request:{request.id}",
+        at=request.scheduled_for,
+    )
     return request
 
 
@@ -117,6 +131,23 @@ def _diff_reply(diff: int, unit: str) -> str:
         return "장부와 같아요. 이상 없음으로 처리했어요."
     direction = "적어요" if diff < 0 else "많아요"
     return f"장부보다 {abs(diff)}{unit} {direction}. 이유를 골라 주세요."
+
+
+def delivered_requests(db: Session, assignee_id: uuid.UUID, now: datetime) -> list[CountRequest]:
+    """담당자에게 전달돼 응답을 기다리는 실사 요청. 예약 건은 예약 시각부터. 오래된 요청부터."""
+    return list(
+        db.scalars(
+            select(CountRequest)
+            .where(
+                CountRequest.assignee_id == assignee_id,
+                or_(
+                    CountRequest.status == "sent",
+                    (CountRequest.status == "scheduled") & (CountRequest.scheduled_for <= now),
+                ),
+            )
+            .order_by(CountRequest.created_at)
+        )
+    )
 
 
 def own_delivered_request(

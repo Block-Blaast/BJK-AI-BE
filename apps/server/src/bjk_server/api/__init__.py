@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from bjk_server.api import (
+    activity,
     audit,
     auth,
     briefing,
@@ -27,6 +28,7 @@ from bjk_server.api import (
     review_questions,
     reviews,
     settings,
+    sim_reports,
     suppliers,
     users,
 )
@@ -61,3 +63,5 @@ api_router.include_router(push.router)
 api_router.include_router(dashboard.router)
 api_router.include_router(reviews.router)
 api_router.include_router(notifications.router)
+api_router.include_router(sim_reports.router)
+api_router.include_router(activity.router)

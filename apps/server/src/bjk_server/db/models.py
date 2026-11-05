@@ -839,3 +839,24 @@ class PushSubscription(Base):
     auth: Mapped[str] = mapped_column(String(100))
     created_at: Mapped[datetime] = _created_at()
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class SimReport(Base):
+    """검증 리포트 (기능명세서 F-SIM-03·04, 화면 W-09). 명세서에 HTTP 형식이 없어 정한 테이블.
+
+    `source`가 `sample`이면 시연 시드의 더미 행이다. 검증 하네스가 생기면 실제 실행 결과를
+    `harness` 행으로 쌓고 수치는 `summary`에 둔다. PDF 저장·조회는 하네스와 함께 더한다.
+    """
+
+    __tablename__ = "sim_reports"
+    __table_args__ = (
+        CheckConstraint("source IN ('sample', 'harness')", name="source"),
+        Index("ix_sim_reports_company_created", "company_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = _id()
+    company_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("companies.id", ondelete="CASCADE"))
+    title: Mapped[str] = mapped_column(String(200))
+    source: Mapped[str] = mapped_column(String(16))
+    summary: Mapped[dict[str, Any]] = mapped_column(server_default=sql_text("'{}'::jsonb"))
+    created_at: Mapped[datetime] = _created_at()

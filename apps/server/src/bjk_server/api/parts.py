@@ -9,6 +9,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy import exists, func, or_, select
 
 from bjk_server import clock
+from bjk_server.ai.client import AiClient, get_ai_client
+from bjk_server.ai.embeddings import embed_rows
 from bjk_server.auth import CurrentUser, TenantDB, require_role
 from bjk_server.db.models import AuditFlag, Category, Movement, Part, PartAlias, Supplier, User
 from bjk_server.errors import ApiError, ErrorCode
@@ -19,6 +21,7 @@ from bjk_server.security import TokenClaims
 router = APIRouter(prefix="/parts", tags=["parts"])
 
 Manager = Annotated[TokenClaims, Depends(require_role("manager"))]
+Ai = Annotated[AiClient | None, Depends(get_ai_client)]
 Dependency = Literal["high", "medium", "low"]
 SpecValue = str | int | float
 # 엑셀 이관·부품 등록 때 들어간 시작 재고의 원장 사유 (F-SETUP-01)
@@ -258,8 +261,11 @@ def _text(fields: dict, key: str) -> None:
 
 
 @router.post("", status_code=201, response_model=PartOut)
-def create_part(body: PartCreate, user: Manager, db: TenantDB) -> PartOut:
-    """SET-05. 부품 등록. 시작 재고는 원장에 ADJUST(사유 `초기 재고`)로 넣는다."""
+def create_part(body: PartCreate, user: Manager, db: TenantDB, ai: Ai) -> PartOut:
+    """SET-05. 부품 등록. 시작 재고는 원장에 ADJUST(사유 `초기 재고`)로 넣는다.
+
+    이름 임베딩을 함께 저장한다(F-SETUP-02 5단계). ai가 실패하면 비워 두고 nightly가 채운다.
+    """
     fields = body.model_dump()
     _text(fields, "name")
     _text(fields, "unit")
@@ -283,14 +289,19 @@ def create_part(body: PartCreate, user: Manager, db: TenantDB) -> PartOut:
             )
         )
         db.flush()
+    if ai:
+        embed_rows(db, ai, user.company_id, [part])
     return _part_out(db, part)
 
 
 @router.patch("/{part_id}", response_model=PartOut)
-def update_part(part_id: uuid.UUID, body: PartUpdate, _: Manager, db: TenantDB) -> PartOut:
+def update_part(
+    part_id: uuid.UUID, body: PartUpdate, user: Manager, db: TenantDB, ai: Ai
+) -> PartOut:
     """SET-05. 보낸 항목만 고친다. 재고는 바꾸지 않는다(정정·실사 기록으로 맞춘다).
 
     병합된 부품은 대표 부품을 고친다. name·unit·spec에 null은 400, 나머지는 null로 지운다.
+    이름이 바뀌면 이전 임베딩을 지우고 다시 만든다.
     """
     part = db.get(Part, part_id)
     if part is None:
@@ -307,8 +318,13 @@ def update_part(part_id: uuid.UUID, body: PartUpdate, _: Manager, db: TenantDB) 
     if "spec" in fields and fields["spec"] is None:
         raise ApiError(ErrorCode.VALIDATION_ERROR, "값을 비울 수 없습니다.", {"field": "spec"})
     _check_refs(db, fields)
+    renamed = "name" in fields and fields["name"] != part.name
     for key, value in fields.items():
         setattr(part, key, value)
     part.updated_at = clock.utcnow()
+    if renamed:
+        part.embedding = part.embedding_model = None
     db.flush()
+    if renamed and ai:
+        embed_rows(db, ai, user.company_id, [part])
     return _part_out(db, part)

@@ -1,6 +1,7 @@
-"""새벽 배치 (매일 03:00): 외부 지표 위험도 → 부품 근거 지표 → 장부 검증.
+"""새벽 배치 (매일 03:00): 외부 지표 위험도 → 부품 근거 지표 → 장부 검증 → 빈 임베딩 채우기.
 
-기능명세서 F-EXT-02, F-ANAL, F-AUDIT. 재고 요약 대조(F-LEDGER-02)는 요약 도입 시 더한다.
+기능명세서 F-EXT-02, F-ANAL, F-AUDIT, F-SETUP-02 5단계. 재고 요약 대조(F-LEDGER-02)는 요약 도입 시
+더한다.
 """
 
 import csv
@@ -18,6 +19,8 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import distinct_on, insert
 from sqlalchemy.orm import Session
 
+from bjk_server.ai.client import get_ai_client
+from bjk_server.ai.embeddings import fill_missing
 from bjk_server.audit.flags import audit_company
 from bjk_server.auth import set_tenant
 from bjk_server.clock import KST
@@ -444,13 +447,18 @@ def compute_company(
 def nightly(session: Session, now: datetime) -> dict[str, Any]:
     r_by_code = load_indicators(session)
     companies = company_ids(session)
-    parts = flags = 0
+    ai = get_ai_client()
+    parts = flags = embedded = 0
     for cid in companies:
         parts += compute_company(session, cid, now, r_by_code)
         flags += audit_company(session, cid, now)
+        if ai:
+            set_tenant(session, cid)
+            embedded += fill_missing(session, ai, cid)
     return {
         "companies": len(companies),
         "parts_computed": parts,
         "audit_flags_created": flags,
         "indicators": len(r_by_code),
+        "embeddings_filled": embedded,
     }

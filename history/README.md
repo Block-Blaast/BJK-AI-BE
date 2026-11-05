@@ -4,6 +4,7 @@ AI·server 영역 작업 기록 색인. 작성 규칙은 [docs/ai-work-rules.md]
 
 | 날짜 | 파일 | 내용 |
 | --- | --- | --- |
+| 2026-11-05 | [2026-11-05-08-server-perf-1000-parts.md](2026-11-05-08-server-perf-1000-parts.md) | 부품 1,000종 nightly 4.0초·채팅 매칭 36ms 측정, compose 기동 확인 |
 | 2026-11-05 | [2026-11-05-08-opinion-verify-template.md](2026-11-05-08-opinion-verify-template.md) | 의견서 숫자 검증·양식 의견서·재작성 흐름, 실제 Gemini 6건 통과 |
 | 2026-11-05 | [2026-11-05-07-server-todo.md](2026-11-05-07-server-todo.md) | server 스택 앞으로 할 일 31단계 (시연 경로 나머지, ai 연동, B 단계, 운영 준비) |
 | 2026-11-05 | [2026-11-05-07-review-engine.md](2026-11-05-07-review-engine.md) | 발주 검토 판정 엔진 `packages/review`, F-REVIEW-10 예시 고정 |

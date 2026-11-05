@@ -1,7 +1,7 @@
 """LLM·임베딩 제공자 연결. 유스케이스는 `LlmGateway`로만 호출해 테스트에서 가짜로 바꿀 수 있다.
 
-- 주 경로는 Amazon Bedrock이다. EC2의 IAM Role로 인증하므로 API 키가 필요 없다(Claude는 Mantle
-  Messages API, 임베딩은 Titan Text Embeddings V2).
+- 주 경로는 Amazon Bedrock이다. EC2의 IAM Role로 인증하므로 API 키가 필요 없다(Claude와 임베딩
+  Titan Text Embeddings V2 모두 bedrock-runtime InvokeModel). 오사카에는 Mantle 엔드포인트가 없다.
 - Gemini는 API 키가 있을 때만 LLM 재시도용 폴백으로 쓴다. 임베딩은 폴백하지 않는다. 다른 모델의
   벡터끼리는 비교할 수 없기 때문이다.
 - 어떤 모델을 쓸지는 게이트웨이가 용도(`LlmPurpose`)를 보고 정하고, 쓴 모델을 결과에 담는다.
@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
 import boto3
-from anthropic import AsyncAnthropicBedrockMantle
+from anthropic import AsyncAnthropicBedrock
 from bjk_contracts import EmbedTask, FallbackReason, LlmPurpose, LlmUsage
 from google import genai
 from google.genai import types
@@ -77,7 +77,7 @@ class _PerLoopClient:
 
 
 class BedrockGateway:
-    """Claude on Amazon Bedrock(Mantle) + Titan Text Embeddings V2. 자격 증명은 AWS 기본 체인."""
+    """Claude(InvokeModel) + Titan Text Embeddings V2 on Bedrock. 자격 증명은 AWS 기본 체인."""
 
     def __init__(
         self,
@@ -95,7 +95,7 @@ class BedrockGateway:
         self._effort = effort
         self._embed_concurrency = embed_concurrency
         self._claude = _PerLoopClient(
-            claude_factory or (lambda: AsyncAnthropicBedrockMantle(aws_region=region))
+            claude_factory or (lambda: AsyncAnthropicBedrock(aws_region=region))
         )
         self._runtime = runtime_client or boto3.client("bedrock-runtime", region_name=region)
 
@@ -154,6 +154,19 @@ class BedrockGateway:
             vectors=[vector for vector, _ in results],
             input_tokens=sum(tokens for _, tokens in results),
             model=self._embedding_model,
+        )
+
+    async def warm_up(self) -> None:
+        """첫 요청 전에 자격 증명 조회(EC2 메타데이터)와 연결 수립을 끝내 둔다.
+
+        첫 채팅이 이 시간 때문에 2.5초 예산을 넘겨 대체 응답이 됐다. Claude는 1토큰만 받는다.
+        """
+        model = next(iter(self._models.values()))
+        await asyncio.gather(
+            self._claude.get().messages.create(
+                model=model, max_tokens=1, messages=[{"role": "user", "content": "ping"}]
+            ),
+            asyncio.to_thread(self._embed_one, "ping", 256),
         )
 
 
@@ -244,6 +257,12 @@ class RoutedGateway:
         if self.embedder is None:
             raise ProviderUnavailable("embedding")
         return await self.embedder.embed(**kwargs)
+
+    async def warm_up(self) -> None:
+        """워밍업을 지원하는 제공자(Bedrock)만 한 번씩 데운다."""
+        targets = {id(t): t for t in (self.llm, self.embedder) if t is not None}
+        warmers = [t.warm_up() for t in targets.values() if hasattr(t, "warm_up")]
+        await asyncio.gather(*warmers)
 
 
 class ProviderUnavailable(RuntimeError):

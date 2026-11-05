@@ -8,12 +8,14 @@ from bjk_contracts import EMBEDDING_DIM
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     ARRAY,
+    BigInteger,
     Boolean,
     CheckConstraint,
     Date,
     DateTime,
     Float,
     ForeignKey,
+    Identity,
     Index,
     Integer,
     MetaData,
@@ -79,6 +81,26 @@ class User(Base):
     password_hash: Mapped[str | None] = mapped_column(Text)
     pin_hash: Mapped[str | None] = mapped_column(Text)
     active: Mapped[bool] = mapped_column(Boolean, server_default=sql_text("true"))
+    created_at: Mapped[datetime] = _created_at()
+
+
+class Invite(Base):
+    """직원 초대 (API 명세서 AUTH-06·07). 일회용, 72시간. 토큰은 해시만 저장한다."""
+
+    __tablename__ = "invites"
+    __table_args__ = (
+        CheckConstraint("role IN ('worker', 'manager')", name="role"),
+        CheckConstraint("(used_at IS NULL) = (used_by IS NULL)", name="used_pair"),
+    )
+
+    id: Mapped[uuid.UUID] = _id()
+    company_id: Mapped[uuid.UUID] = _company_id()
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    role: Mapped[str] = mapped_column(String(16))
+    created_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    used_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[datetime] = _created_at()
 
 
@@ -295,6 +317,8 @@ class IdempotencyKey(Base):
     )
     scope: Mapped[str] = mapped_column(String(32), primary_key=True)
     key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    request_hash: Mapped[str | None] = mapped_column(String(64))
     status_code: Mapped[int | None] = mapped_column(Integer)
     response: Mapped[dict[str, Any] | None]
     created_at: Mapped[datetime] = _created_at()
@@ -556,6 +580,90 @@ class PartSupplierMetrics(Base):
     samples: Mapped[int] = mapped_column(Integer)
     unit_price: Mapped[int] = mapped_column(Integer)
     moq: Mapped[int] = mapped_column(Integer)
+
+
+class ServerEvent(Base):
+    """SSE 실시간 이벤트 (API 명세서 NOT-03). id는 SSE 이벤트 ID로 쓴다."""
+
+    __tablename__ = "events"
+    __table_args__ = (Index("ix_events_company_id_id", "company_id", "id"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    company_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("companies.id", ondelete="CASCADE"))
+    type: Mapped[str] = mapped_column(String(32))
+    data: Mapped[dict[str, Any]]
+    created_at: Mapped[datetime] = _created_at()
+
+
+class Review(Base):
+    """발주 검토 (API 명세서 REV-01·02). 목록 정렬·필터에 쓰는 값만 열로 두고 나머지는 JSONB."""
+
+    __tablename__ = "reviews"
+    __table_args__ = (
+        CheckConstraint("entry IN ('staff_request', 'stock_draft', 'missed_draft')", name="entry"),
+        CheckConstraint(
+            "status IN ('reviewing', 'reviewed', 'held', 'approved', 'closed', 'expired')",
+            name="status",
+        ),
+        CheckConstraint("verdict IS NULL OR verdict IN ('ok', 'revise', 'hold')", name="verdict"),
+        CheckConstraint("flags <@ ARRAY['urgent', 'caution', 'alternative']::text[]", name="flags"),
+        CheckConstraint(
+            "hold_reasons <@ "
+            "ARRAY['part_unresolved', 'supplier_unresolved', 'no_demand_data']::text[]",
+            name="hold_reasons",
+        ),
+        # 직원 요청만 요청자가 있고, 시스템 초안(재고 부족·놓친 발주)은 요청자가 없다.
+        CheckConstraint("(entry = 'staff_request') = (requested_by IS NOT NULL)", name="requester"),
+        CheckConstraint("(decided_at IS NULL) = (decided_by IS NULL)", name="decided_pair"),
+        Index("ix_reviews_company_status", "company_id", "status"),
+        Index("ix_reviews_company_part", "company_id", "part_id"),
+    )
+
+    id: Mapped[uuid.UUID] = _id()
+    company_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("companies.id", ondelete="CASCADE"))
+    entry: Mapped[str] = mapped_column(String(16))
+    status: Mapped[str] = mapped_column(String(16), server_default="reviewing")
+    # 검토가 끝나기 전에는 null
+    verdict: Mapped[str | None] = mapped_column(String(8))
+    flags: Mapped[list[str]] = mapped_column(ARRAY(Text), server_default="{}")
+    hold_reasons: Mapped[list[str]] = mapped_column(ARRAY(Text), server_default="{}")
+    # 부품을 특정하지 못하면(보류 part_unresolved) null
+    part_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("parts.id"))
+    requested_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    source_message_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("chat_messages.id"))
+    # 원안: {"qty", "supplier_id", "unit_price", "text"}
+    request: Mapped[dict[str, Any]]
+    # 엔진 결과(checks, original, proposal, alternatives, risk_if_not_ordered, count_requests)
+    result: Mapped[dict[str, Any] | None]
+    # 의견서: {"text", "source", "verified"}
+    opinion: Mapped[dict[str, Any] | None]
+    original_total: Mapped[int | None] = mapped_column(BigInteger)
+    saving: Mapped[int] = mapped_column(BigInteger, server_default="0")
+    # 미발주 시 예상 손실. 목록 정렬(긴급 먼저, 그다음 예상 손실)에 쓴다.
+    loss: Mapped[int] = mapped_column(BigInteger, server_default="0")
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    decision: Mapped[dict[str, Any] | None]
+    decided_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = _created_at()
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ReviewSnapshot(Base):
+    """검토 근거 스냅샷 (F-REVIEW-02). 현재 스냅샷은 검토의 가장 최근 행이다."""
+
+    __tablename__ = "review_snapshots"
+    __table_args__ = (Index("ix_review_snapshots_review_created", "review_id", "created_at"),)
+
+    id: Mapped[uuid.UUID] = _id()
+    company_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("companies.id", ondelete="CASCADE"))
+    review_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("reviews.id", ondelete="CASCADE"))
+    hash: Mapped[str] = mapped_column(String(80))
+    values: Mapped[dict[str, Any]]
+    # 스냅샷을 만들 때 쓴 설정값. 설정이 바뀌어도 이 검토의 판정은 그대로 재현된다.
+    settings: Mapped[dict[str, Any]]
+    computed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = _created_at()
 
 
 class LlmCall(Base):

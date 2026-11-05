@@ -12,7 +12,7 @@ from alembic.config import Config
 from bjk_server import ratelimit
 from bjk_server.ai.client import get_ai_client
 from bjk_server.chat.interpreter import get_interpreter
-from bjk_server.db.session import get_admin_db, get_db
+from bjk_server.db.session import get_admin_db, get_db, get_session_scope
 from bjk_server.main import create_app
 from bjk_server.security import create_access_token
 from bjk_server.seed.demo import COMPANY_CODE, USERS, demo_id, seed_demo
@@ -153,6 +153,7 @@ def build_client(db: DemoDB) -> TestClient:
 
     app.dependency_overrides[get_db] = app_db
     app.dependency_overrides[get_admin_db] = admin_db
+    app.dependency_overrides[get_session_scope] = lambda: app_sessions.begin
     # 로컬 .env의 AI_BASE_URL과 관계없이 ai 없이 시작한다. ai 연동 테스트는 가짜 ai로 바꾼다.
     app.dependency_overrides[get_ai_client] = lambda: None
     return TestClient(app)

@@ -1,4 +1,4 @@
-"""회사 설정 기본값 (API 명세서 SYS-01)."""
+"""회사 생성 시 넣는 기본값. 설정(API 명세서 SYS-01)과 기본 카테고리(F-SETUP-03)."""
 
 import copy
 from typing import Any
@@ -27,9 +27,20 @@ DEFAULT_SETTINGS: dict[str, dict[str, Any]] = {
         "external_k": 0.25,
         "count_per_worker_per_day": 2,
         "count_suppress_days": 30,
+        # 회사별 LLM 일일 토큰 상한 (API 명세서 1-5, 입력·출력 합계, Asia/Seoul 하루)
+        "llm_daily_tokens": 1_000_000,
     },
 }
 
 
 def default_settings() -> dict[str, dict[str, Any]]:
     return copy.deepcopy(DEFAULT_SETTINGS)
+
+
+# (키, 이름, 수입 의존도, 납기 요인, 가격 요인, HS 코드). 키는 시연 시드의 ID 생성에 쓴다.
+DEFAULT_CATEGORIES: tuple[tuple[str, str, str, list[str], list[str], str], ...] = (
+    ("bearing", "베어링", "high", ["FREIGHT", "HOLIDAY_CN"], ["USDKRW"], "8482"),
+    ("belt", "V벨트·전동벨트", "medium", ["FREIGHT", "HOLIDAY_KR"], ["USDKRW"], "4010"),
+    ("bolt", "볼트·너트", "low", ["HOLIDAY_KR"], [], "7318"),
+    ("oil", "절삭유·윤활유", "medium", ["HOLIDAY_KR"], ["USDKRW"], "2710"),
+)

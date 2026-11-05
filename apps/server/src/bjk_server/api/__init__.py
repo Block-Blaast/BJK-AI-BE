@@ -6,6 +6,7 @@ from bjk_server.api import (
     calendar,
     categories,
     chat,
+    dashboard,
     equipment,
     events,
     external,
@@ -44,4 +45,5 @@ api_router.include_router(settings.router)
 api_router.include_router(audit.router)
 api_router.include_router(external.router)
 api_router.include_router(health.router)
+api_router.include_router(dashboard.router)
 api_router.include_router(notifications.router)

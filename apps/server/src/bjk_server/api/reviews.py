@@ -7,16 +7,17 @@ manager 이상은 회사 전체, worker는 본인이 올린 요청만 본다. �
 
 import uuid
 from datetime import datetime
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import case, select
 
 from bjk_server.auth import CurrentUser, TenantDB
 from bjk_server.clock import KST
 from bjk_server.db.models import Part, Review, ReviewSnapshot, User
 from bjk_server.errors import ApiError, ErrorCode
+from bjk_server.pagination import Page, PageParams, keyset_page, page_params
 from bjk_server.security import TokenClaims
 
 router = APIRouter(prefix="/reviews", tags=["reviews"])
@@ -97,6 +98,70 @@ def visible_reviews(user: TokenClaims):
     if user.role == "worker":
         stmt = stmt.where(Review.requested_by == user.user_id)
     return stmt
+
+
+class ReviewItem(BaseModel):
+    id: uuid.UUID
+    entry: Entry
+    part: str | None
+    status: Status
+    verdict: Verdict | None
+    flags: list[str]
+    original_total: int | None
+    saving: int
+    created_at: datetime
+
+
+# 긴급(C-08) 먼저, 그다음 미발주 예상 손실 큰 순 (REV-01)
+_urgent = case((Review.flags.any_() == "urgent", 1), else_=0)
+
+
+@router.get("", response_model=Page[ReviewItem])
+def list_reviews(
+    user: CurrentUser,
+    db: TenantDB,
+    params: Annotated[PageParams, Depends(page_params)],
+    status: Status | None = None,
+    verdict: Verdict | None = None,
+    urgent: bool | None = None,
+    entry: Entry | None = None,
+    mine: bool = False,
+) -> Page[ReviewItem]:
+    """REV-01. 검토 목록. 긴급 → 예상 손실 → 최근 생성 순. worker는 본인 요청만."""
+    stmt = (
+        visible_reviews(user)
+        .add_columns(Part.name.label("part_name"), _urgent.label("urgent_rank"))
+        .outerjoin(Part, Part.id == Review.part_id)
+    )
+    if status:
+        stmt = stmt.where(Review.status == status)
+    if verdict:
+        stmt = stmt.where(Review.verdict == verdict)
+    if urgent is not None:
+        stmt = stmt.where(_urgent == (1 if urgent else 0))
+    if entry:
+        stmt = stmt.where(Review.entry == entry)
+    if mine:
+        stmt = stmt.where(Review.requested_by == user.user_id)
+    return keyset_page(
+        db,
+        stmt,
+        [_urgent, Review.loss, Review.created_at, Review.id],
+        params,
+        to_item=lambda r: ReviewItem(
+            id=r.Review.id,
+            entry=r.Review.entry,
+            part=r.part_name,
+            status=r.Review.status,
+            verdict=r.Review.verdict,
+            flags=r.Review.flags,
+            original_total=r.Review.original_total,
+            saving=r.Review.saving,
+            created_at=r.Review.created_at.astimezone(KST),
+        ),
+        cursor_of=lambda r: [r.urgent_rank, r.Review.loss, r.Review.created_at, r.Review.id],
+        descending=True,
+    )
 
 
 def _supplier(line: dict[str, Any]) -> SupplierRef | None:

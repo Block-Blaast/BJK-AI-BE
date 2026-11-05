@@ -121,3 +121,26 @@
 - 완료 후 48시간 안의 같은 설비 출고는 이 정비에 연결되고(F-LEDGER-03), 완료 48시간이 지나도 필요 부품 출고가 절반 미만이면 장부 검증 `MAINTENANCE_OUT_MISMATCH`가 된다.
 - 정비 목록·상세 응답에 `completed_by`(사용자 ID)가 담긴다.
 - 현재 구현 범위: 채팅 정비 완료(의도 `MAINTENANCE_DONE`) 연결은 ai 해석 연동 후 추가한다.
+
+## SET-11 연휴 캘린더
+
+| API | 설명 |
+| --- | --- |
+| `GET /api/v1/calendar` | 목록. 시작일 순, 커서 목록. Query `from`·`to`(기간과 겹치는 일정), `scope` |
+| `POST /api/v1/calendar` | 등록. 201 |
+| `PATCH /api/v1/calendar/{id}` | 보낸 항목만 수정 |
+| `DELETE /api/v1/calendar/{id}` | 삭제. 204 |
+
+```json
+// POST Request
+{ "name": "춘절", "start": "2027-02-05", "end": "2027-02-13", "scope": "CN" }
+
+// 201 Response
+{ "id": "...", "name": "춘절", "start": "2027-02-05", "end": "2027-02-13", "scope": "CN", "supplier_id": null }
+```
+
+- `scope`: `KR`(국내 명절), `CN`(중국, 춘절 등), `supplier`(특정 공급사 휴무, `supplier_id` 필수). `supplier`가 아닌데 `supplier_id`가 있거나, `supplier`인데 없으면 400. 없는 공급사는 404.
+- `end`가 `start`보다 빠르면 400(수정 후 값으로도 검사). `name`·`start`·`end`·`scope`에 `null`은 400.
+- 시연 시드에 2027년 춘절(CN)·설날 연휴(KR)가 들어 있다.
+- 새벽 배치가 납기 구간과 겹치는 연휴만큼 납기를 늘린다([jobs.md](jobs.md) nightly). `KR`·`CN`은 카테고리 납기 요인(`HOLIDAY_KR`·`HOLIDAY_CN`)이 있는 부품에, `supplier`는 그 공급사 납기에 적용한다. 공급사 상세의 `holidays`(날짜 목록)도 함께 쓴다.
+- 외부 요인 현황(DSH-03)의 `upcoming_holidays`에 90일 안 일정이 나온다.

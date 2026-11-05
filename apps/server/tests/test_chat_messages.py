@@ -1,8 +1,6 @@
 from datetime import UTC, datetime
 
 import pytest
-from bjk_server import ratelimit
-from bjk_server.chat.interpreter import Interpretation, InterpreterUnavailable, get_interpreter
 from bjk_server.db.models import ChatEntry, ChatMessage
 from bjk_server.seed.demo import demo_id
 from sqlalchemy import func, select
@@ -12,38 +10,6 @@ from .conftest import auth_header
 
 URL = "/api/v1/chat/messages"
 NOW = datetime(2026, 11, 4, 1, 0, 0, tzinfo=UTC)
-
-PARSED = {
-    "3호기 베어링 두 개 씀": Interpretation("OUT", "베어링", 2, "3호기"),
-    "베어링 작은 거 2개 씀": Interpretation("OUT", "베어링 작은 거", 2),
-    "베어링 작은 거 5개 씀": Interpretation("OUT", "베어링 작은 거", 5),
-    "베어링 작은 거 6개 씀": Interpretation("OUT", "베어링 작은 거", 6),
-    "V벨트 3개 들어옴": Interpretation("IN", "V벨트", 3),
-    "기어 하나 씀": Interpretation("OUT", "기어", 1),
-    "6205 몇 개 있어?": Interpretation("QUERY", "6205"),
-    "안녕": Interpretation("OTHER"),
-}
-
-
-class FakeInterpreter:
-    def interpret(self, text: str) -> Interpretation:
-        if text == "타임아웃":
-            raise InterpreterUnavailable("timeout")
-        return PARSED[text]
-
-
-@pytest.fixture
-def chat(client, demo_db, monkeypatch):
-    demo_db.reseed()
-    monkeypatch.setattr(ratelimit, "utcnow", lambda: NOW)
-    client.app.dependency_overrides[get_interpreter] = FakeInterpreter
-    counter = iter(range(10_000))
-
-    def send(text, user="worker", client_message_id=None):
-        body = {"client_message_id": client_message_id or f"m-{next(counter)}", "text": text}
-        return client.post(URL, json=body, headers=auth_header(user))
-
-    return send
 
 
 def test_without_ai_falls_back_to_form_card(client, demo_db):
@@ -94,11 +60,13 @@ def test_qty_over_five_times_past_max_gives_warning_card(chat):
     assert body["reply"] == "볼베어링 6205ZZ 6개 맞나요? 평소보다 훨씬 많아요."
 
 
-def test_in_with_single_match_is_confirm(chat):
+def test_single_name_match_still_asks_to_select(chat):
+    # 확정 조건(별칭, 규격 완전 일치)이 아니면 후보가 하나여도 사람이 고른다 (F-MATCH-01)
     body = chat("V벨트 3개 들어옴").json()
     assert body["intent"] == "IN"
-    assert body["cards"][0]["type"] == "confirm"
-    assert body["reply"] == "V벨트 A-42 3개 입고할까요?"
+    card = body["cards"][0]
+    assert card["type"] == "select"
+    assert [c["name"] for c in card["candidates"]] == ["V벨트 A-42"]
 
 
 def test_unknown_part_gives_unregistered_card(chat):

@@ -4,6 +4,7 @@ AI·server 영역 작업 기록 색인. 작성 규칙은 [docs/ai-work-rules.md]
 
 | 날짜 | 파일 | 내용 |
 | --- | --- | --- |
+| 2026-11-05 | [2026-11-05-27-review-run.md](2026-11-05-27-review-run.md) | 검토 실행·저장 서비스, 스냅샷 수집, 의견서 ai 호출, 701개 통과 |
 | 2026-11-05 | [2026-11-05-26-hidden-stock-confirmed.md](2026-11-05-26-hidden-stock-confirmed.md) | nightly H_c·H_u 분리, 최근 실사·의심 여부 판정 순수 함수 |
 | 2026-11-05 | [2026-11-05-25-expired-rows-cleanup.md](2026-11-05-25-expired-rows-cleanup.md) | 만료 행 정리 cleanup 배치(#185) |
 | 2026-11-05 | [2026-11-05-25-part-detail-dev-merge.md](2026-11-05-25-part-detail-dev-merge.md) | #137 dev 반영, 충돌 양쪽 유지, 마이그레이션 0021~0023으로 변경 |

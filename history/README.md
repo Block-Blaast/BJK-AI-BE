@@ -4,6 +4,7 @@ AI·server 영역 작업 기록 색인. 작성 규칙은 [docs/ai-work-rules.md]
 
 | 날짜 | 파일 | 내용 |
 | --- | --- | --- |
+| 2026-11-05 | [2026-11-05-71-pdf-stable-font-time.md](2026-11-05-71-pdf-stable-font-time.md) | 결재용 PDF가 렌더링 시각마다 달라지는 문제 수정(글꼴 head 시각 고정) |
 | 2026-11-05 | [2026-11-05-70-seed-order-history-tests.md](2026-11-05-70-seed-order-history-tests.md) | 시드 발주 이력으로 깨진 납기·검토 예시 테스트 12개를 시드 발주와 분리 |
 | 2026-11-05 | [2026-11-05-69-stock-forecast.md](2026-11-05-69-stock-forecast.md) | 검토·부품 재고 추이 예측선 API(명세 밖, 사용자 결정) |
 | 2026-11-05 | [2026-11-05-68-invite-info.md](2026-11-05-68-invite-info.md) | 초대 정보 조회 API(명세 밖, 사용자 결정) |

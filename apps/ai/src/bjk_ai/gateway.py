@@ -156,6 +156,19 @@ class BedrockGateway:
             model=self._embedding_model,
         )
 
+    async def warm_up(self) -> None:
+        """첫 요청 전에 자격 증명 조회(EC2 메타데이터)와 연결 수립을 끝내 둔다.
+
+        첫 채팅이 이 시간 때문에 2.5초 예산을 넘겨 대체 응답이 됐다. Claude는 1토큰만 받는다.
+        """
+        model = next(iter(self._models.values()))
+        await asyncio.gather(
+            self._claude.get().messages.create(
+                model=model, max_tokens=1, messages=[{"role": "user", "content": "ping"}]
+            ),
+            asyncio.to_thread(self._embed_one, "ping", 256),
+        )
+
 
 # gemini-embedding-2는 task_type 대신 입력 앞의 작업 지시로 용도를 나눈다(Gemini 임베딩 문서).
 GEMINI_TASK_FORMATS = {
@@ -244,6 +257,12 @@ class RoutedGateway:
         if self.embedder is None:
             raise ProviderUnavailable("embedding")
         return await self.embedder.embed(**kwargs)
+
+    async def warm_up(self) -> None:
+        """워밍업을 지원하는 제공자(Bedrock)만 한 번씩 데운다."""
+        targets = {id(t): t for t in (self.llm, self.embedder) if t is not None}
+        warmers = [t.warm_up() for t in targets.values() if hasattr(t, "warm_up")]
+        await asyncio.gather(*warmers)
 
 
 class ProviderUnavailable(RuntimeError):

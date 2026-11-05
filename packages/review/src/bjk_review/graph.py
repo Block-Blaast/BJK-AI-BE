@@ -12,6 +12,7 @@
   않으면 양식 의견서로 끝낸다.
 """
 
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Literal, TypedDict
@@ -41,6 +42,11 @@ from bjk_review.models import (
 )
 from bjk_review.opinion import MAX_REWRITES, Opinion, template_opinion, to_opinion_request
 from bjk_review.verify import verify_opinion
+
+# 검토는 요청부터 의견서까지 10초(기능명세서 비기능 요구사항). ai 의견서 한 번의 예산이 7초라,
+# 지금까지의 작성이 이 시간 안에 끝났을 때만 다시 쓰고, 아니면 양식 의견서로 끝낸다.
+REWRITE_WITHIN_SECONDS = 3.0
+clock = time.monotonic
 
 Entry = Literal["staff_request", "stock_draft", "missed_draft"]
 
@@ -99,6 +105,7 @@ class ReviewState(TypedDict, total=False):
     feedback: list[list[str]]
     attempts: int
     usages: list[LlmUsage]
+    opinion_started: float
     opinion: Opinion
 
 
@@ -156,6 +163,7 @@ def build_review_graph(deps: ReviewDeps):
             "feedback": [],
             "attempts": 0,
             "usages": [],
+            "opinion_started": clock(),
         }
 
     def opinion(state: ReviewState) -> ReviewState:
@@ -194,7 +202,8 @@ def build_review_graph(deps: ReviewDeps):
                     )
                 }
             feedback = [*state["feedback"], errors]
-            if state["attempts"] <= MAX_REWRITES:
+            in_time = clock() - state["opinion_started"] <= REWRITE_WITHIN_SECONDS
+            if state["attempts"] <= MAX_REWRITES and in_time:
                 return {"feedback": feedback}  # opinion으로 되돌아가 다시 쓴다
         else:
             feedback = state["feedback"]

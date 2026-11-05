@@ -4,6 +4,14 @@ server가 스냅샷을 모아 `run_review`를 같은 프로세스에서 실행�
 """
 
 from bjk_review.engine import review_hash, run_review
+from bjk_review.graph import (
+    PROGRESS_STEPS,
+    Interpreted,
+    ReviewDeps,
+    ReviewOutcome,
+    build_review_graph,
+    run_review_flow,
+)
 from bjk_review.models import (
     AlternativeLine,
     Check,
@@ -28,6 +36,12 @@ from bjk_review.recheck import decision_changed, needs_refresh, recheck
 from bjk_review.verify import verify_opinion
 
 __all__ = [
+    "PROGRESS_STEPS",
+    "Interpreted",
+    "ReviewDeps",
+    "ReviewOutcome",
+    "build_review_graph",
+    "run_review_flow",
     "AlternativeLine",
     "Answer",
     "Check",

@@ -204,34 +204,39 @@ def build_flags(
     return flags
 
 
-def run_review(
-    snapshot: ReviewSnapshot, request: OrderRequest, settings: ReviewSettings | None = None
+def hold_result(
+    snapshot: ReviewSnapshot,
+    request: OrderRequest,
+    settings: ReviewSettings,
+    reasons: list[HoldReason],
 ) -> ReviewResult:
-    settings = settings or ReviewSettings()
-    digest = review_hash(snapshot, request, settings)
+    """보류. 체크·수정안 없이 사유만 담는다(F-REVIEW-03)."""
     offer = snapshot.offer(request.supplier_id or snapshot.default_supplier_id)
+    return ReviewResult(
+        verdict=Verdict.HOLD,
+        flags=[],
+        hold_reasons=reasons,
+        checks=[],
+        original=_line(request.qty, offer, request.unit_price),
+        proposal=None,
+        alternatives=[],
+        risk_if_not_ordered=_risk(snapshot),
+        count_requests=[],
+        review_hash=review_hash(snapshot, request, settings),
+    )
 
-    reasons = hold_reasons(snapshot, request)
-    if reasons:
-        return ReviewResult(
-            verdict=Verdict.HOLD,
-            flags=[],
-            hold_reasons=reasons,
-            checks=[],
-            original=_line(request.qty, offer, request.unit_price),
-            proposal=None,
-            alternatives=[],
-            risk_if_not_ordered=_risk(snapshot),
-            count_requests=[],
-            review_hash=digest,
-        )
 
+def make_context(
+    snapshot: ReviewSnapshot, request: OrderRequest, settings: ReviewSettings
+) -> Context:
+    """원안 해석. 보류가 아닐 때만 부른다(공급사가 정해져 있어야 함)."""
+    offer = snapshot.offer(request.supplier_id or snapshot.default_supplier_id)
     unit_price = (
         request.unit_price
         if request.unit_price is not None
         else unit_price_at(offer, ceil_to_moq(request.qty, offer.moq))
     )
-    ctx = Context(
+    return Context(
         snapshot=snapshot,
         settings=settings,
         qty=request.qty,
@@ -239,28 +244,56 @@ def run_review(
         unit_price=unit_price,
         quoted=request.unit_price is not None,
     )
-    checks = run_checks(ctx)
-    original = _line(request.qty, offer, unit_price)
-    proposal = build_proposal(ctx, checks, original)
-    alternatives = build_alternatives(ctx, checks, proposal)
 
+
+def original_line(ctx: Context) -> Line:
+    return _line(ctx.qty, ctx.offer, ctx.unit_price)
+
+
+def decide(
+    ctx: Context,
+    request: OrderRequest,
+    checks: list[Check],
+    proposal: ProposalLine,
+    alternatives: list[AlternativeLine],
+) -> ReviewResult:
+    """판정·표시 (F-REVIEW-06). 판정은 수정안이 원안과 다른가로 정한다."""
+    s = ctx.snapshot
+    original = original_line(ctx)
     changed = (proposal.qty, proposal.supplier_id, proposal.unit_price) != (
         original.qty,
         original.supplier_id,
         original.unit_price,
     )
-    count_requests = [
-        CountRequest(part_id=h.part_id, name=h.name) for h in snapshot.hidden if not h.confirmed
-    ]
     return ReviewResult(
         verdict=Verdict.REVISE if changed else Verdict.OK,
-        flags=build_flags(snapshot, checks, proposal, alternatives),
+        flags=build_flags(s, checks, proposal, alternatives),
         hold_reasons=[],
         checks=checks,
         original=original,
         proposal=proposal,
         alternatives=alternatives,
-        risk_if_not_ordered=_risk(snapshot),
-        count_requests=count_requests,
-        review_hash=digest,
+        risk_if_not_ordered=_risk(s),
+        count_requests=[
+            CountRequest(part_id=h.part_id, name=h.name) for h in s.hidden if not h.confirmed
+        ],
+        review_hash=review_hash(s, request, ctx.settings),
     )
+
+
+def run_review(
+    snapshot: ReviewSnapshot, request: OrderRequest, settings: ReviewSettings | None = None
+) -> ReviewResult:
+    """보류 판단 → 체크 → 수정안 → 판정을 한 번에.
+
+    검토 그래프(`graph.py`)도 같은 단계 함수를 쓴다.
+    """
+    settings = settings or ReviewSettings()
+    reasons = hold_reasons(snapshot, request)
+    if reasons:
+        return hold_result(snapshot, request, settings, reasons)
+    ctx = make_context(snapshot, request, settings)
+    checks = run_checks(ctx)
+    proposal = build_proposal(ctx, checks, original_line(ctx))
+    alternatives = build_alternatives(ctx, checks, proposal)
+    return decide(ctx, request, checks, proposal, alternatives)

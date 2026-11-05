@@ -55,6 +55,21 @@ def test_same_client_message_id_records_once(client, demo_db):
     assert _movements(demo_db) == before + 1
 
 
+@pytest.mark.parametrize("other_user", [False, True], ids=["different-body", "different-user"])
+def test_reused_form_id_rejects_changed_request_or_user(client, demo_db, other_user):
+    payload = {"client_message_id": "form-conflict", "type": "OUT", "part_id": str(P6205), "qty": 2}
+    before = _movements(demo_db)
+    assert client.post(URL, json=payload, headers=auth_header("worker")).status_code == 200
+    if not other_user:
+        payload["qty"] = 1
+    response = client.post(
+        URL, json=payload, headers=auth_header("worker2" if other_user else "worker")
+    )
+    assert response.status_code == 409
+    assert response.json()["code"] == "IDEMPOTENCY_CONFLICT"
+    assert _movements(demo_db) == before + 1
+
+
 @pytest.mark.parametrize(
     ("body", "status"),
     [

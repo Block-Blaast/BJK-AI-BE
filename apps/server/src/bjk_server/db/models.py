@@ -251,6 +251,8 @@ class IdempotencyKey(Base):
     )
     scope: Mapped[str] = mapped_column(String(32), primary_key=True)
     key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    request_hash: Mapped[str | None] = mapped_column(String(64))
     status_code: Mapped[int | None] = mapped_column(Integer)
     response: Mapped[dict[str, Any] | None]
     created_at: Mapped[datetime] = _created_at()

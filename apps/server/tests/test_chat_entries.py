@@ -47,7 +47,9 @@ def test_select_then_confirm_records_out_and_learns_alias(client, chat, demo_db)
 
 
 def test_confirm_card_uses_card_values(client, chat):
-    body = _confirm(client, _card(chat, "V벨트 3개 들어옴")).json()
+    body = _confirm(
+        client, _card(chat, "V벨트 3개 들어옴"), part_id=str(demo_id("part", "a42"))
+    ).json()
     assert (body["intent"], body["movement"]["qty"], body["stock_after"]) == ("IN", 3, 5)
     assert body["reply"] == "입고 완료. 현재 재고 5개"
     assert body["alias_learned"] == {"text": "V벨트", "part_id": str(demo_id("part", "a42"))}

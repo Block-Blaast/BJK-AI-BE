@@ -21,7 +21,7 @@
 
 ## 검증
 
-- 로컬 PostgreSQL 16 `REQUIRE_DB_TESTS=1 make test` 665개 통과, `make lint` 통과
+- 로컬 PostgreSQL 16 `REQUIRE_DB_TESTS=1 make test` 672개 통과, `make lint` 통과
 - 빈 DB `alembic upgrade head` → `downgrade 0020` → `upgrade head` 왕복, `alembic heads`는 `0023` 하나
 
 ## 남은 일·확인 필요

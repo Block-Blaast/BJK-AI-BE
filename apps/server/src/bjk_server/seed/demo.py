@@ -26,11 +26,12 @@ from bjk_server.db.models import (
     Movement,
     Part,
     PartAlias,
+    PurchaseOrder,
     Supplier,
     SupplierPart,
     User,
 )
-from bjk_server.defaults import default_settings
+from bjk_server.defaults import DEFAULT_CATEGORIES, default_settings
 from bjk_server.security import hash_secret
 
 SCENARIOS = ("demo_v1",)
@@ -75,12 +76,7 @@ class DemoPart:
     equipment: str | None = None
 
 
-CATEGORIES = (
-    ("bearing", "베어링", "high", ["FREIGHT", "HOLIDAY_CN"], ["USDKRW"], "8482"),
-    ("belt", "V벨트·전동벨트", "medium", ["FREIGHT", "HOLIDAY_KR"], ["USDKRW"], "4010"),
-    ("bolt", "볼트·너트", "low", ["HOLIDAY_KR"], [], "7318"),
-    ("oil", "절삭유·윤활유", "medium", ["HOLIDAY_KR"], ["USDKRW"], "2710"),
-)
+CATEGORIES = DEFAULT_CATEGORIES
 
 PARTS = (
     DemoPart(
@@ -173,6 +169,14 @@ SUPPLIER_PARTS = (
     ("p20", "b", 90, 100, [], 3000),
     ("oil", "a", 48000, 1, [], 0),
 )
+# 입고 완료 발주 이력 (납기 표본, F-ANAL 납기·F-LEDGER-04). 공급사·부품마다 이만큼 만든다.
+ORDERS_PER_DEFAULT_SUPPLIER = 4
+ORDERS_PER_OTHER_SUPPLIER = 2
+# 기본 납기 대비 실제 납기 차이(일). 고정 난수로 고른다.
+LEAD_JITTER_DAYS = (-1, 0, 0, 1, 2, 3)
+# 최근 구매 단가를 명세 예시에 맞추는 부품: 기본 공급사 발주 단가(오래된 순).
+# V벨트 A-42는 API 명세서 REV-02 예시(p_mean 13,000원, σ 1,200, n 4)가 나오게 한다.
+ORDER_PRICES = {"a42": (11530, 13000, 14470, 13000)}
 DEFAULT_SUPPLIER = {"6205": "a", "6204": "a", "a42": "a", "m820": "a", "p20": "b", "oil": "a"}
 
 # (설비, 이름, 시간당 손실, 가동 시간, [(부품, 정비 1회당 수량)])
@@ -216,6 +220,50 @@ def _history(part: DemoPart, scenario: str, today: date) -> list[tuple[date, int
         day = today - timedelta(weeks=week) + timedelta(days=rng.randrange(5))
         events.append((day, qty))
     return events
+
+
+@dataclass(frozen=True)
+class DemoOrder:
+    key: str
+    supplier: str
+    qty: int
+    unit_price: int
+    ordered_on: date
+    received_on: date
+
+
+def _orders(part: DemoPart, scenario: str, start: date) -> list[DemoOrder]:
+    """초기 재고 이관(이력 시작) 전에 입고가 끝난 과거 발주. 납기 표본으로만 쓴다.
+
+    이관 전 기록이라 원장 입고 이벤트는 없다. 이관 재고가 그 결과를 이미 담고 있다.
+    입고일은 이력 시작 전 4주 간격, 주문일 = 입고일 - (공급사 기본 납기 + 차이).
+    """
+    rng = random.Random(f"{scenario}:orders:{part.key}")
+    lead_days = {key: days for key, _, _, days in SUPPLIERS}
+    orders: list[DemoOrder] = []
+    for part_key, supplier, price, moq, _, _ in SUPPLIER_PARTS:
+        if part_key != part.key:
+            continue
+        default = DEFAULT_SUPPLIER[part.key] == supplier
+        prices = ORDER_PRICES.get(part.key)
+        if prices and not default:
+            # 단가 예시는 기본 공급사 이력만으로 맞춘다
+            continue
+        count = ORDERS_PER_DEFAULT_SUPPLIER if default else ORDERS_PER_OTHER_SUPPLIER
+        for i in range(count):
+            received = start - timedelta(weeks=4 * (i + 1), days=rng.randrange(7))
+            lead = lead_days[supplier] + rng.choice(LEAD_JITTER_DAYS)
+            orders.append(
+                DemoOrder(
+                    key=f"{part.key}:{supplier}:{i}",
+                    supplier=supplier,
+                    qty=max(moq, part.pack_qty or 1),
+                    unit_price=prices[count - 1 - i] if prices else price,
+                    ordered_on=received - timedelta(days=lead),
+                    received_on=received,
+                )
+            )
+    return orders
 
 
 def _tables() -> list[str]:
@@ -393,6 +441,24 @@ def seed_demo(session: Session, scenario: str = "demo_v1", today: date | None = 
             opening = max(pack, pack * -(-before_refill // pack))
             refill = max(0, p.stock + used - opening)
             opening = p.stock + used - refill
+        for o in _orders(p, scenario, start):
+            session.add(
+                PurchaseOrder(
+                    id=sid("purchase_order", o.key),
+                    company_id=company_id,
+                    part_id=part_id,
+                    supplier_id=sid("supplier", o.supplier),
+                    qty=o.qty,
+                    unit_price=o.unit_price,
+                    status="received",
+                    approved_at=_at(o.ordered_on - timedelta(days=1), 16),
+                    approved_by=sid("user", "owner"),
+                    ordered_at=_at(o.ordered_on, 9),
+                    ordered_by=sid("user", "manager"),
+                    received_qty=o.qty,
+                    received_at=_at(o.received_on, 11),
+                )
+            )
         movements = []
         if opening:
             movements.append(

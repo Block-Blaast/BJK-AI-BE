@@ -19,9 +19,18 @@ class Settings(BaseSettings):
     # 배치 예약 스케줄러 동시 실행 작업 수. DB 연결 풀도 같은 크기로 잡는다.
     scheduler_workers: int = 2
 
+    # 초대 QR의 가입 주소(join_url)를 만드는 웹 앱 주소
+    web_base_url: str = "https://app.baljukok.kr"
+
     # ai 서비스 주소 (compose 안 http://ai:8001, 로컬 http://localhost:8001).
     # 비우면 ai를 부르지 않고 채팅은 폼 입력, 매칭은 규격·철자만으로 동작한다.
     ai_base_url: str | None = None
+
+    # 웹 푸시 VAPID 키 (API 명세서 NOT-04). 공개 키는 브라우저 구독에, 개인 키는 발송에 쓴다.
+    # 비우면 구독은 저장하지만 푸시는 보내지 않는다.
+    vapid_public_key: str | None = None
+    vapid_private_key: str | None = None
+    vapid_subject: str = "mailto:admin@baljukok.kr"
 
     jwt_secret: str = DEV_JWT_SECRET
     access_token_minutes: int = 15

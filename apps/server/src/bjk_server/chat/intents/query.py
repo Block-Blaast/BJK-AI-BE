@@ -1,4 +1,4 @@
-"""재고 조회(QUERY) 의도: 현재 재고와 소진 예상일 답변."""
+"""재고 조회(QUERY) 의도: 현재 재고, 입고 예정, 소진 예상일 답변 (F-CHAT-03)."""
 
 from datetime import datetime
 
@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from bjk_server.chat.intents.base import IntentContext, IntentResult
+from bjk_server.chat.intents.incoming import incoming_sentence
 from bjk_server.chat.interpreter import Interpretation
 from bjk_server.chat.matching import QueryEmbedder, find_candidates
 from bjk_server.clock import KST
@@ -39,7 +40,8 @@ def _reply(
     part = candidates[0]
     at = now.astimezone(KST).strftime("%m/%d %H:%M")
     reply = f"{part.name} 현재 재고 {part.stock}{part.unit}{_copula(part.unit)}."
-    # 소진 예상일은 최신 새벽 계산(part_metrics) 값이다. 입고 예정은 발주 기능 이후 채운다.
+    reply = f"{reply} {incoming_sentence(db, part.part_id, part.unit)}"
+    # 소진 예상일은 최신 새벽 계산(part_metrics) 값이다.
     metrics = db.execute(
         select(PartMetrics.t_out, PartMetrics.computed_at)
         .where(PartMetrics.part_id == part.part_id)

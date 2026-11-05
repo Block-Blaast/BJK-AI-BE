@@ -1,14 +1,25 @@
 """출고·입고(OUT·IN) 의도: 부품 매칭 → 확인 카드 (API 명세서 CHAT-01)."""
 
 from bjk_server.chat.intents.base import IntentContext, IntentResult, equipment_ref
+from bjk_server.chat.intents.po_preview import preview_po_match
+from bjk_server.chat.intents.purchase_request import resolve_supplier
 from bjk_server.chat.interpreter import Interpretation
 from bjk_server.chat.matching import Candidate, find_candidates, find_equipment, is_unusual_qty
 from bjk_server.chat.records import to_base_qty
 from bjk_server.chat.schemas import CandidateOut, Card, CardType
+from bjk_server.db.models import Part
 
 
 def handle(ctx: IntentContext, parsed: Interpretation) -> IntentResult:
-    """출고·입고 메시지의 확인 카드와 답변."""
+    """출고·입고 메시지의 확인 카드와 답변. 여러 품목이면 품목마다 카드 하나, 답변은 줄로 잇는다."""
+    results = [_item(ctx, item) for item in (parsed, *parsed.more)]
+    if len(results) == 1:
+        return results[0]
+    reply = "\n".join(r.reply for r in results)
+    return IntentResult(reply, [card for r in results for card in r.cards])
+
+
+def _item(ctx: IntentContext, parsed: Interpretation) -> IntentResult:
     db = ctx.db
     equipment = find_equipment(db, parsed.equipment_text)
     matched = find_candidates(
@@ -54,6 +65,16 @@ def handle(ctx: IntentContext, parsed: Interpretation) -> IntentResult:
     part = matched.confirmed
     base_qty = to_base_qty(parsed.qty, parsed.unit, part.pack_qty)
     payload.update(part_id=str(part.part_id), qty=base_qty, unit=None)
+    # 입고: 메시지에 적힌 공급사·단가를 발주 대조에 넘긴다(F-LEDGER-04).
+    # 기본 공급사는 실제로 받은 곳이라는 근거가 아니라 넘기지 않는다.
+    supplier_id = unit_price = None
+    if parsed.intent == "IN":
+        if parsed.supplier_text:
+            resolution = resolve_supplier(db, db.get(Part, part.part_id), parsed.supplier_text)
+            if resolution.method in ("named", "last_order"):
+                supplier_id = resolution.supplier_id
+        unit_price = parsed.unit_price
+        payload.update(supplier_id=str(supplier_id) if supplier_id else None, unit_price=unit_price)
     common["qty"] = base_qty
     unusual = base_qty is not None and is_unusual_qty(db, part.part_id, parsed.intent, base_qty)
     type_: CardType = "warning" if unusual else "confirm"
@@ -73,6 +94,11 @@ def handle(ctx: IntentContext, parsed: Interpretation) -> IntentResult:
         name=part.name,
         stock=part.stock,
         unit=part.unit,
+        po_match=(
+            preview_po_match(db, part.part_id, base_qty, supplier_id, unit_price)
+            if parsed.intent == "IN"
+            else None
+        ),
         **common,
     )
     return IntentResult(reply, [card])

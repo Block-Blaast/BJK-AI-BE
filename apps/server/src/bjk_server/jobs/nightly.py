@@ -25,9 +25,11 @@ from bjk_server.audit.flags import audit_company
 from bjk_server.auth import set_tenant
 from bjk_server.clock import KST
 from bjk_server.db.models import (
+    AuditFlag,
     CalendarEvent,
     Category,
     CompanySettings,
+    CountRequest,
     Equipment,
     EquipmentPart,
     ExternalIndicator,
@@ -36,18 +38,23 @@ from bjk_server.db.models import (
     Part,
     PartMetrics,
     PartSupplierMetrics,
+    PurchaseOrder,
     Supplier,
     SupplierPart,
 )
 from bjk_server.defaults import default_settings
 from bjk_server.domain import analytics as an
+from bjk_server.domain import hidden_stock as hs
+from bjk_server.domain import purchase_order as po
 from bjk_server.domain.external import (
     apply_shock,
     extend_for_holidays,
     indicator_risk,
     risk_level,
 )
+from bjk_server.inventory import merged_owners
 from bjk_server.jobs.runner import company_ids, job
+from bjk_server.purchasing.orders import open_qty
 
 INDICATOR_CSV = Path(__file__).resolve().parents[1] / "seed" / "data" / "external_indicators.csv"
 # 지표 코드 → (이름, 계열). 카테고리의 lead_factors·price_factors가 이 코드를 가리킨다.
@@ -172,6 +179,7 @@ def compute_company(
     service_level = settings["review"]["service_level"]
     next_order_days = settings["review"]["next_order_weeks"] * 7
     k = settings["system"]["external_k"]
+    count_days = settings["system"]["hidden_stock_count_days"]
 
     parts = session.scalars(
         select(Part).where(Part.company_id == company_id, Part.merged_into.is_(None))
@@ -212,20 +220,42 @@ def compute_company(
             tuple(sorted({*(supplier.holidays or ()), *supplier_days[sp.supplier_id]})),
         )
 
-    stock = dict(
+    # 병합된 부품의 원장·발주는 흡수된 부품 id로 남아 있다. 대표 부품으로 합산한다(F-LEDGER-02).
+    owners = merged_owners(session, company_id)
+
+    def owner(part_id: uuid.UUID) -> uuid.UUID:
+        return owners.get(part_id, part_id)
+
+    stock: dict[uuid.UUID, int] = defaultdict(int)
+    for part_id, qty in session.execute(
+        select(Movement.part_id, func.sum(Movement.qty))
+        .where(Movement.company_id == company_id)
+        .group_by(Movement.part_id)
+    ):
+        stock[owner(part_id)] += int(qty)
+    # 숨은 재고 확인 여부 (F-MATCH-03): 마지막 실사 응답 시각, 열린 장부 의심 항목
+    last_counted = dict(
         session.execute(
-            select(Movement.part_id, func.sum(Movement.qty))
-            .where(Movement.company_id == company_id)
-            .group_by(Movement.part_id)
+            select(CountRequest.part_id, func.max(CountRequest.answered_at))
+            .where(CountRequest.company_id == company_id, CountRequest.answered_at <= now)
+            .group_by(CountRequest.part_id)
         ).all()
     )
-    first_seen = dict(
-        session.execute(
-            select(Movement.part_id, func.min(Movement.occurred_at))
-            .where(Movement.company_id == company_id)
-            .group_by(Movement.part_id)
-        ).all()
+    suspect = set(
+        session.scalars(
+            select(AuditFlag.part_id).where(
+                AuditFlag.company_id == company_id, AuditFlag.status != "closed"
+            )
+        )
     )
+    first_seen: dict[uuid.UUID, datetime] = {}
+    for part_id, seen in session.execute(
+        select(Movement.part_id, func.min(Movement.occurred_at))
+        .where(Movement.company_id == company_id)
+        .group_by(Movement.part_id)
+    ):
+        key = owner(part_id)
+        first_seen[key] = min(seen, first_seen.get(key, seen))
     # 통계 예측 입력: 정비에 연결되지 않은 출고만 (F-ANAL-03)
     outs: dict[uuid.UUID, list[tuple[date, int]]] = defaultdict(list)
     usage_qty: dict[uuid.UUID, float] = defaultdict(float)
@@ -236,9 +266,9 @@ def compute_company(
         )
     ):
         if maintenance_id is None:
-            outs[part_id].append((occurred_at.astimezone(KST).date(), -qty))
+            outs[owner(part_id)].append((occurred_at.astimezone(KST).date(), -qty))
         if occurred_at >= year_ago:
-            usage_qty[part_id] += -qty
+            usage_qty[owner(part_id)] += -qty
 
     equipment = {
         e.id: e
@@ -264,6 +294,31 @@ def compute_company(
         if part.default_supplier_id in options:
             return options[part.default_supplier_id]
         return min(options.values(), key=lambda t: t.unit_price, default=None)
+
+    # 실제 납기 표본: 주문 완료 → 입고 완료 일수. 주문 완료 표시 없이 입고된 건은 뺀다 (F-LEDGER-04)
+    lead_by_pair: dict[tuple[uuid.UUID, uuid.UUID], list[int]] = defaultdict(list)
+    lead_by_supplier: dict[uuid.UUID, list[int]] = defaultdict(list)
+    for part_id, supplier_id, ordered_at, received_at in session.execute(
+        select(
+            PurchaseOrder.part_id,
+            PurchaseOrder.supplier_id,
+            PurchaseOrder.ordered_at,
+            PurchaseOrder.received_at,
+        ).where(
+            PurchaseOrder.company_id == company_id,
+            PurchaseOrder.status == "received",
+            PurchaseOrder.implicit_order.is_(False),
+            PurchaseOrder.ordered_at.is_not(None),
+            PurchaseOrder.received_at <= now,
+        )
+    ):
+        days = max(0, (received_at - ordered_at).days)
+        lead_by_pair[(owner(part_id), supplier_id)].append(days)
+        lead_by_supplier[supplier_id].append(days)
+    # 입고 예정 O: 열린 발주(승인됨·발주됨·부분입고)의 미입고 수량 (F-ANAL-09)
+    incoming: dict[uuid.UUID, int] = defaultdict(int)
+    for part_id, qty in open_qty(session, [p.id for p in parts] + list(owners)).items():
+        incoming[owner(part_id)] += qty
 
     priced = all(default_terms(p) for p in parts)
     usage = {p.id: usage_qty[p.id] * (default_terms(p).unit_price if priced else 1) for p in parts}
@@ -326,10 +381,21 @@ def compute_company(
             if factor in HOLIDAY_FACTORS
             for day in region_days[HOLIDAY_FACTORS[factor]]
         }
-        lead = {
-            sid: lead_time(t, import_dependent, r_lead, k, today, festive)
-            for sid, t in terms_by_part[part.id].items()
-        }
+        # 공급사별 (LT50, LT90, 표본 수). 실제 납기 표본이 없으면 기본 납기 하나로 둘 다 쓴다.
+        lead: dict[uuid.UUID, tuple[int, int, int]] = {}
+        for sid, t in terms_by_part[part.id].items():
+            samples = po.lead_time_samples(lead_by_pair[(part.id, sid)], lead_by_supplier[sid])
+            if samples:
+                off = {*festive, *t.holidays}
+                q50, q90 = po.lead_quantiles(samples, import_dependent, r_lead, k)
+                lead[sid] = (
+                    extend_for_holidays(today, q50, off),
+                    extend_for_holidays(today, q90, off),
+                    len(samples),
+                )
+            else:
+                base = lead_time(t, import_dependent, r_lead, k, today, festive)
+                lead[sid] = (base, base, 0)
         for sid, t in terms_by_part[part.id].items():
             session.add(
                 PartSupplierMetrics(
@@ -338,19 +404,20 @@ def compute_company(
                     supplier_id=sid,
                     computed_on=today,
                     computed_at=now,
-                    lt50=lead[sid],
-                    lt90=lead[sid],
-                    samples=0,
+                    lt50=lead[sid][0],
+                    lt90=lead[sid][1],
+                    samples=lead[sid][2],
                     unit_price=t.unit_price,
                     moq=t.moq,
                 )
             )
         terms = default_terms(part)
-        lt = (
-            lead[terms.supplier_id]
-            if terms
-            else lead_time(None, import_dependent, r_lead, k, today, festive)
-        )
+        if terms:
+            lt50, lt, _ = lead[terms.supplier_id]
+        else:
+            lt50 = lt = lead_time(None, import_dependent, r_lead, k, today, festive)
+        # lt는 기본 공급사 LT90: 대비 기간 T, 재주문점, 발주 마감일에 쓴다.
+        # LT50은 다음 입고 가능일(결품 확률)과 예상 손실에 쓴다.
         period = lt + next_order_days
 
         start = first_seen.get(part.id)
@@ -381,27 +448,30 @@ def compute_company(
         reorder_point = an.upper_quantile(lead_samples, service_level[abc[part.id]], f_lead_total)
 
         s = int(stock.get(part.id, 0))
-        hidden = [
-            int(stock.get(o.id, 0))
-            for o in parts
-            if o.id != part.id
-            and part.spec
-            and o.category_id == part.category_id
-            and o.spec == part.spec
-        ]
-        # 실사 기록 기능 전이라 같은 규격 부품의 재고는 모두 미확인(H_u)으로 본다 (F-MATCH-03).
-        h_c, h_u = 0, sum(hidden)
+        hidden = hs.split_hidden(
+            (
+                hs.HiddenPart(
+                    o.id, int(stock.get(o.id, 0)), last_counted.get(o.id), o.id in suspect
+                )
+                for o in parts
+                if o.id != part.id
+                and hs.same_spec(part.category_id, part.spec, o.category_id, o.spec)
+            ),
+            now,
+            count_days,
+        )
+        h_c, h_u = hidden.h_c, hidden.h_u
         paths = an.simulate_paths(
             s + h_c,
             weekly_samples,
             [(f["offset"], f["qty"]) for f in maintenance_needs(part.id, 56)],
-            lt,
+            lt50,
             rng,
         )
         t_out = today + timedelta(days=paths.t_out_day) if paths.t_out_day is not None else None
 
         linked = [equipment[link.equipment_id] for link in links[part.id]]
-        loss = an.expected_loss([(e.loss_per_hour, e.operating_hours) for e in linked], lt)
+        loss = an.expected_loss([(e.loss_per_hour, e.operating_hours) for e in linked], lt50)
         session.add(
             PartMetrics(
                 company_id=company_id,
@@ -416,7 +486,7 @@ def compute_company(
                 m=round(forecast * 52 / 12, 4),
                 f_items=[{k_: v for k_, v in f.items() if k_ != "offset"} for f in f_period],
                 default_supplier_id=terms.supplier_id if terms else None,
-                lt50=lt,
+                lt50=lt50,
                 lt90=lt,
                 period_days=period,
                 d95=d95,
@@ -432,7 +502,9 @@ def compute_company(
                 loss_equipment=[e.name for e in linked],
                 loss_is_estimate=any(e.loss_is_estimate for e in linked),
                 priority=round(paths.p_out * loss, 2),
-                recommended_qty=an.recommended_qty(d95, s, 0, h_c, terms.moq if terms else 1),
+                recommended_qty=an.recommended_qty(
+                    d95, s, incoming.get(part.id, 0), h_c, terms.moq if terms else 1
+                ),
                 r_lead=r_lead,
                 r_price=r_price,
                 external_level=risk_level(max(r_lead, r_price)),

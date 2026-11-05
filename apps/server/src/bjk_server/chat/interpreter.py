@@ -7,7 +7,7 @@ ai 주소가 없으면 UnconfiguredInterpreter가 항상 실패를 알려 대체
 
 import uuid
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Annotated, Literal, Protocol
 
 from bjk_contracts import LlmUsage
@@ -30,6 +30,10 @@ class Interpretation:
     supplier_text: str | None = None
     # 원문 단위 표기("개", "박스"). 부품 기본 단위로 바꾸는 일은 server가 한다.
     unit: str | None = None
+    # 원문 단가(발주 요청). 없으면 검토가 등록 단가를 쓴다.
+    unit_price: int | None = None
+    # 두 번째 품목부터. 같은 의도의 품목별 해석("볼트 200개, 너트 200개 씀")
+    more: tuple["Interpretation", ...] = ()
 
 
 class InterpreterUnavailable(Exception):
@@ -52,7 +56,7 @@ class UnconfiguredInterpreter:
 class AiInterpreter:
     """ai 채팅 해석 어댑터 (docs/ai-integration.md 2장).
 
-    품목이 여럿이면 첫 품목만 쓴다. 여러 품목 카드는 후속으로 한다.
+    품목이 여럿이면 첫 품목을 기본 필드에, 나머지를 `more`에 담는다.
     """
 
     def __init__(
@@ -70,17 +74,22 @@ class AiInterpreter:
         if parsed.ai.fallback or parsed.intent is None:
             reason = parsed.ai.reason.value if parsed.ai.reason else "error"
             raise InterpreterUnavailable(_failure(reason))
-        first = parsed.items[0] if parsed.items else None
-        if first is None:
-            return Interpretation(parsed.intent.value)
-        return Interpretation(
-            intent=parsed.intent.value,
-            part_text=first.part_text,
-            qty=first.qty,
-            equipment_text=first.equipment_text,
-            supplier_text=first.supplier_text,
-            unit=first.unit,
-        )
+        intent = parsed.intent.value
+        items = [
+            Interpretation(
+                intent=intent,
+                part_text=item.part_text,
+                qty=item.qty,
+                equipment_text=item.equipment_text,
+                supplier_text=item.supplier_text,
+                unit=item.unit,
+                unit_price=item.unit_price,
+            )
+            for item in parsed.items
+        ]
+        if not items:
+            return Interpretation(intent)
+        return replace(items[0], more=tuple(items[1:]))
 
 
 def _failure(reason: str) -> FailureReason:

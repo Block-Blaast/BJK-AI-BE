@@ -8,12 +8,14 @@ from bjk_contracts import EMBEDDING_DIM
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     ARRAY,
+    BigInteger,
     Boolean,
     CheckConstraint,
     Date,
     DateTime,
     Float,
     ForeignKey,
+    Identity,
     Index,
     Integer,
     MetaData,
@@ -79,6 +81,26 @@ class User(Base):
     password_hash: Mapped[str | None] = mapped_column(Text)
     pin_hash: Mapped[str | None] = mapped_column(Text)
     active: Mapped[bool] = mapped_column(Boolean, server_default=sql_text("true"))
+    created_at: Mapped[datetime] = _created_at()
+
+
+class Invite(Base):
+    """직원 초대 (API 명세서 AUTH-06·07). 일회용, 72시간. 토큰은 해시만 저장한다."""
+
+    __tablename__ = "invites"
+    __table_args__ = (
+        CheckConstraint("role IN ('worker', 'manager')", name="role"),
+        CheckConstraint("(used_at IS NULL) = (used_by IS NULL)", name="used_pair"),
+    )
+
+    id: Mapped[uuid.UUID] = _id()
+    company_id: Mapped[uuid.UUID] = _company_id()
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    role: Mapped[str] = mapped_column(String(16))
+    created_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    used_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[datetime] = _created_at()
 
 
@@ -151,6 +173,34 @@ class Part(Base):
     embedding_model: Mapped[str | None] = mapped_column(String(100))
     created_at: Mapped[datetime] = _created_at()
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class MergeCandidate(Base):
+    """중복 등록 의심 부품 쌍 (F-MATCH-03, MAT-01). part_a_id < part_b_id로 한 쌍을 한 행에 둔다."""
+
+    __tablename__ = "merge_candidates"
+    __table_args__ = (
+        UniqueConstraint("company_id", "part_a_id", "part_b_id"),
+        CheckConstraint("part_a_id < part_b_id", name="pair_order"),
+        CheckConstraint(
+            "status IN ('open', 'count_requested', 'merged', 'different', 'closed')",
+            name="status",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = _id()
+    company_id: Mapped[uuid.UUID] = _company_id()
+    part_a_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("parts.id", ondelete="CASCADE"))
+    part_b_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("parts.id", ondelete="CASCADE"))
+    score: Mapped[float] = mapped_column(Float)
+    reason: Mapped[str] = mapped_column(String(64))
+    # open: 결정 대기, count_requested: 실사 후 결정, merged·different: 결정됨,
+    # closed: 다른 병합으로 한쪽이 사라져 더 볼 필요 없음
+    status: Mapped[str] = mapped_column(String(16), server_default="open")
+    representative_part_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("parts.id"))
+    decided_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = _created_at()
 
 
 class PartAlias(Base):
@@ -278,8 +328,8 @@ class Movement(Base):
     maintenance_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("maintenance.id"))
     # 채팅으로 기록한 경우 원본 메시지. 폼 입력·실사조정 등은 null.
     message_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("chat_messages.id"))
-    # 발주 테이블은 발주 Issue에서 추가하고 외래 키를 건다.
-    po_id: Mapped[uuid.UUID | None]
+    # 입고 대조로 연결된 발주 (F-LEDGER-04)
+    po_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("purchase_orders.id"))
     reason: Mapped[str | None] = mapped_column(Text)
     corrects_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("movements.id"))
     created_at: Mapped[datetime] = _created_at()
@@ -560,6 +610,90 @@ class PartSupplierMetrics(Base):
     moq: Mapped[int] = mapped_column(Integer)
 
 
+class ServerEvent(Base):
+    """SSE 실시간 이벤트 (API 명세서 NOT-03). id는 SSE 이벤트 ID로 쓴다."""
+
+    __tablename__ = "events"
+    __table_args__ = (Index("ix_events_company_id_id", "company_id", "id"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    company_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("companies.id", ondelete="CASCADE"))
+    type: Mapped[str] = mapped_column(String(32))
+    data: Mapped[dict[str, Any]]
+    created_at: Mapped[datetime] = _created_at()
+
+
+class Review(Base):
+    """발주 검토 (API 명세서 REV-01·02). 목록 정렬·필터에 쓰는 값만 열로 두고 나머지는 JSONB."""
+
+    __tablename__ = "reviews"
+    __table_args__ = (
+        CheckConstraint("entry IN ('staff_request', 'stock_draft', 'missed_draft')", name="entry"),
+        CheckConstraint(
+            "status IN ('reviewing', 'reviewed', 'held', 'approved', 'closed', 'expired')",
+            name="status",
+        ),
+        CheckConstraint("verdict IS NULL OR verdict IN ('ok', 'revise', 'hold')", name="verdict"),
+        CheckConstraint("flags <@ ARRAY['urgent', 'caution', 'alternative']::text[]", name="flags"),
+        CheckConstraint(
+            "hold_reasons <@ "
+            "ARRAY['part_unresolved', 'supplier_unresolved', 'no_demand_data']::text[]",
+            name="hold_reasons",
+        ),
+        # 직원 요청만 요청자가 있고, 시스템 초안(재고 부족·놓친 발주)은 요청자가 없다.
+        CheckConstraint("(entry = 'staff_request') = (requested_by IS NOT NULL)", name="requester"),
+        CheckConstraint("(decided_at IS NULL) = (decided_by IS NULL)", name="decided_pair"),
+        Index("ix_reviews_company_status", "company_id", "status"),
+        Index("ix_reviews_company_part", "company_id", "part_id"),
+    )
+
+    id: Mapped[uuid.UUID] = _id()
+    company_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("companies.id", ondelete="CASCADE"))
+    entry: Mapped[str] = mapped_column(String(16))
+    status: Mapped[str] = mapped_column(String(16), server_default="reviewing")
+    # 검토가 끝나기 전에는 null
+    verdict: Mapped[str | None] = mapped_column(String(8))
+    flags: Mapped[list[str]] = mapped_column(ARRAY(Text), server_default="{}")
+    hold_reasons: Mapped[list[str]] = mapped_column(ARRAY(Text), server_default="{}")
+    # 부품을 특정하지 못하면(보류 part_unresolved) null
+    part_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("parts.id"))
+    requested_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    source_message_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("chat_messages.id"))
+    # 원안: {"qty", "supplier_id", "unit_price", "text"}
+    request: Mapped[dict[str, Any]]
+    # 엔진 결과(checks, original, proposal, alternatives, risk_if_not_ordered, count_requests)
+    result: Mapped[dict[str, Any] | None]
+    # 의견서: {"text", "source", "verified"}
+    opinion: Mapped[dict[str, Any] | None]
+    original_total: Mapped[int | None] = mapped_column(BigInteger)
+    saving: Mapped[int] = mapped_column(BigInteger, server_default="0")
+    # 미발주 시 예상 손실. 목록 정렬(긴급 먼저, 그다음 예상 손실)에 쓴다.
+    loss: Mapped[int] = mapped_column(BigInteger, server_default="0")
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    decision: Mapped[dict[str, Any] | None]
+    decided_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = _created_at()
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ReviewSnapshot(Base):
+    """검토 근거 스냅샷 (F-REVIEW-02). 현재 스냅샷은 검토의 가장 최근 행이다."""
+
+    __tablename__ = "review_snapshots"
+    __table_args__ = (Index("ix_review_snapshots_review_created", "review_id", "created_at"),)
+
+    id: Mapped[uuid.UUID] = _id()
+    company_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("companies.id", ondelete="CASCADE"))
+    review_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("reviews.id", ondelete="CASCADE"))
+    hash: Mapped[str] = mapped_column(String(80))
+    values: Mapped[dict[str, Any]]
+    # 스냅샷을 만들 때 쓴 설정값. 설정이 바뀌어도 이 검토의 판정은 그대로 재현된다.
+    settings: Mapped[dict[str, Any]]
+    computed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = _created_at()
+
+
 class LlmCall(Base):
     """ai 호출 한 번의 비용·장애 기록. 재시도까지 합친 값이다 (bjk_contracts.LlmUsage)."""
 
@@ -582,3 +716,126 @@ class LlmCall(Base):
     attempts: Mapped[int] = mapped_column(Integer)
     success: Mapped[bool] = mapped_column(Boolean)
     created_at: Mapped[datetime] = _created_at()
+
+
+class Notification(Base):
+    """사용자 한 명에게 보내는 알림 (API 명세서 NOT-01·02, 기능명세서 F-NOTI).
+
+    `sent_at`은 보내는 시각이다. 조용한 시간에 생긴 알림은 끝나는 시각으로 미루고, 그 전에는
+    목록에 보이지 않는다. 같은 `dedupe_key`는 사용자마다 한 번만 만든다.
+    """
+
+    __tablename__ = "notifications"
+    __table_args__ = (
+        CheckConstraint(
+            "kind IN ('review_completed', 'review_urgent', 'briefing', 'decision_result', "
+            "'order_check', 'receipt_check', 'count_request', 'maintenance_check')",
+            name="kind",
+        ),
+        UniqueConstraint("user_id", "dedupe_key", name="uq_notifications_user_dedupe"),
+        Index("ix_notifications_user_sent", "user_id", "sent_at"),
+    )
+
+    id: Mapped[uuid.UUID] = _id()
+    company_id: Mapped[uuid.UUID] = _company_id()
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE")
+    )
+    kind: Mapped[str] = mapped_column(String(32))
+    target_type: Mapped[str | None] = mapped_column(String(16))
+    target_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    title: Mapped[str] = mapped_column(String(200))
+    channels: Mapped[list[str]] = mapped_column(ARRAY(Text))
+    dedupe_key: Mapped[str | None] = mapped_column(String(200))
+    sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # 웹 푸시 발송을 시도한 시각 (NOT-04). push 채널인데 비어 있으면 아직 보내지 않았다.
+    pushed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = _created_at()
+
+
+class PartImport(Base):
+    """SET-01 엑셀 이관 한 번. 파싱·제안 결과를 두고 SET-02 확정 때 그대로 쓴다 (F-SETUP-01·02)."""
+
+    __tablename__ = "part_imports"
+    __table_args__ = (CheckConstraint("status IN ('open', 'confirmed')", name="status"),)
+
+    id: Mapped[uuid.UUID] = _id()
+    company_id: Mapped[uuid.UUID] = _company_id()
+    created_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    file_name: Mapped[str] = mapped_column(String(200))
+    file_sha256: Mapped[str] = mapped_column(String(64))
+    is_reimport: Mapped[bool] = mapped_column(Boolean)
+    # SET-01 응답의 rows와 같은 모양에 파일 원래 값(supplier·unit_price 등)을 더한 목록
+    rows: Mapped[list[dict[str, Any]]] = mapped_column(JSONB)
+    status: Mapped[str] = mapped_column(String(16), server_default="open")
+    # stock_mode=apply는 preview를 먼저 불러야 한다 (API 명세서 SET-02)
+    stock_previewed: Mapped[bool] = mapped_column(Boolean, server_default=sql_text("false"))
+    created_at: Mapped[datetime] = _created_at()
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class PurchaseOrder(Base):
+    """승인으로 생긴 발주 (API 명세서 PO-01~04, F-APPROVAL-02·03).
+
+    상태 전이는 domain/purchase_order가 정한다. 실제 납기는 주문 완료 시각(ordered_at) → 입고 완료
+    시각(received_at)으로 잰다. 주문 완료 표시 없이 입고돼 서버가 ordered로 바꾼 건은
+    implicit_order로 표시해 납기 표본에서 뺀다 (F-LEDGER-04).
+    """
+
+    __tablename__ = "purchase_orders"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('approved', 'ordered', 'partially_received', 'received', 'cancelled')",
+            name="status",
+        ),
+        CheckConstraint("qty > 0", name="qty_positive"),
+        CheckConstraint("unit_price >= 0", name="unit_price"),
+        CheckConstraint("received_qty >= 0", name="received_qty"),
+        CheckConstraint("(ordered_at IS NULL) = (ordered_by IS NULL)", name="ordered_pair"),
+        Index("ix_purchase_orders_company_part_status", "company_id", "part_id", "status"),
+        Index("ix_purchase_orders_company_status", "company_id", "status"),
+    )
+
+    id: Mapped[uuid.UUID] = _id()
+    company_id: Mapped[uuid.UUID] = _company_id()
+    # 시드의 과거 이력처럼 검토 없이 들어온 발주는 null
+    review_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("reviews.id"))
+    part_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("parts.id"))
+    supplier_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("suppliers.id"))
+    qty: Mapped[int] = mapped_column(Integer)
+    unit_price: Mapped[int] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(24), server_default="approved")
+    approved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    approved_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    ordered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    ordered_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    implicit_order: Mapped[bool] = mapped_column(Boolean, server_default=sql_text("false"))
+    received_qty: Mapped[int] = mapped_column(Integer, server_default="0")
+    # 발주 수량을 모두 채운 입고 시각. 부분입고 중에는 null
+    received_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cancel_reason: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = _created_at()
+
+
+class PushSubscription(Base):
+    """웹 푸시 구독 (API 명세서 NOT-04, Web Push VAPID). 브라우저 하나에 한 줄.
+
+    같은 회사에서 같은 endpoint를 다시 등록하면 키와 사용자를 새 값으로 바꾼다.
+    """
+
+    __tablename__ = "push_subscriptions"
+    __table_args__ = (
+        UniqueConstraint("company_id", "endpoint", name="uq_push_subscriptions_company_endpoint"),
+        Index("ix_push_subscriptions_user", "user_id"),
+    )
+
+    id: Mapped[uuid.UUID] = _id()
+    company_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("companies.id", ondelete="CASCADE"))
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    endpoint: Mapped[str] = mapped_column(Text)
+    p256dh: Mapped[str] = mapped_column(String(200))
+    auth: Mapped[str] = mapped_column(String(100))
+    created_at: Mapped[datetime] = _created_at()
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

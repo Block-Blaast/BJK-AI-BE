@@ -35,7 +35,7 @@ uv workspace 하나로 묶는다. 앱끼리 직접 import하지 않고 `bjk_cont
 - `make seed`: 개발 DB를 시연 상태(demo_v1)로 초기화. 시연 계정은 `bjk_server/seed/demo.py`의 `USERS`
 - `make job name=<nightly|missed-scan|order-check|briefing|weekly-merge>`: 배치 즉시 실행
 - `make scheduler`: 배치 예약 프로세스(APScheduler). compose에서는 `scheduler` 서비스
-- DB 테스트는 `TEST_DATABASE_URL`이 있을 때만 실행 (`.env.example` 참고). CI는 PostgreSQL 서비스와 `REQUIRE_DB_TESTS=1`로 항상 실행
+- DB 테스트는 `TEST_DATABASE_URL`이 있을 때만 실행 (`.env.example` 참고). main 대상 PR의 CI는 PostgreSQL 서비스와 `REQUIRE_DB_TESTS=1`로 항상 실행. dev에서는 CI를 돌리지 않고 머지 큐가 로컬에서 같은 명령으로 검증
 
 ## 설계 원칙
 

@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime, timedelta
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, PrivateAttr, model_validator
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
@@ -18,7 +18,10 @@ from bjk_server.domain.ledger import (
     pick_maintenance,
 )
 from bjk_server.errors import ApiError, ErrorCode
+from bjk_server.events import publish
 from bjk_server.inventory import lock_part_stock, stock_of
+from bjk_server.purchasing.receipt import PoMatch, ReceiptMatch, match_receipt
+from bjk_server.reviews.drafts import stock_draft_after_record
 from bjk_server.security import TokenClaims
 
 # 다른 부품으로 확정된 횟수가 이만큼 쌓이면 모호 별칭 (F-MATCH-02)
@@ -34,6 +37,10 @@ class MovementOut(BaseModel):
     qty: int
     equipment_id: uuid.UUID | None
     maintenance_id: uuid.UUID | None
+    # 입고 대조로 연결된 발주 (F-LEDGER-04)
+    po_id: uuid.UUID | None = None
+    _receipt: ReceiptMatch | None = PrivateAttr(default=None)
+    _draft_review_id: uuid.UUID | None = PrivateAttr(default=None)
 
 
 class AliasLearned(BaseModel):
@@ -42,7 +49,7 @@ class AliasLearned(BaseModel):
 
 
 class Triggered(BaseModel):
-    # 재고 부족 초안은 검토 기능에서 채운다. 장부 의심 항목은 음수 재고가 됐을 때 (F-LEDGER-03).
+    # 재고 부족 초안이 만들어졌을 때, 장부 의심 항목은 음수 재고가 됐을 때 (F-LEDGER-03).
     draft_review_id: uuid.UUID | None = None
     audit_flag_id: uuid.UUID | None = None
 
@@ -54,6 +61,20 @@ class RecordResponse(BaseModel):
     reply: str
     alias_learned: AliasLearned | None = None
     triggered: Triggered = Triggered()
+    # IN만: 열린 발주와 대조한 결과와 실제 납기 (주문 완료 시각이 없으면 null, 납기 표본 제외)
+    po_match: PoMatch | None = None
+    actual_lead_time_days: int | None = None
+
+    @model_validator(mode="after")
+    def _fill_receipt(self) -> "RecordResponse":
+        receipt = self.movement._receipt
+        if self.intent == "IN" and receipt is not None and self.po_match is None:
+            self.po_match = receipt.po_match
+            self.actual_lead_time_days = receipt.actual_lead_time_days
+        draft = self.movement._draft_review_id
+        if draft is not None and self.triggered.draft_review_id is None:
+            self.triggered = self.triggered.model_copy(update={"draft_review_id": draft})
+        return self
 
 
 def to_base_qty(qty: int | None, unit: str | None, pack_qty: int | None) -> int | None:
@@ -132,7 +153,11 @@ def record_movement(
     equipment_id: uuid.UUID | None,
     source_text: str | None,
     message_id: uuid.UUID | None = None,
+    *,
+    supplier_id: uuid.UUID | None = None,
+    unit_price: int | None = None,
 ) -> tuple[Movement, int, str]:
+    """원장 기록. IN이면 열린 발주와 대조한다. 공급사·단가를 주면 발주와 다를 때 mismatch."""
     if qty <= 0:
         raise ApiError(ErrorCode.VALIDATION_ERROR, "수량은 1 이상이어야 합니다.", {"qty": qty})
 
@@ -156,20 +181,36 @@ def record_movement(
         message_id=message_id,
         occurred_at=now,
     )
+    receipt = (
+        match_receipt(db, part, qty, user.user_id, now, supplier_id, unit_price)
+        if intent == "IN"
+        else None
+    )
+    if receipt is not None:
+        movement.po_id = receipt.po_id
     db.add(movement)
     db.flush()
+    # 응답(RecordResponse)의 po_match를 채우려고 원장 행에 대조 결과를 붙여 둔다
+    movement.receipt = receipt
     stock = stock_of(db, part.id)
+    publish(db, user.company_id, "stock.changed", {"part_id": str(part.id), "stock": stock})
+    # 재주문점 이탈이면 재고 부족 초안 검토 (F-LEDGER-03). 응답 triggered.draft_review_id로 나간다
+    movement.draft_review_id = stock_draft_after_record(db, user.company_id, part, stock, now)
     action = "출고" if intent == "OUT" else "입고"
     label = "남은 재고" if intent == "OUT" else "현재 재고"
     return movement, stock, f"{action} 완료. {label} {stock}{part.unit}"
 
 
 def movement_out(movement: Movement) -> MovementOut:
-    return MovementOut(
+    out = MovementOut(
         id=movement.id,
         type=movement.type,
         part_id=movement.part_id,
         qty=movement.qty,
         equipment_id=movement.equipment_id,
         maintenance_id=movement.maintenance_id,
+        po_id=movement.po_id,
     )
+    out._receipt = getattr(movement, "receipt", None)
+    out._draft_review_id = getattr(movement, "draft_review_id", None)
+    return out

@@ -46,7 +46,7 @@
 
 ### 해석과 단위
 
-- `AI_BASE_URL`이 있으면 ai `/v1/chat/parse`로 해석한다. 품목이 여럿이면 첫 품목만 쓴다(여러 품목 카드는 후속).
+- `AI_BASE_URL`이 있으면 ai `/v1/chat/parse`로 해석한다. 품목이 여럿이면 `OUT`·`IN`은 품목마다 카드를 하나씩 만들고(`cards` 순서 = 품목 순서) 답변은 품목별 문장을 줄바꿈으로 잇는다. 카드는 하나씩 확정·취소한다. 그 밖의 의도는 첫 품목만 쓴다.
 - 단위가 박스(`박스`, `box`, `상자`)면 부품 입수량(`pack_qty`)을 곱한다. 입수량이 없으면 수량을 비워 확인할 때 입력받는다. 선택 카드는 고른 부품의 입수량으로 바꾼다.
 - ai 호출마다 `llm_calls`에 용도·모델·토큰·지연·시도 횟수·성공 여부를 남긴다.
 
@@ -56,6 +56,9 @@
 | --- | --- |
 | 확정(별칭 일치, 규격 일치 후보 1개, 또는 코사인 확정) | `confirm` (`part_id`, `name`, `stock`, `unit`) |
 | 위 조건에서 1회 수량 > 같은 부품·같은 방향 과거 1회 최대 × 5 | `warning` |
+
+- `IN`의 `confirm`·`warning` 카드는 `po_match` 미리 보기를 담는다. 확정(CHAT-03)과 같은 규칙(남은 수량이 입고 수량과 같은 열린 발주 먼저, 없으면 가장 오래된 승인)으로 고르되 발주를 바꾸거나 알림을 보내지 않는다. 카드에는 공급사·단가가 없어 수량만 비교한다. 수량이 없거나 `OUT`이면 `null`. 실제 결과는 확정 응답의 `po_match`가 정본이다.
+
 | 확정은 아니지만 후보가 있음 (하나여도) | `select` (`candidates`, 설비에 연결된 부품 먼저, 최대 3개) |
 | 후보 없음 | `unregistered` |
 | 해석 실패 | `form` (`ai.fallback: true`, `ai.reason`) |
@@ -65,15 +68,22 @@
 | `intent` | 처리 |
 | --- | --- |
 | `OUT`, `IN` | 위 카드 |
-| `QUERY` | 카드 없음. 부품이 하나면 현재 재고·소진 예상일과 각 기준 시각, 여럿이면 후보 이름 |
+| `QUERY` | 카드 없음. 부품이 하나면 현재 재고·입고 예정·소진 예상일과 각 기준 시각, 여럿이면 후보 이름 |
 | `OTHER` | 카드 없음. "기록, 조회, 발주 요청을 도와드려요." |
-| `PURCHASE_REQUEST`, `MAINTENANCE_DONE`, `COUNT` | 현재 구현 범위: `OTHER`와 같은 안내. 검토·정비·실사 기능에서 연결 |
+| `MAINTENANCE_DONE` | 설비의 가장 가까운 미완료 정비(오늘과 예정일 차이가 가장 작은 것, 같으면 앞선 일정)를 `confirm` 카드(`maintenance: {id, scheduled_date}`)로 보여준다. 설비를 모르면 "어느 설비의 정비인지 알려 주세요.", 미완료 정비가 없으면 안내만 한다 |
+| `COUNT` | 카드 없음. 담당자 본인의 응답 대기 실사 요청에 AUD-03과 같은 처리. 응답의 `count_request_id`로 차이 사유(AUD-04)를 보낸다 |
+| `PURCHASE_REQUEST` | 부품이 확정되면 `confirm` 카드(`part_id`, `qty`, `unit_price`, `supplier_resolution`), 후보만 있으면 `select` 카드, 없으면 카드 없이 미등록 안내 |
 
+- `PURCHASE_REQUEST` 공급사 해석 `supplier_resolution: { text, supplier_id, name, method }`: 공급사 이름이 표현을 포함하면(또는 그 반대) `named`(이 부품을 파는 곳 먼저), "저번 데"·"늘 사던 곳"처럼 최근 발주처를 가리키면 이 부품을 가장 최근에 승인한 발주(취소 제외)의 공급사 `last_order`, 발주 이력이 없거나 표현이 없으면 기본 공급사 `default`, 해석하지 못하면 `none`.
+- 답변 예: "V벨트 A-42 30개, 공급사 A로 요청하셨나요?"
+
+- `COUNT`: 응답 대기 요청이 없으면 "답할 실사 요청이 없어요.", 수량이 없으면 "센 수량을 숫자로 알려 주세요.". 요청이 여럿이면 부품 표현으로 고르고, 고르지 못하면 후보 이름을 되묻는다. 응답 전에는 원장을 바꾸지 않는다.
+- `count_request_id`는 `COUNT`로 실사 요청에 응답했을 때만 담기고 그 밖에는 `null`이다.
 - 출고 수량이 장부 재고보다 많아도 기록은 허용한다. 음수 재고는 장부 검증에서 의심 항목으로 다룬다.
 - 현재 구현 범위: ai 채팅 해석 연동 전이라 기본 해석기(`UnconfiguredInterpreter`)가 항상 실패를 알리고, 모든 메시지는 `form` 카드(`reason: "error"`)로 대체된다. 별칭 후보 순위(ai)도 연동 후 매칭에 더한다.
-- `QUERY` 답변 예: "V벨트 A-42 현재 재고 2개예요. 소진 예상일은 11/18이에요. (재고 기준 11/04 10:00, 예상 계산 11/04 03:00)". 재고는 원장 합산(요청 시각), 소진 예상일은 최신 새벽 계산(`part_metrics.t_out`) 값이다.
+- `QUERY` 답변 예: "V벨트 A-42 현재 재고 2개예요. 입고 예정 10개(11/08쯤). 소진 예상일은 11/18이에요. (재고 기준 11/04 10:00, 예상 계산 11/04 03:00)". 재고는 원장 합산(요청 시각), 소진 예상일은 최신 새벽 계산(`part_metrics.t_out`) 값이다.
 - 새벽 계산 전이면 "소진 예상일은 새벽 계산 뒤에 알려 드려요", 8주 경로 시뮬레이션 안에 소진되지 않으면 "앞으로 8주 안에는 다 쓰지 않을 것으로 보여요"라고 답한다.
-- 현재 구현 범위: `QUERY` 답변의 입고 예정은 발주 기능 이후 채운다.
+- 입고 예정: 열린 발주(승인됨·발주됨·부분입고)의 미입고 수량 합과 가장 이른 도착 예상일. 예상일은 주문 완료 시각(주문 전이면 승인 시각) + 공급사 LT50(최신 공급사별 납기, 없으면 공급사 기본 납기, 그것도 없으면 7일). 주문 전 발주가 있으면 "그중 N건은 아직 주문 전이에요."를 덧붙이고, 열린 발주가 없으면 "입고 예정은 없어요."
 
 | 상황 | 응답 |
 | --- | --- |
@@ -97,7 +107,7 @@
 // 200 Response
 {
   "intent": "OUT",
-  "movement": { "id": "...", "type": "OUT", "part_id": "...", "qty": -2, "equipment_id": "...", "maintenance_id": null },
+  "movement": { "id": "...", "type": "OUT", "part_id": "...", "qty": -2, "equipment_id": "...", "maintenance_id": null, "po_id": null },
   "stock_after": 1,
   "reply": "출고 완료. 남은 재고 1개",
   "alias_learned": { "text": "베어링", "part_id": "..." },
@@ -113,8 +123,14 @@
 | 수량 없음·1 미만, `form` 카드 | 400 `VALIDATION_ERROR` |
 | 다른 사람의 카드, 없는 설비 | 404 `NOT_FOUND` |
 
+- `triggered.draft_review_id`: 이 기록으로 재주문점을 벗어나 만든 재고 부족 초안 검토 ID(F-LEDGER-03). 조건은 S + H_c ≤ 재주문점(최신 새벽 계산), 같은 부품의 열린 발주·열린 요청 없음, 오늘 '발주 불필요'로 닫힌 검토 없음. 원안은 수량 R, 기본 공급사. 새벽 계산 전이거나 R이 0이면 만들지 않는다. 검토는 응답 커밋 뒤 백그라운드로 돈다([reviews.md](reviews.md)).
 - `triggered.audit_flag_id`: 이 기록으로 재고가 0 이상에서 0 미만이 되면 만든(또는 묶은) 장부 의심 항목 ID ([audit.md](audit.md)).
-- 현재 구현 범위: `OUT`·`IN`만 처리한다. `triggered.draft_review_id`(재고 부족 초안), `IN`의 `po_match`·`actual_lead_time_days`는 검토·발주 기능에서 채운다.
+- `IN`은 같은 부품의 열린 발주와 대조한다(F-LEDGER-04, #164). 잔량이 입고 수량과 같은 발주를 먼저, 없으면 가장 오래된 승인을 고르고 원장 `movement.po_id`에 연결한다.
+  - `po_match`: `complete`(발주 수량 채움, `received`), `partial`(`partially_received`, 잔량 유지), `mismatch`(잔량보다 많이 들어옴, 입고는 반영하고 관리자·사장님에게 `receipt_check` 알림), `no_order`(열린 발주 없음). `OUT`은 `null`.
+  - `actual_lead_time_days`: 이번 입고로 발주를 채웠을 때 주문 완료 시각부터 입고까지 일수. 주문 완료 표시 없이 입고되면 서버가 `ordered`로 바꾸고(`implicit_order`) 납기 표본에서 빼서 `null`.
+- `MAINTENANCE_DONE` 카드 확정은 SET-09와 같이 완료자·완료 시각(확정 시각)을 남기고 `{ "intent": "MAINTENANCE_DONE", "maintenance_id", "equipment_id", "completed_at", "reply": "정비 완료로 기록했어요." }`를 돌려준다. 이미 완료된 정비는 409 `ALREADY_CONFIRMED`(`detail.status: completed`).
+- `PURCHASE_REQUEST` 카드 확정은 직원 요청 검토(`entry: staff_request`, 요청자 본인, 원본 메시지 연결)를 만들고 `{ "intent": "PURCHASE_REQUEST", "review_id", "status": "reviewing", "reply": "검토해서 사장님께 올렸어요." }`를 돌려준다. 검토는 커밋 뒤 실행된다(`review.progress` 이벤트). 요청에서 `part_id`(선택 카드), `qty`, `supplier_id`, `unit_price`를 바꿀 수 있다. 공급사가 비면 검토가 기본 공급사를, 단가가 비면 등록 단가를 쓴다. 선택 카드는 고른 부품의 기본 공급사를 쓴다. 없는 공급사는 404.
+- 현재 구현 범위: `OUT`·`IN`·`MAINTENANCE_DONE`·`PURCHASE_REQUEST`를 처리한다. `IN`은 열린 발주와 대조해 `po_match`·`actual_lead_time_days`를 채운다.
 - 확인 카드 확정과 폼 입력은 같은 회사·부품의 원장 추가와 재고 합산을 트랜잭션 단위로 직렬화한다. `stock_after`는 해당 요청이 반영된 시점의 합산값이며, 이후 다른 요청이 재고를 바꿀 수 있다.
 
 ### 재고 동시성 검증 (#69)
@@ -157,7 +173,7 @@
 | 없는 설비 | 404 `NOT_FOUND` |
 | 같은 요청 ID의 다른 요청자·본문 또는 소유자를 확인할 수 없는 기존 기록 | 409 `IDEMPOTENCY_CONFLICT` |
 
-- 현재 구현 범위: `OUT`·`IN`만. 폼 발주 요청(`PURCHASE_REQUEST`)은 검토 기능에서 추가한다.
+- 폼 발주 요청: `{ "client_message_id", "type": "PURCHASE_REQUEST", "part_id", "qty", "supplier_id", "unit_price" }`(`supplier_id`·`unit_price` 선택). 응답은 CHAT-03 발주 요청과 같고, 같은 `client_message_id`로 다시 보내면 검토를 다시 만들지 않는다.
 
 ## CHAT-02 GET /api/v1/chat/messages
 

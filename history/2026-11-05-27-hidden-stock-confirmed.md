@@ -23,7 +23,7 @@
 
 ## 검증
 
-- 로컬 PostgreSQL 16 `REQUIRE_DB_TESTS=1 make test` 689개 통과, `make lint` 통과
+- 로컬 PostgreSQL 16 `REQUIRE_DB_TESTS=1 make test` 703개 통과, `make lint` 통과
 
 ## 남은 일·확인 필요
 

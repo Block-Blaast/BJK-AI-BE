@@ -4,6 +4,7 @@ AI·server 영역 작업 기록 색인. 작성 규칙은 [docs/ai-work-rules.md]
 
 | 날짜 | 파일 | 내용 |
 | --- | --- | --- |
+| 2026-11-05 | [2026-11-05-38-purchase-order-list-cancel.md](2026-11-05-38-purchase-order-list-cancel.md) | 발주 목록·주문 취소 API(PO-01·04), DB 포함 724개 통과 |
 | 2026-11-05 | [2026-11-05-37-receipt-po-match.md](2026-11-05-37-receipt-po-match.md) | 입고와 발주 대조(`po_match`, 실제 납기, `po_id`), DB 포함 714개 통과 |
 | 2026-11-05 | [2026-11-05-28-purchase-orders.md](2026-11-05-28-purchase-orders.md) | 발주 테이블(0026)과 열린 발주·최근 단가 조회 함수, DB 포함 705개 통과 |
 | 2026-11-05 | [2026-11-05-27-notifications.md](2026-11-05-27-notifications.md) | 알림 저장·목록·읽음(#183), 중복 방지와 조용한 시간 보류, 마이그레이션 0025 |

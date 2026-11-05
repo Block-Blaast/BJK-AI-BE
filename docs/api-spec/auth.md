@@ -95,3 +95,36 @@
 | PIN 불일치 (1~4회째) | 401 `INVALID_PIN`, `remaining_attempts` |
 | 5회째 실패, 잠금 중 요청 | 423 `PIN_LOCKED`, `Retry-After` 헤더 |
 | 없는 회사 코드, 없는 사용자, PIN 미등록 사용자 | 404 `NOT_FOUND` |
+
+## AUTH-06 POST /api/v1/auth/invites, AUTH-07 POST /api/v1/auth/invites/{token}/accept
+
+- 초대 생성 권한: owner. 수락 권한: 초대 토큰.
+- 토큰은 `inv_` + 임의 문자열, 일회용, 72시간. DB에는 SHA-256 해시만 저장한다(`invites.token_hash`).
+- `join_url`은 `WEB_BASE_URL`(기본 `https://app.baljukok.kr`) + `/join/{token}`. QR은 화면에서 이 주소로 그린다.
+- 수락 시점에는 회사를 알 수 없어 `auth_invite_by_token` 함수(SECURITY DEFINER)가 해시로 초대·회사 ID만 찾고, 나머지는 그 회사의 RLS 안에서 한다.
+- 같은 토큰 동시 수락은 초대 행 잠금(`FOR UPDATE`)으로 한 명만 만든다.
+
+```json
+// POST /auth/invites Request
+{ "role": "worker" }
+
+// 201 Response
+{ "token": "inv_9fK2...", "join_url": "https://app.baljukok.kr/join/inv_9fK2...", "role": "worker", "expires_at": "2026-11-07T15:00:00+09:00" }
+
+// POST /auth/invites/inv_9fK2.../accept Request
+{ "name": "이현장", "pin": "1234" }
+
+// 201 Response (company_code를 기기에 저장)
+{ "access_token": "eyJ...", "refresh_token": "eyJ...", "expires_in": 900, "company_code": "HS7F3K", "user": { "id": "...", "name": "이현장", "role": "worker" } }
+```
+
+| 상황 | 응답 |
+| --- | --- |
+| `role`이 `worker`·`manager`가 아님 | 400 `VALIDATION_ERROR` |
+| owner가 아닌 역할의 초대 생성 | 403 `FORBIDDEN_ROLE` |
+| PIN이 숫자 4자리가 아님, 빈 이름 | 400 `VALIDATION_ERROR` |
+| 없는 토큰 | 404 `NOT_FOUND` |
+| 이미 사용한 토큰 | 410 `INVITE_EXPIRED`, `detail.reason: "used"` |
+| 72시간 지난 토큰 | 410 `INVITE_EXPIRED`, `detail.reason: "expired"` |
+
+- 명세에 없어 정한 것: 초대로 만들 수 있는 역할은 `worker`·`manager`, PIN은 숫자 4자리, 없는 토큰은 404.

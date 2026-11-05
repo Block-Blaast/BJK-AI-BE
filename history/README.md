@@ -4,6 +4,7 @@ AI·server 영역 작업 기록 색인. 작성 규칙은 [docs/ai-work-rules.md]
 
 | 날짜 | 파일 | 내용 |
 | --- | --- | --- |
+| 2026-11-05 | [2026-11-05-60-briefing-order-check.md](2026-11-05-60-briefing-order-check.md) | 브리핑 `order_check_needed`에 납기 지난 미입고 포함(#182) |
 | 2026-11-05 | [2026-11-05-59-chat-last-order-supplier.md](2026-11-05-59-chat-last-order-supplier.md) | 채팅 발주 요청 "저번 데"를 최근 발주 공급사로 해석(#238), 875개 통과 |
 | 2026-11-05 | [2026-11-05-58-snapshot-merged-stock.md](2026-11-05-58-snapshot-merged-stock.md) | 검토 스냅샷 S·H에 병합 부품 재고 연결(#209 후속), 845개 통과 |
 | 2026-11-05 | [2026-11-05-57-purchase-order-detail.md](2026-11-05-57-purchase-order-detail.md) | 발주 상세(문자 문구)·주문 완료 표시 API(PO-02·03) |

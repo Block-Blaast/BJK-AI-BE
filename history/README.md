@@ -4,6 +4,7 @@ AI·server 영역 작업 기록 색인. 작성 규칙은 [docs/ai-work-rules.md]
 
 | 날짜 | 파일 | 내용 |
 | --- | --- | --- |
+| 2026-11-05 | [2026-11-05-25-expired-rows-cleanup.md](2026-11-05-25-expired-rows-cleanup.md) | `cleanup` 배치(#185), 호출 제한·PIN 잠금·멱등 키 만료 행 삭제 |
 | 2026-11-05 | [2026-11-05-24-llm-daily-token-quota.md](2026-11-05-24-llm-daily-token-quota.md) | 회사별 LLM 일일 토큰 상한(#172), `system.llm_daily_tokens`, 초과 시 `quota_exceeded` 대체 |
 | 2026-11-05 | [2026-11-05-23-chat-intent-handlers.md](2026-11-05-23-chat-intent-handlers.md) | 채팅 의도별 처리기 파일 분리와 등록 표(#174), 554개 통과 |
 | 2026-11-05 | [2026-11-05-22-chat-idempotency-port.md](2026-11-05-22-chat-idempotency-port.md) | #68 멱등 요청 사용자·본문 검증 dev 이식, 마이그레이션 0020, 566개 통과 |

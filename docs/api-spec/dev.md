@@ -46,7 +46,7 @@
 ## DEV-01 POST /api/v1/dev/jobs/{name}/run
 
 - 권한: owner
-- `{name}`: `nightly`, `missed-scan`, `order-check`, `briefing`, `weekly-merge`
+- `{name}`: `nightly`, `missed-scan`, `order-check`, `briefing`, `weekly-merge`, `cleanup`
 - 동작: 배치를 즉시(동기) 실행하고 실행 기록(`job_runs`, `trigger: manual`)을 남긴다. 응답에 작업 요약을 펼쳐 담는다. 예약 실행과 같이 앱 계정으로 돈다.
 
 ```json

@@ -46,6 +46,7 @@ SCHEDULE: dict[JobName, dict[str, Any]] = {
     "order-check": {"hour": 7, "minute": 0},
     "briefing": {"hour": 7, "minute": 30},
     "weekly-merge": {"day_of_week": "mon", "hour": 3, "minute": 30},
+    "cleanup": {"hour": 4, "minute": 0},
 }
 MISFIRE_GRACE_SECONDS = 30 * 60
 

@@ -38,12 +38,23 @@ class LlmGateway(Protocol):
 
 class GeminiGateway:
     def __init__(self, api_key: str) -> None:
-        self._client = genai.Client(api_key=api_key)
+        self._api_key = api_key
+        self._client: genai.Client | None = None
+        self._loop: asyncio.AbstractEventLoop | None = None
+
+    def _aio(self):
+        # SDK의 비동기 연결은 처음 쓴 이벤트 루프에 묶여, 루프가 바뀌면 "Event loop is closed"로
+        # 실패한다. 루프가 바뀌면 클라이언트를 새로 만든다.
+        loop = asyncio.get_running_loop()
+        if self._client is None or self._loop is not loop:
+            self._client = genai.Client(api_key=self._api_key)
+            self._loop = loop
+        return self._client.aio
 
     async def generate_json(
         self, *, model: str, system: str, prompt: str, schema: type[BaseModel]
     ) -> GenerateResult:
-        response = await self._client.aio.models.generate_content(
+        response = await self._aio().models.generate_content(
             model=model,
             contents=prompt,
             config=types.GenerateContentConfig(
@@ -53,16 +64,19 @@ class GeminiGateway:
             ),
         )
         usage = response.usage_metadata
+        # 생각(thinking) 토큰도 출력 토큰으로 과금되므로 함께 센다.
+        output_tokens = (usage and usage.candidates_token_count) or 0
+        output_tokens += (usage and usage.thoughts_token_count) or 0
         return GenerateResult(
             text=response.text or "",
             input_tokens=(usage and usage.prompt_token_count) or 0,
-            output_tokens=(usage and usage.candidates_token_count) or 0,
+            output_tokens=output_tokens,
         )
 
     async def embed(self, *, model: str, texts: list[str], dim: int) -> EmbedResult:
         # gemini-embedding-2는 문자열 목록을 벡터 하나로 합친다. 텍스트마다 Content로 나눠야
         # 텍스트별 벡터가 나온다.
-        response = await self._client.aio.models.embed_content(
+        response = await self._aio().models.embed_content(
             model=model,
             contents=[types.Content(parts=[types.Part(text=text)]) for text in texts],
             config=types.EmbedContentConfig(output_dimensionality=dim),

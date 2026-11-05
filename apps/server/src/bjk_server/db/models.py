@@ -474,6 +474,44 @@ class AuditFlag(Base):
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class CountRequest(Base):
+    """블라인드 실사 요청 (F-AUDIT-06). 담당자에게 장부 수량을 보여주지 않는다."""
+
+    __tablename__ = "count_requests"
+    __table_args__ = (
+        CheckConstraint("status IN ('scheduled', 'sent', 'answered', 'closed')", name="status"),
+        CheckConstraint(
+            "reason IS NULL OR reason IN ('lost', 'missing_record', 'damaged', 'other')",
+            name="reason",
+        ),
+        Index("ix_count_requests_company_assignee", "company_id", "assignee_id"),
+    )
+
+    id: Mapped[uuid.UUID] = _id()
+    company_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("companies.id", ondelete="CASCADE"))
+    audit_flag_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("audit_flags.id", ondelete="CASCADE"), index=True
+    )
+    part_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("parts.id", ondelete="CASCADE"))
+    assignee_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    requested_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    # scheduled: 하루 한도를 넘어 scheduled_for에 보냄, sent: 응답 대기,
+    # answered: 차이가 있어 사유 대기, closed: 종료
+    status: Mapped[str] = mapped_column(String(16))
+    message: Mapped[str] = mapped_column(Text)
+    scheduled_for: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    counted_qty: Mapped[int | None] = mapped_column(Integer)
+    book_qty_before: Mapped[int | None] = mapped_column(Integer)
+    diff: Mapped[int | None] = mapped_column(Integer)
+    adjust_movement_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("movements.id"))
+    answered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    reason: Mapped[str | None] = mapped_column(String(16))
+    note: Mapped[str | None] = mapped_column(Text)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = _created_at()
+
+
 class PartSupplierMetrics(Base):
     """부품×공급사별 납기 (F-ANAL-04, 외부 요인·휴무일 반영 후)."""
 

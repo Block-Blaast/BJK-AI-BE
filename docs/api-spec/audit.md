@@ -95,7 +95,7 @@
 
 - 차이가 있으면 차이만큼 `ADJUST`(사유 `실사조정`, 작성자 담당자)를 원장에 더한다. 요청은 `answered`, 의심 항목은 사유(AUD-04)를 받을 때까지 `count_requested`로 둔다.
 - 차이가 0이면 원장은 그대로(`adjust_movement_id: null`), 요청과 의심 항목을 닫는다(`resolution: no_diff`). 같은 규칙은 억제 기간 동안 다시 뜨지 않는다.
-- 현재 구현 범위: 폼 경로만 구현했다. 채팅 답(의도 `COUNT`) 연결은 ai 해석 연동 후 추가한다.
+- 채팅 답(CHAT-01 의도 `COUNT`)도 같은 처리를 한다([chat.md](chat.md)).
 
 ## AUD-04 PATCH /api/v1/count-requests/{id}
 

@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from bjk_server.clock import KST
 from bjk_server.db.models import CompanySettings, Notification
 from bjk_server.defaults import DEFAULT_SETTINGS
+from bjk_server.notify.push import push_after_commit
 
 Kind = Literal[
     "review_completed",
@@ -77,6 +78,7 @@ def notify(
     dedupe_key: str | None = None,
 ) -> list[uuid.UUID]:
     """받는 사람마다 알림을 만든다. 이미 같은 키로 받은 사람은 건너뛰고, 새로 만든 ID를 돌려준다."""
+    channels = list(channels)
     sent_at = release_at(now, quiet_hours_of(db, company_id))
     target_type, target_id = target if target else (None, None)
     created: list[uuid.UUID] = []
@@ -90,7 +92,7 @@ def notify(
                 target_type=target_type,
                 target_id=target_id,
                 title=title,
-                channels=list(channels),
+                channels=channels,
                 dedupe_key=dedupe_key,
                 sent_at=sent_at,
             )
@@ -100,4 +102,7 @@ def notify(
         new_id = db.scalar(stmt)
         if new_id is not None:
             created.append(new_id)
+    if "push" in channels and sent_at <= now:
+        # 지금 보낼 수 있는 푸시는 커밋 직후 보내고, 조용한 시간으로 미룬 것은 push 배치가 보낸다
+        push_after_commit(db, company_id, created)
     return created

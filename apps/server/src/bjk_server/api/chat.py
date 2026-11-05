@@ -80,7 +80,7 @@ class ConfirmRequest(BaseModel):
     part_id: uuid.UUID | None = None
     qty: int | None = Field(default=None, ge=1)
     equipment_id: uuid.UUID | None = None
-    # PURCHASE_REQUEST만
+    # PURCHASE_REQUEST, IN(발주 대조)
     supplier_id: uuid.UUID | None = None
     unit_price: int | None = Field(default=None, ge=0)
 
@@ -160,7 +160,16 @@ def confirm_entry(
 
     intent: Literal["IN", "OUT"] = entry.intent
     movement, stock, reply = record_movement(
-        db, user, intent, part, qty, equipment_id, payload.get("source_text"), entry.message_id
+        db,
+        user,
+        intent,
+        part,
+        qty,
+        equipment_id,
+        payload.get("source_text"),
+        entry.message_id,
+        supplier_id=body.supplier_id or _uuid(payload.get("supplier_id")),
+        unit_price=body.unit_price if body.unit_price is not None else payload.get("unit_price"),
     )
     result = RecordResponse(
         intent=intent,
@@ -288,7 +297,7 @@ class FormEntryRequest(BaseModel):
     part_id: uuid.UUID
     qty: int = Field(ge=1)
     equipment_id: uuid.UUID | None = None
-    # PURCHASE_REQUEST만. 비우면 기본 공급사·등록 단가로 검토한다.
+    # PURCHASE_REQUEST: 비우면 기본 공급사·등록 단가로 검토한다. IN: 주면 발주와 대조한다.
     supplier_id: uuid.UUID | None = None
     unit_price: int | None = Field(default=None, ge=0)
 
@@ -320,7 +329,15 @@ def form_entry(
         return _store_form(db, user, body, result)
     equipment_id = resolve_equipment(db, body.equipment_id)
     movement, stock, reply = record_movement(
-        db, user, body.type, part, body.qty, equipment_id, source_text=None
+        db,
+        user,
+        body.type,
+        part,
+        body.qty,
+        equipment_id,
+        source_text=None,
+        supplier_id=body.supplier_id if body.type == "IN" else None,
+        unit_price=body.unit_price if body.type == "IN" else None,
     )
     result = RecordResponse(
         intent=body.type,

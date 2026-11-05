@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from bjk_server.api import (
     audit,
     auth,
+    briefing,
     calendar,
     categories,
     chat,
@@ -20,6 +21,7 @@ from bjk_server.api import (
     parts,
     purchase_orders,
     review_actions,
+    review_decision,
     review_pdf,
     review_questions,
     settings,
@@ -45,11 +47,13 @@ api_router.include_router(calendar.router)
 api_router.include_router(chat.router)
 api_router.include_router(review_actions.router)
 api_router.include_router(review_pdf.router)
+api_router.include_router(review_decision.router)
 api_router.include_router(review_questions.router)
 api_router.include_router(events.router)
 api_router.include_router(settings.router)
 api_router.include_router(audit.router)
 api_router.include_router(external.router)
 api_router.include_router(health.router)
+api_router.include_router(briefing.router)
 api_router.include_router(dashboard.router)
 api_router.include_router(notifications.router)

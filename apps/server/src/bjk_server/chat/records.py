@@ -24,6 +24,8 @@ from bjk_server.security import TokenClaims
 
 # 다른 부품으로 확정된 횟수가 이만큼 쌓이면 모호 별칭 (F-MATCH-02)
 AMBIGUOUS_OTHER_CONFIRMATIONS = 2
+# 입수량을 곱하는 단위 표기 (F-CHAT-01 단위 정규화)
+BOX_UNITS = {"박스", "box", "상자", "bx"}
 
 
 class MovementOut(BaseModel):
@@ -53,6 +55,16 @@ class RecordResponse(BaseModel):
     reply: str
     alias_learned: AliasLearned | None = None
     triggered: Triggered = Triggered()
+
+
+def to_base_qty(qty: int | None, unit: str | None, pack_qty: int | None) -> int | None:
+    """원문 수량을 부품 기본 단위로 바꾼다 (F-CHAT-01). 박스는 입수량을 곱한다.
+
+    입수량이 없는 부품을 박스로 적었으면 수량을 비워 되묻는다. 그 밖의 단위는 그대로 둔다.
+    """
+    if qty is None or not unit or unit.strip().lower() not in BOX_UNITS:
+        return qty
+    return qty * pack_qty if pack_qty else None
 
 
 def resolve_part(db: Session, part_id: uuid.UUID | None) -> Part:

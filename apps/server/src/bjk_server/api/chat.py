@@ -14,6 +14,7 @@ from bjk_server import clock, idempotency, ratelimit
 from bjk_server.audit.flags import check_after_record
 from bjk_server.auth import CurrentUser, TenantDB
 from bjk_server.chat.interpreter import Interpreter, get_interpreter
+from bjk_server.chat.matching import QueryEmbedder, get_query_embedder
 from bjk_server.chat.records import (
     RecordResponse,
     Triggered,
@@ -22,6 +23,7 @@ from bjk_server.chat.records import (
     record_movement,
     resolve_equipment,
     resolve_part,
+    to_base_qty,
 )
 from bjk_server.chat.schemas import MessageRequest, MessageResponse
 from bjk_server.chat.service import handle_message
@@ -41,13 +43,16 @@ def post_message(
     user: CurrentUser,
     db: TenantDB,
     interpreter: Annotated[Interpreter, Depends(get_interpreter)],
+    embedder: Annotated[QueryEmbedder | None, Depends(get_query_embedder)],
 ):
     """CHAT-01. 메시지 → 추출 결과·확인 카드. 해석 실패 시 폼 입력 카드로 대체."""
     ratelimit.hit(db.get_bind(), f"chat:{user.user_id}", MESSAGES_PER_MINUTE, 60)
     stored = idempotency.claim(db, user.company_id, "chat_message", body.client_message_id)
     if stored:
         return JSONResponse(stored.body, stored.status_code)
-    result = handle_message(db, user, body.client_message_id, body.text, interpreter)
+    result = handle_message(
+        db, user, body.client_message_id, body.text, interpreter, embedder=embedder
+    )
     idempotency.complete(
         db,
         user.company_id,
@@ -106,7 +111,7 @@ def confirm_entry(
     ):
         raise ApiError(ErrorCode.PART_NOT_RESOLVED, "후보 중에서 골라 주세요.")
     part = resolve_part(db, part_id)
-    qty = body.qty or payload.get("qty")
+    qty = body.qty or to_base_qty(payload.get("qty"), payload.get("unit"), part.pack_qty)
     if not qty:
         raise ApiError(ErrorCode.VALIDATION_ERROR, "수량을 입력해 주세요.", {"field": "qty"})
     equipment_id = resolve_equipment(db, body.equipment_id or _uuid(payload.get("equipment_id")))

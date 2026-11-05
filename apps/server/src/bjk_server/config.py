@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     # 초대 QR의 가입 주소(join_url)를 만드는 웹 앱 주소
     web_base_url: str = "https://app.baljukok.kr"
 
+    # ai 서비스 주소 (compose 안 http://ai:8001, 로컬 http://localhost:8001).
+    # 비우면 ai를 부르지 않고 채팅은 폼 입력, 매칭은 규격·철자만으로 동작한다.
+    ai_base_url: str | None = None
+
     jwt_secret: str = DEV_JWT_SECRET
     access_token_minutes: int = 15
     refresh_token_days: int = 14

@@ -132,21 +132,24 @@ async def write_opinion(
             text=None, ai=AiMeta(used=False, fallback=True, reason=FallbackReason.ERROR)
         )
 
-    model = settings.gemini_opinion_model
     prompt = build_prompt(request)
 
     async def attempt(log: CallLog) -> str:
         result = await gateway.generate_json(
-            model=model, system=SYSTEM_PROMPT, prompt=prompt, schema=_LlmOpinion
+            purpose=LlmPurpose.OPINION,
+            system=SYSTEM_PROMPT,
+            prompt=prompt,
+            schema=_LlmOpinion,
+            max_tokens=2048,
+            attempt=log.attempts,
         )
-        log.input_tokens += result.input_tokens
-        log.output_tokens += result.output_tokens
+        log.record(result)
         return assemble(request, _LlmOpinion.model_validate_json(result.text))
 
     text, reason, log = await call_with_retry(
         attempt, budget_seconds=settings.opinion_budget_seconds
     )
-    usage = usage_from(log, purpose=LlmPurpose.OPINION, model=model, success=text is not None)
+    usage = usage_from(log, purpose=LlmPurpose.OPINION, success=text is not None)
     if text is None:
         return OpinionResponse(text=None, ai=AiMeta.failed(reason), usage=usage)
     return OpinionResponse(text=text, ai=AiMeta.ok(), usage=usage)

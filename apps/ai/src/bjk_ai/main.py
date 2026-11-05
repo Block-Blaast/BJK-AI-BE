@@ -16,7 +16,7 @@ from pydantic import BaseModel
 from bjk_ai.chat import parse_chat
 from bjk_ai.config import Settings, get_settings
 from bjk_ai.embedding import embed_texts
-from bjk_ai.gateway import GeminiGateway, LlmGateway
+from bjk_ai.gateway import LlmGateway, build_gateway
 from bjk_ai.import_suggest import suggest_import
 from bjk_ai.opinion import write_opinion
 
@@ -26,11 +26,16 @@ class HealthResponse(BaseModel):
     llm: Literal["ok", "not_configured"]
 
 
-def create_app(settings: Settings | None = None, gateway: LlmGateway | None = None) -> FastAPI:
-    """`gateway`를 넘기지 않으면 API 키가 있을 때만 Gemini에 연결한다."""
+AUTO = "auto"
+
+
+def create_app(
+    settings: Settings | None = None, gateway: LlmGateway | None | Literal["auto"] = AUTO
+) -> FastAPI:
+    """`gateway`가 "auto"면 설정과 자격 증명으로 고른다(Bedrock 우선). None이면 미설정."""
     settings = settings or get_settings()
-    if gateway is None and settings.llm_configured:
-        gateway = GeminiGateway(settings.gemini_api_key)
+    if gateway == AUTO:
+        gateway = build_gateway(settings)
 
     app = FastAPI(title="발주콕 ai")
     app.state.settings = settings

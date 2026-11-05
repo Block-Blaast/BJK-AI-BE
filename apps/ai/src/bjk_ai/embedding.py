@@ -1,4 +1,7 @@
-"""부품 이름 임베딩 (F-SETUP-02 5단계, F-MATCH-01 4단계)."""
+"""부품 이름 임베딩 (F-SETUP-02 5단계, F-MATCH-01 4단계).
+
+용도(저장용·검색용)를 입력에 어떻게 반영할지는 제공자마다 달라 게이트웨이가 정한다.
+"""
 
 import math
 
@@ -7,7 +10,6 @@ from bjk_contracts import (
     AiMeta,
     EmbedRequest,
     EmbedResponse,
-    EmbedTask,
     FallbackReason,
     LlmPurpose,
 )
@@ -15,19 +17,9 @@ from bjk_contracts import (
 from bjk_ai.config import Settings
 from bjk_ai.gateway import AttemptFailed, CallLog, LlmGateway, call_with_retry, usage_from
 
-# gemini-embedding-2는 task_type 대신 프롬프트 안의 작업 지시로 용도를 나눈다(Gemini 임베딩 문서).
-_TASK_FORMATS = {
-    EmbedTask.DOCUMENT: "title: none | text: {text}",
-    EmbedTask.QUERY: "task: search result | query: {text}",
-}
-
-
-def format_text(task: EmbedTask, text: str) -> str:
-    return _TASK_FORMATS[task].format(text=text.strip())
-
 
 def _normalize(vector: list[float]) -> list[float]:
-    # gemini-embedding-2는 줄인 차원도 정규화해 주지만, 모델이 바뀌어도 기준을 같게 맞춘다.
+    # 제공자가 정규화해 주더라도 모델이 바뀌어도 같은 기준(코사인 = 내적)이 되도록 다시 맞춘다.
     norm = math.sqrt(sum(v * v for v in vector))
     if norm == 0:
         raise AttemptFailed(FallbackReason.SCHEMA_INVALID)
@@ -44,22 +36,22 @@ async def embed_texts(
             ai=AiMeta(used=False, fallback=True, reason=FallbackReason.ERROR),
         )
 
-    model = settings.gemini_embedding_model
-    texts = [format_text(request.task, text) for text in request.texts]
+    texts = list(request.texts)
 
-    async def attempt(log: CallLog) -> list[list[float]]:
-        result = await gateway.embed(model=model, texts=texts, dim=EMBEDDING_DIM)
-        log.input_tokens += result.input_tokens
+    async def attempt(log: CallLog) -> tuple[str, list[list[float]]]:
+        result = await gateway.embed(texts=texts, dim=EMBEDDING_DIM, task=request.task)
+        log.record(result)
         if len(result.vectors) != len(texts):
             raise AttemptFailed(FallbackReason.SCHEMA_INVALID)
         if any(len(v) != EMBEDDING_DIM for v in result.vectors):
             raise AttemptFailed(FallbackReason.SCHEMA_INVALID)
-        return [_normalize(v) for v in result.vectors]
+        return result.model, [_normalize(v) for v in result.vectors]
 
-    vectors, reason, log = await call_with_retry(
+    embedded, reason, log = await call_with_retry(
         attempt, budget_seconds=settings.embed_budget_seconds
     )
-    usage = usage_from(log, purpose=LlmPurpose.EMBEDDING, model=model, success=vectors is not None)
-    if vectors is None:
+    usage = usage_from(log, purpose=LlmPurpose.EMBEDDING, success=embedded is not None)
+    if embedded is None:
         return EmbedResponse(model=None, vectors=None, ai=AiMeta.failed(reason), usage=usage)
+    model, vectors = embedded
     return EmbedResponse(model=model, vectors=vectors, ai=AiMeta.ok(), usage=usage)

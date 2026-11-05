@@ -38,7 +38,7 @@ def test_upgrade_creates_all_tables_and_downgrade_removes_them(empty_db_url):
 
 def test_upgrade_preserves_legacy_idempotency_records_without_assigning_an_owner(empty_db_url):
     config = alembic_config(empty_db_url)
-    command.upgrade(config, "0007")
+    command.upgrade(config, "0019")
     engine = create_engine(empty_db_url)
     with engine.begin() as conn:
         company = conn.scalar(

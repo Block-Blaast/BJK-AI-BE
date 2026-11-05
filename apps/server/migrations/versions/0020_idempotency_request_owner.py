@@ -1,14 +1,14 @@
 """Bind idempotency records to the requester and request content.
 
-Revision ID: 0008
-Revises: 0007
+Revision ID: 0020
+Revises: 0019
 """
 
 import sqlalchemy as sa
 from alembic import op
 
-revision = "0008"
-down_revision = "0007"
+revision = "0020"
+down_revision = "0019"
 branch_labels = None
 depends_on = None
 
@@ -18,8 +18,12 @@ def upgrade() -> None:
     op.add_column("idempotency_keys", sa.Column("user_id", sa.UUID(), nullable=True))
     op.add_column("idempotency_keys", sa.Column("request_hash", sa.String(64), nullable=True))
     op.create_foreign_key(
-        "fk_idempotency_keys_user_id_users", "idempotency_keys", "users",
-        ["user_id"], ["id"], ondelete="SET NULL",
+        "fk_idempotency_keys_user_id_users",
+        "idempotency_keys",
+        "users",
+        ["user_id"],
+        ["id"],
+        ondelete="SET NULL",
     )
 
 

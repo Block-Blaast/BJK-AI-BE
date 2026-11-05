@@ -7,6 +7,7 @@ cancelled(취소)는 approved에서만 갈 수 있다. received·cancelled는 �
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass
+from datetime import date
 from typing import Literal
 
 PoStatus = Literal["approved", "ordered", "partially_received", "received", "cancelled"]
@@ -114,3 +115,11 @@ def price_stats(prices: Sequence[int]) -> PriceStats:
         return PriceStats(mean=mean, std=0.0, n=1)
     variance = sum((p - mean) ** 2 for p in prices) / (n - 1)
     return PriceStats(mean=mean, std=math.sqrt(variance), n=n)
+
+
+def order_message(part_name: str, qty: int, unit: str, need_by: date | None) -> str:
+    """공급사에 보낼 문자 문구 (F-APPROVAL-03). 희망 납기는 필요 시점(t_need)이 있을 때만."""
+    text = f"안녕하세요. {part_name} {qty}{unit} 주문 부탁드립니다."
+    if need_by is not None:
+        text += f" {need_by.month}월 {need_by.day}일까지 받을 수 있을까요?"
+    return text

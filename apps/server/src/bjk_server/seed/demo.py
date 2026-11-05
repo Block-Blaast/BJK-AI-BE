@@ -9,11 +9,11 @@ import random
 import uuid
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
-from zoneinfo import ZoneInfo
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from bjk_server.clock import KST
 from bjk_server.db.models import (
     Base,
     Category,
@@ -33,7 +33,6 @@ from bjk_server.defaults import default_settings
 from bjk_server.security import hash_secret
 
 SCENARIOS = ("demo_v1",)
-KST = ZoneInfo("Asia/Seoul")
 HISTORY_WEEKS = 12
 _NAMESPACE = uuid.UUID("6f1c2d1e-5b0a-4c8e-9a51-0b6a1f3c2d10")
 

@@ -10,8 +10,8 @@ from typing import Annotated, Any
 
 from fastapi import Query
 from pydantic import BaseModel
-from sqlalchemy import Row, Select, tuple_
-from sqlalchemy.orm import InstrumentedAttribute, Session
+from sqlalchemy import ColumnElement, Row, Select, tuple_
+from sqlalchemy.orm import Session
 
 from bjk_server.errors import ApiError, ErrorCode
 
@@ -70,7 +70,7 @@ def decode_cursor(cursor: str) -> list[Any]:
 def keyset_page[T](
     session: Session,
     stmt: Select,
-    keys: Sequence[InstrumentedAttribute],
+    keys: Sequence[ColumnElement],
     params: PageParams,
     to_item: Callable[[Row], T],
     cursor_of: Callable[[Row], Sequence[Any]],

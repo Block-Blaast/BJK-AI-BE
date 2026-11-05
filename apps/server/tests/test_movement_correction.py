@@ -5,7 +5,7 @@ from bjk_server.db.models import Movement
 from bjk_server.seed.demo import demo_id
 from sqlalchemy.orm import Session
 
-from .conftest import auth_header
+from .conftest import auth_header, watch_stock_events
 
 PART = demo_id("part", "6205")
 
@@ -29,10 +29,12 @@ def _correct(client, movement_id, qty, reason="수량 오기, 실제 1개 출고
 
 
 def test_correction_adds_adjust_and_keeps_original(client, demo_db, out_movement):
+    events = watch_stock_events(demo_db)
     res = _correct(client, out_movement, -1)
     assert res.status_code == 201, res.text
     body = res.json()
     assert body["stock_after"] == 2
+    assert events() == [{"part_id": str(PART), "stock": 2}]
     assert {k: body["movement"][k] for k in ("type", "qty", "reason", "corrects")} == {
         "type": "ADJUST",
         "qty": 1,
@@ -50,14 +52,16 @@ def test_correction_adds_adjust_and_keeps_original(client, demo_db, out_movement
     assert history[0]["corrects"] == out_movement
 
 
-def test_repeated_correction_adds_only_remaining_diff(client, out_movement):
+def test_repeated_correction_adds_only_remaining_diff(client, demo_db, out_movement):
     _correct(client, out_movement, -1)
     second = _correct(client, out_movement, 0, reason="출고 없었음")
     assert second.json()["movement"]["qty"] == 1
     assert second.json()["stock_after"] == 3
+    events = watch_stock_events(demo_db)
     same = _correct(client, out_movement, 0)
     assert same.status_code == 400
     assert same.json()["detail"] == {"current_qty": 0}
+    assert events() == []
 
 
 @pytest.mark.parametrize(

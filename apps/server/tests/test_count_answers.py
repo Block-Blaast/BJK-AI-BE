@@ -8,7 +8,7 @@ from bjk_server.seed.demo import demo_id
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .conftest import auth_header
+from .conftest import auth_header, watch_stock_events
 from .test_count_requests import NIGHTLY, NOW, _request, flags  # noqa: F401
 
 P20 = demo_id("part", "p20")
@@ -33,8 +33,10 @@ def _stock(client, name):
 
 def test_answer_reveals_diff_and_adjusts_ledger(client, flags, demo_db):  # noqa: F811
     request_id = _p20_request(client, flags)
+    events = watch_stock_events(demo_db)
     res = _answer(client, request_id, 940)
     assert res.status_code == 200, res.text
+    assert events() == [{"part_id": str(P20), "stock": 940}]
     body = res.json()
     assert {k: body[k] for k in ("book_qty_before", "counted_qty", "diff", "reason_required")} == {
         "book_qty_before": 1040,
@@ -59,8 +61,10 @@ def test_answer_reveals_diff_and_adjusts_ledger(client, flags, demo_db):  # noqa
 
 def test_no_diff_closes_flag_and_suppresses_rules(client, flags, demo_db):  # noqa: F811
     request_id = _p20_request(client, flags)
+    events = watch_stock_events(demo_db)
     body = _answer(client, request_id, 1040).json()
     assert body["diff"] == 0
+    assert events() == []
     assert body["reason_required"] is False
     assert body["adjust_movement_id"] is None
     assert body["reply"] == "장부와 같아요. 이상 없음으로 처리했어요."

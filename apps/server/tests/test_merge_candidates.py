@@ -9,7 +9,7 @@ from bjk_server.seed.demo import demo_id
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from .conftest import auth_header
+from .conftest import auth_header, watch_stock_events
 
 NOW = datetime(2026, 11, 9, 18, 30, tzinfo=UTC)  # 2026-11-10(월) 03:30 KST
 M820 = demo_id("part", "m820")
@@ -81,10 +81,12 @@ def test_merge_sums_stock_moves_aliases_and_keeps_ledger(client, demo_db, hex_bo
     before = _stock(client, M820)
     with Session(demo_db.admin) as s:
         rows = s.scalar(select(func.count()).select_from(Movement))
+    events = watch_stock_events(demo_db)
     res = _decide(client, item["id"], action="merge", representative_part_id=str(M820))
     assert res.status_code == 200, res.text
     assert res.json()["status"] == "merged"
     assert _stock(client, M820) == before + 800
+    assert events() == [{"part_id": str(M820), "stock": before + 800}]
     with Session(demo_db.admin) as s:
         assert s.get(Part, HEX).merged_into == M820
         assert s.scalar(select(func.count()).select_from(Movement)) == rows

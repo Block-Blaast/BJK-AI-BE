@@ -8,6 +8,7 @@ from bjk_server.auth import set_tenant
 from bjk_server.db.models import PurchaseOrder
 from bjk_server.purchasing.orders import open_orders
 from bjk_server.seed.demo import COMPANY_CODE, demo_id
+from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
 from .conftest import auth_header
@@ -24,6 +25,9 @@ NOW = datetime(2026, 11, 4, 2, tzinfo=UTC)
 def orders(demo_db):
     """승인됨 2건(6205·6204), 발주됨 1건, 입고완료 1건(납기 7일), 주문 완료 없이 입고 1건."""
     demo_db.reseed()
+    # 시드의 과거 입고 완료 발주(#12)를 지우고 이 테스트의 발주만 둔다
+    with Session(demo_db.admin) as s, s.begin():
+        s.execute(delete(PurchaseOrder))
     rows = {
         "approved": dict(part_id=P6205, approved_at=NOW),
         "approved_b": dict(part_id=P6204, supplier_id=SUP_B, approved_at=NOW - timedelta(hours=1)),

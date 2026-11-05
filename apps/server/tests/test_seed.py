@@ -1,10 +1,20 @@
+import statistics
 from datetime import date
 
 import pytest
 from alembic import command
-from bjk_server.db.models import Category, Company, Movement, Part, User
+from bjk_server.db.models import Category, Company, Movement, Part, PurchaseOrder, User
 from bjk_server.security import verify_secret
-from bjk_server.seed.demo import PARTS, USERS, demo_id, seed_demo
+from bjk_server.seed.demo import (
+    DEFAULT_SUPPLIER,
+    ORDER_PRICES,
+    PARTS,
+    SUPPLIER_PARTS,
+    SUPPLIERS,
+    USERS,
+    demo_id,
+    seed_demo,
+)
 from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session
 
@@ -36,6 +46,14 @@ def _snapshot(engine):
                 ).order_by(Movement.id)
             ).all(),
             "parts": s.scalars(select(Part.id).order_by(Part.id)).all(),
+            "orders": s.execute(
+                select(
+                    PurchaseOrder.id,
+                    PurchaseOrder.qty,
+                    PurchaseOrder.ordered_at,
+                    PurchaseOrder.received_at,
+                ).order_by(PurchaseOrder.id)
+            ).all(),
         }
 
 
@@ -87,3 +105,40 @@ def test_rerun_reproduces_same_state(seed_engine):
 def test_unknown_scenario_is_rejected(seed_engine):
     with Session(seed_engine) as s, pytest.raises(ValueError):
         seed_demo(s, scenario="nope")
+
+
+def test_received_orders_give_lead_time_samples(seed_engine):
+    """공급사·부품마다 입고 완료 발주가 있고, 납기는 기본 납기 -1 ~ +3일 (#12)."""
+    _seed(seed_engine)
+    lead_days = {demo_id("supplier", key): days for key, _, _, days in SUPPLIERS}
+    with Session(seed_engine) as s:
+        orders = s.scalars(select(PurchaseOrder)).all()
+        history_start = s.scalar(select(func.min(Movement.occurred_at)))
+    pairs = {
+        (demo_id("part", p), demo_id("supplier", sup))
+        for p, sup, *_ in SUPPLIER_PARTS
+        # 단가 예시를 맞춘 부품은 기본 공급사 이력만 둔다
+        if p not in ORDER_PRICES or DEFAULT_SUPPLIER[p] == sup
+    }
+    assert {(o.part_id, o.supplier_id) for o in orders} == pairs
+    for o in orders:
+        assert o.status == "received" and o.received_qty == o.qty
+        assert not o.implicit_order and o.review_id is None
+        lead = (o.received_at - o.ordered_at).days
+        assert lead_days[o.supplier_id] - 1 <= lead <= lead_days[o.supplier_id] + 3
+        # 초기 재고 이관 전 기록이라 원장 입고와 연결하지 않는다
+        assert o.received_at < history_start
+    assert len(orders) >= 2 * len(pairs)
+
+
+def test_vbelt_order_prices_match_spec_example(seed_engine):
+    """API 명세서 REV-02 예시: 최근 구매 단가 평균 13,000원, 표준편차 약 1,200원, 4건."""
+
+    _seed(seed_engine)
+    with Session(seed_engine) as s:
+        prices = s.scalars(
+            select(PurchaseOrder.unit_price).where(PurchaseOrder.part_id == demo_id("part", "a42"))
+        ).all()
+    assert len(prices) == 4
+    assert statistics.mean(prices) == 13000
+    assert round(statistics.stdev(prices)) == 1200

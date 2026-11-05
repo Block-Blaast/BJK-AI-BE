@@ -23,14 +23,14 @@ server에서 AI 기능(ai 서비스 HTTP 엔드포인트 4개, 검토 엔진 `bj
 ### 연결
 
 - 주소: compose 안에서는 `http://ai:8001`, 로컬은 `http://localhost:8001`. server 설정 `AI_BASE_URL`(비우면 ai를 부르지 않음). 클라이언트는 `bjk_server/ai/client.py`.
-- server는 동기라 `httpx.Client`를 쓴다(`httpx`를 `apps/server` 런타임 의존성에 추가). 클라이언트 타임아웃은 ai 쪽 예산보다 조금 길게: 채팅 3초, 임베딩 12초, 의견서 4초, 이관 제안 35초.
+- server는 동기라 `httpx.Client`를 쓴다(`httpx`를 `apps/server` 런타임 의존성에 추가). 클라이언트 타임아웃은 ai 쪽 예산보다 조금 길게: 채팅 3초, 임베딩 12초, 의견서 8초, 이관 제안 35초.
 - ai는 LLM이 실패해도 **200**과 대체 응답을 준다. 오류 응답은 입력 형식 오류(422)뿐이다. HTTP 자체가 실패(연결 거부, 타임아웃)하면 server가 같은 대체 경로로 간다.
 
 ### 응답 공통 필드
 
 ```json
 "ai": { "used": true, "fallback": false, "reason": null },
-"usage": { "purpose": "chat_parse", "model": "anthropic.claude-haiku-4-5", "input_tokens": 450,
+"usage": { "purpose": "chat_parse", "model": "global.anthropic.claude-haiku-4-5-20251001-v1:0", "input_tokens": 450,
            "output_tokens": 60, "latency_ms": 980, "attempts": 1, "success": true }
 ```
 
@@ -228,4 +228,4 @@ outcome = run_review_flow(
 
 - **Bedrock 실제 호출은 EC2에서 확인 필요**(`uv run --package bjk-ai python apps/ai/scripts/smoke.py`). ai 컨테이너가 IAM Role을 쓰려면 EC2 메타데이터 응답 홉 제한이 2 이상이어야 한다.
 - 의견서 숫자 검증은 숫자가 허용 목록에 있는지만 본다. 어떤 숫자를 무엇이라고 불렀는지까지는 보지 못한다.
-- 의견서 재작성은 최대 3번 ai 호출(첫 작성 + 2회)이고, 그래도 틀리면 양식 의견서(`source: "template"`). ai가 멈춰도 검토는 판정과 양식 의견서로 끝난다.
+- 의견서 재작성은 최대 3번 ai 호출(첫 작성 + 2회)이고, 그래도 틀리면 양식 의견서(`source: "template"`). 검토 10초 기준을 지키려고 지금까지의 작성이 3초(`REWRITE_WITHIN_SECONDS`) 안에 끝났을 때만 다시 쓴다. ai가 멈춰도 검토는 판정과 양식 의견서로 끝난다.

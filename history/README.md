@@ -4,6 +4,7 @@ AI·server 영역 작업 기록 색인. 작성 규칙은 [docs/ai-work-rules.md]
 
 | 날짜 | 파일 | 내용 |
 | --- | --- | --- |
+| 2026-11-05 | [2026-11-05-41-review-snapshot-orders.md](2026-11-05-41-review-snapshot-orders.md) | 검토 스냅샷에 열린 발주 O·C-03·최근 단가 연결, DB 포함 813개 통과 |
 | 2026-11-05 | [2026-11-05-46-review-pdf.md](2026-11-05-46-review-pdf.md) | 결재용 PDF API(REV-07), WeasyPrint·한글 글꼴 |
 | 2026-11-05 | [2026-11-05-45-purchase-order-list-cancel.md](2026-11-05-45-purchase-order-list-cancel.md) | 발주 목록·주문 취소 API(PO-01·04), DB 포함 724개 통과 |
 | 2026-11-05 | [2026-11-05-44-receipt-po-match.md](2026-11-05-44-receipt-po-match.md) | 입고와 발주 대조(`po_match`, 실제 납기, `po_id`), DB 포함 753개 통과 |

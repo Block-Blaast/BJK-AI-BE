@@ -17,9 +17,9 @@ API 명세서 11장, 기능명세서 F-NOTI-01·03·04 기준.
 ## 알림 만들기 (`bjk_server.notify.service.notify`)
 
 - `kind`: `review_completed`, `review_urgent`, `briefing`, `decision_result`, `order_check`, `receipt_check`, `count_request`, `maintenance_check`.
+- 현재 만드는 종류는 `briefing`, `decision_result`, `order_check`, `receipt_check`뿐이다. `review_completed`, `review_urgent`, `count_request`, `maintenance_check`는 정의만 있고 만드는 곳이 없다(실사 요청 AUD-02도 담당자 알림을 만들지 않음).
 - 받는 사람마다 `notifications` 한 줄. 같은 `dedupe_key`는 사용자마다 한 번만 만든다. 마감 2일 전 재알림은 다른 키를 쓴다.
 - 조용한 시간(`notify.quiet_hours`, 기본 21:00~07:00, Asia/Seoul)에 생기면 긴급 건도 `sent_at`을 끝나는 시각으로 미룬다.
-- 웹 푸시 발송은 NOT-04(#184)에서 붙인다.
 
 ## 웹 푸시 발송 (NOT-04, `bjk_server.notify.push`)
 

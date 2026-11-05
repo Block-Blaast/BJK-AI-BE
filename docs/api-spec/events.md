@@ -19,11 +19,11 @@ data: {"part_id":"...","stock":2}
 
 | 이벤트 | 데이터 | 언제 | 구현 |
 | --- | --- | --- | --- |
-| `stock.changed` | `part_id`, `stock` | 원장 기록 (채팅 확정, 폼 입력) | ○ |
+| `stock.changed` | `part_id`, `stock` | 원장 기록 (채팅 확정, 폼 입력) | ○ (아래 미발행 경로 참고) |
 | `review.created` | `review_id`, `entry` | 검토 생성 | ○ |
 | `review.progress` | `review_id`, `step`, `at` | 검토 단계 진행 ([reviews.md](reviews.md)) | ○ |
-| `review.decided` | `review_id`, `status` | 결정 | 검토 결정 Issue에서 |
-| `audit.flagged` | `audit_flag_id`, `part_id`, `level` | 의심 항목 생성 | 장부 검증 Issue에서 |
+| `review.decided` | `review_id`, `status`, `action` | 결정 ([reviews.md](reviews.md) REV-05) | ○ |
+| `audit.flagged` | `audit_flag_id`, `part_id`, `level` | 의심 항목 생성 | 미발행 |
 
 ### 동작
 
@@ -37,4 +37,6 @@ data: {"part_id":"...","stock":2}
 | --- | --- |
 | 토큰 없음·만료 | 401 `UNAUTHORIZED` |
 
-- 현재 구현 범위: `stock.changed`, `review.created`, `review.progress` 발행. 오래된 이벤트 정리 배치는 아직 없다.
+- 현재 구현 범위: `stock.changed`, `review.created`, `review.progress`, `review.decided` 발행. 오래된 이벤트 정리 배치는 아직 없다.
+- `stock.changed`는 채팅 확정·폼 입력에서만 발행한다. 원장 정정(LED-02), 실사 조정(AUD-03), 엑셀 이관 확정(SET-02), 부품 등록 초기 재고(SET-05)는 재고가 바뀌어도 이벤트를 보내지 않는다.
+- `audit.flagged`는 이벤트 이름만 정의돼 있고 의심 항목을 만들 때 발행하지 않는다.

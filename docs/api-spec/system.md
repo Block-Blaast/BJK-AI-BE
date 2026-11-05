@@ -11,7 +11,7 @@
 {
   "notify": { "quiet_hours": { "start": "21:00", "end": "07:00" }, "briefing_time": "07:30" },
   "review": { "service_level": { "A": 0.98, "B": 0.95, "C": 0.90 }, "next_order_weeks": 4, "c02_months": 12, "c05_sigma": 2, "c06_ratio": 0.9, "c08_days": 5 },
-  "system": { "c05_min_ratio": 1.05, "c05_small_n_ratio": 1.15, "hidden_stock_count_days": 30, "review_expire_days": 7, "missed_p_out_min": 0.3, "match_confirm_cosine": 0.85, "match_confirm_gap": 0.05, "external_k": 0.25, "count_per_worker_per_day": 2, "count_suppress_days": 30 },
+  "system": { "c05_min_ratio": 1.05, "c05_small_n_ratio": 1.15, "hidden_stock_count_days": 30, "review_expire_days": 7, "missed_p_out_min": 0.3, "match_confirm_cosine": 0.85, "match_confirm_gap": 0.05, "external_k": 0.25, "count_per_worker_per_day": 2, "count_suppress_days": 30, "llm_daily_tokens": 1000000 },
   "updated_at": "2026-11-04T09:00:00+09:00"
 }
 
@@ -54,7 +54,7 @@
 
 | 항목 | 값 |
 | --- | --- |
-| `db` | `ok`, `error` (연결 실패 시 503, 나머지 항목은 `null`) |
+| `db` | `ok`, `error` (연결 실패 시 503. `llm`은 그대로 채우고 `last_batch`·`external_indicators`는 `null`) |
 | `llm` | ai `/health`의 `llm` 값(`ok`, `not_configured`). `AI_BASE_URL` 미설정이면 `not_configured`, ai에 연결하지 못하면 `error` |
 | `last_batch` | 마지막 nightly 실행의 종료 시각과 상태(`ok`, `error`, `skipped`). 실행 기록이 없으면 둘 다 `null` |
 | `external_indicators` | 외부 지표 마지막 갱신 시각, 24시간 넘게 갱신되지 않았거나 지표가 없으면 `stale: true` |

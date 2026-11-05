@@ -2,7 +2,7 @@
 
 - 날짜: 2026-11-05
 - 영역: AI (검토 엔진)
-- 관련: Issue #73, 브랜치 `feat/review-engine/#73`(#71 브랜치 위에 쌓음), F-REVIEW-02~06·10, F-ANAL-09, 부록 A-1, REV-02·04, SYS-01
+- 관련: Issue #73, Draft PR #74(→ #71 브랜치), 브랜치 `feat/review-engine/#73`(#71 브랜치 위에 쌓음), F-REVIEW-02~06·10, F-ANAL-09, 부록 A-1, REV-02·04, SYS-01
 
 ## 목적
 

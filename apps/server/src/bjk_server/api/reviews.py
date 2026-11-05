@@ -129,6 +129,8 @@ class ItemDecision(BaseModel):
 class ReviewItem(BaseModel):
     id: uuid.UUID
     entry: Entry
+    # 부품 id·이름. 3D 외부 요인 알림이 영향 부품의 결정 대기 검토를 찾는다 (#303)
+    part_id: uuid.UUID | None
     part: str | None
     status: Status
     verdict: Verdict | None
@@ -190,6 +192,7 @@ def list_reviews(
         to_item=lambda r: ReviewItem(
             id=r.Review.id,
             entry=r.Review.entry,
+            part_id=r.Review.part_id,
             part=r.part_name,
             status=r.Review.status,
             verdict=r.Review.verdict,

@@ -59,6 +59,7 @@ def test_item_shape(client, rows):
     assert set(item) == {
         "id",
         "entry",
+        "part_id",
         "part",
         "status",
         "verdict",
@@ -70,6 +71,7 @@ def test_item_shape(client, rows):
         "created_at",
     }
     assert item["part"] == "V벨트 A-42"
+    assert item["part_id"] == str(demo_id("part", "a42"))
     assert item["qty"] == 30 and item["decision"] is None
     assert item["original_total"] == 540000
     assert item["created_at"].endswith("+09:00")

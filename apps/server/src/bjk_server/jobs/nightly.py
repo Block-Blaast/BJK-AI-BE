@@ -36,7 +36,7 @@ from bjk_server.db.models import (
 )
 from bjk_server.defaults import default_settings
 from bjk_server.domain import analytics as an
-from bjk_server.domain.external import indicator_risk, risk_level
+from bjk_server.domain.external import apply_shock, indicator_risk, risk_level
 from bjk_server.jobs.runner import company_ids, job
 
 INDICATOR_CSV = Path(__file__).resolve().parents[1] / "seed" / "data" / "external_indicators.csv"
@@ -88,12 +88,21 @@ def load_indicators(session: Session, path: Path = INDICATOR_CSV) -> dict[str, f
                         },
                     )
                 )
+    return latest_risks(session)
+
+
+def latest_risks(session: Session) -> dict[str, float]:
+    """지표별 최신 위험도 r."""
     latest = (
         select(ExternalIndicator.code, ExternalIndicator.r)
         .ext(distinct_on(ExternalIndicator.code))
         .order_by(ExternalIndicator.code, ExternalIndicator.as_of.desc())
     )
     return {code: r for code, r in session.execute(latest)}
+
+
+def shock_enabled(settings_row: CompanySettings | None) -> bool:
+    return bool(settings_row and settings_row.scenarios.get("external_shock"))
 
 
 @dataclass(frozen=True)
@@ -139,6 +148,7 @@ def compute_company(
         if settings_row
         else default_settings()
     )
+    r_by_code = apply_shock(r_by_code, shock_enabled(settings_row))
     service_level = settings["review"]["service_level"]
     next_order_days = settings["review"]["next_order_weeks"] * 7
     k = settings["system"]["external_k"]

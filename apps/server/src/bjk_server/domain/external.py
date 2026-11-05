@@ -10,6 +10,9 @@ Level = Literal["normal", "caution", "high"]
 # 3개월 = 13주. 주간 지표 기준.
 WINDOW_WEEKS = 13
 MAX_RISK = 4.0
+# 외부 충격 시나리오 (F-EXT-03): 해상운임 위험도를 이 값으로 고정한다.
+SHOCK_CODE = "FREIGHT"
+SHOCK_R = 3.0
 
 
 def risk_level(r: float) -> Level:
@@ -39,3 +42,8 @@ def indicator_risk(
     sd = float(past.std(ddof=1))
     z = 0.0 if sd == 0 else float(current / sd)
     return z, min(max(0.0, z), MAX_RISK)
+
+
+def apply_shock(r_by_code: dict[str, float], enabled: bool) -> dict[str, float]:
+    """외부 충격이 켜져 있으면 해상운임 r을 3으로 고정한 위험도. 원래 값은 바꾸지 않는다."""
+    return {**r_by_code, SHOCK_CODE: SHOCK_R} if enabled else dict(r_by_code)

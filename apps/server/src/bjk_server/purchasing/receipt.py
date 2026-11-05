@@ -25,6 +25,7 @@ from sqlalchemy.orm import Session
 
 from bjk_server.db.models import Part, PurchaseOrder, User
 from bjk_server.domain.purchase_order import OPEN_STATUSES, apply_receipt
+from bjk_server.inventory import with_merged_ids
 from bjk_server.notify.service import notify
 from bjk_server.purchasing.orders import remaining_qty
 
@@ -80,12 +81,16 @@ def match_receipt(
 ) -> ReceiptMatch:
     """입고 qty개를 열린 발주에 반영한다.
 
-    원장 기록과 같은 트랜잭션에서, 부품 재고 잠금을 잡은 뒤 부른다.
+    원장 기록과 같은 트랜잭션에서, 부품 재고 잠금을 잡은 뒤 부른다. 이 부품으로 병합된 부품의
+    열린 발주도 함께 본다(병합 뒤 입고는 대표 부품에만 기록된다).
     """
     orders = list(
         db.scalars(
             select(PurchaseOrder)
-            .where(PurchaseOrder.part_id == part.id, PurchaseOrder.status.in_(OPEN_STATUSES))
+            .where(
+                PurchaseOrder.part_id.in_(with_merged_ids(db, part.id)),
+                PurchaseOrder.status.in_(OPEN_STATUSES),
+            )
             .order_by(PurchaseOrder.approved_at, PurchaseOrder.id)
             .with_for_update()
         )

@@ -9,6 +9,7 @@ import uuid
 
 from sqlalchemy.orm import Session
 
+from bjk_server.inventory import with_merged_ids
 from bjk_server.purchasing.orders import open_orders, remaining_qty
 from bjk_server.purchasing.receipt import PoMatch
 
@@ -23,7 +24,7 @@ def preview_po_match(
     """수량이 없으면 None(확정할 때 입력받으므로 미리 볼 수 없음)."""
     if not qty:
         return None
-    orders = open_orders(db, [part_id])
+    orders = open_orders(db, with_merged_ids(db, part_id))
     if not orders:
         return "no_order"
     exact = [o for o in orders if remaining_qty(o) == qty]

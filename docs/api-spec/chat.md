@@ -102,7 +102,8 @@
 | 수량 없음·1 미만, `form` 카드 | 400 `VALIDATION_ERROR` |
 | 다른 사람의 카드, 없는 설비 | 404 `NOT_FOUND` |
 
-- 현재 구현 범위: `OUT`·`IN`만 처리한다. `triggered`(재고 부족 초안·장부 의심), `IN`의 `po_match`·`actual_lead_time_days`는 검토·장부 검증·발주 기능에서 채운다.
+- `triggered.audit_flag_id`: 이 기록으로 재고가 0 이상에서 0 미만이 되면 만든(또는 묶은) 장부 의심 항목 ID ([audit.md](audit.md)).
+- 현재 구현 범위: `OUT`·`IN`만 처리한다. `triggered.draft_review_id`(재고 부족 초안), `IN`의 `po_match`·`actual_lead_time_days`는 검토·발주 기능에서 채운다.
 
 ## CHAT-04 POST /api/v1/chat/entries/{id}/cancel
 

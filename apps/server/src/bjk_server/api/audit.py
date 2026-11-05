@@ -5,12 +5,12 @@ from datetime import datetime
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import case, select
 
 from bjk_server import clock
-from bjk_server.audit.counts import request_count
-from bjk_server.auth import TenantDB, require_role
+from bjk_server.audit.counts import answer_count, request_count
+from bjk_server.auth import CurrentUser, TenantDB, require_role
 from bjk_server.db.models import AuditFlag, Part
 from bjk_server.domain.audit import Level, Rule
 from bjk_server.pagination import Page, PageParams, keyset_page, page_params
@@ -114,4 +114,34 @@ def create_count_request(
         status=request.status,
         scheduled_for=request.scheduled_for,
         message_preview=request.message,
+    )
+
+
+class CountAnswerRequest(BaseModel):
+    counted_qty: int = Field(ge=0)
+
+
+class CountAnswerResponse(BaseModel):
+    adjust_movement_id: uuid.UUID | None
+    book_qty_before: int
+    counted_qty: int
+    diff: int
+    reason_required: bool
+    reply: str
+
+
+@router.post("/count-requests/{request_id}/answer", response_model=CountAnswerResponse)
+def answer_count_request(
+    request_id: uuid.UUID, body: CountAnswerRequest, user: CurrentUser, db: TenantDB
+) -> CountAnswerResponse:
+    """AUD-03. 담당자의 실사 수량 응답. 응답한 뒤에야 장부와의 차이를 돌려준다."""
+    answer = answer_count(db, user, request_id, body.counted_qty, clock.utcnow())
+    request = answer.request
+    return CountAnswerResponse(
+        adjust_movement_id=request.adjust_movement_id,
+        book_qty_before=request.book_qty_before,
+        counted_qty=request.counted_qty,
+        diff=request.diff,
+        reason_required=request.status == "answered",
+        reply=answer.reply,
     )

@@ -2,7 +2,7 @@
 
 - 날짜: 2026-11-05
 - 영역: AI (contracts)
-- 관련: Issue #61, 브랜치 `feat/ai-contracts-chat-embedding/#61`(dev 기준), F-CHAT-01, F-SETUP-02, F-MATCH-01, CHAT-01, API 명세서 1-6, `llm_calls`
+- 관련: Issue #61, Draft PR #63(→ `dev`), 브랜치 `feat/ai-contracts-chat-embedding/#61`(dev 기준), F-CHAT-01, F-SETUP-02, F-MATCH-01, CHAT-01, API 명세서 1-6, `llm_calls`
 
 ## 목적
 
@@ -43,6 +43,6 @@
 
 - **server 담당과 계약 합의:** dev-harness §0에 따라 계약 변경은 확인 대상. 특히 `equipment_text` 이름, `usage` 전달 방식, 상한 판단을 server가 하는 것
 - **pgvector 열:** `parts`·`part_aliases`의 임베딩 열을 `vector(1536)`로, 모델명 열을 함께 두도록 server 스키마(`chore/db-schema-migration/#9`)에 요청 필요
-- **커밋·브랜치:** Issue #61 생성, `dev` 기준 브랜치 `feat/ai-contracts-chat-embedding/#61`에 커밋(별도 worktree `../BJK-AI-BE-ai-contracts-61`). 원래 폴더 main에는 다른 작업(`about_project/` staged)이 있어 건드리지 않음. push·PR은 아직 안 함
+- **커밋·브랜치:** Issue #61 생성, `dev` 기준 브랜치 `feat/ai-contracts-chat-embedding/#61`에 커밋(별도 worktree `../BJK-AI-BE-ai-contracts-61`). 원래 폴더 main에는 다른 작업(`about_project/` staged)이 있어 건드리지 않음. push 후 Draft PR #63(`dev` 대상) 생성. 머지 체크리스트의 "server 담당 계약 확인"은 미완료
 - `dev`에는 아직 `about_project/`가 없음. 규칙 문서·기록이 가리키는 명세 경로는 해당 폴더가 dev에 들어오면 유효
 - 다음 작업 후보: `apps/ai`에 Gemini 클라이언트와 `/chat/parse`·`/embed` 엔드포인트 구현, 시간 초과·재시도·대체 응답 테스트

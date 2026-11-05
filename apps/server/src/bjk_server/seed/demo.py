@@ -29,7 +29,7 @@ from bjk_server.db.models import (
     SupplierPart,
     User,
 )
-from bjk_server.defaults import default_settings
+from bjk_server.defaults import DEFAULT_CATEGORIES, default_settings
 from bjk_server.security import hash_secret
 
 SCENARIOS = ("demo_v1",)
@@ -74,12 +74,7 @@ class DemoPart:
     equipment: str | None = None
 
 
-CATEGORIES = (
-    ("bearing", "베어링", "high", ["FREIGHT", "HOLIDAY_CN"], ["USDKRW"], "8482"),
-    ("belt", "V벨트·전동벨트", "medium", ["FREIGHT"], ["USDKRW"], "4010"),
-    ("bolt", "볼트·너트", "low", [], [], "7318"),
-    ("oil", "절삭유·윤활유", "medium", [], ["USDKRW"], "2710"),
-)
+CATEGORIES = DEFAULT_CATEGORIES
 
 PARTS = (
     DemoPart(

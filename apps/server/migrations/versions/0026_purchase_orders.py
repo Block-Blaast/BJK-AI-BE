@@ -1,7 +1,7 @@
 """purchase orders
 
-Revision ID: 0025
-Revises: 0024
+Revision ID: 0026
+Revises: 0025
 Create Date: 2026-11-05 23:00:00.000000
 
 발주 (API 명세서 PO-01~04, 기능명세서 16장 purchase_orders). 원장 movements.po_id에 외래 키를 건다.
@@ -13,8 +13,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "0025"
-down_revision: str | Sequence[str] | None = "0024"
+revision: str = "0026"
+down_revision: str | Sequence[str] | None = "0025"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

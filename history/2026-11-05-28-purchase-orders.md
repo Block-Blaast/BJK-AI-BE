@@ -10,7 +10,7 @@
 
 ## 한 일
 
-- `purchase_orders` 테이블·RLS·인덱스(마이그레이션 0025), `PurchaseOrder` 모델
+- `purchase_orders` 테이블·RLS·인덱스(마이그레이션 0026), `PurchaseOrder` 모델
 - `movements.po_id`에 `purchase_orders` 외래 키 추가
 - `purchasing/orders.py`: `open_orders`, `open_qty`, `remaining_qty`, `recent_price_stats`
 - `domain/purchase_order.py`에 `price_stats` 순수 함수 추가(#137의 상태 전이 함수는 그대로 사용)

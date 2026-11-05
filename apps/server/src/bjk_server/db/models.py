@@ -690,6 +690,40 @@ class LlmCall(Base):
     created_at: Mapped[datetime] = _created_at()
 
 
+class Notification(Base):
+    """사용자 한 명에게 보내는 알림 (API 명세서 NOT-01·02, 기능명세서 F-NOTI).
+
+    `sent_at`은 보내는 시각이다. 조용한 시간에 생긴 알림은 끝나는 시각으로 미루고, 그 전에는
+    목록에 보이지 않는다. 같은 `dedupe_key`는 사용자마다 한 번만 만든다.
+    """
+
+    __tablename__ = "notifications"
+    __table_args__ = (
+        CheckConstraint(
+            "kind IN ('review_completed', 'review_urgent', 'briefing', 'decision_result', "
+            "'order_check', 'receipt_check', 'count_request', 'maintenance_check')",
+            name="kind",
+        ),
+        UniqueConstraint("user_id", "dedupe_key", name="uq_notifications_user_dedupe"),
+        Index("ix_notifications_user_sent", "user_id", "sent_at"),
+    )
+
+    id: Mapped[uuid.UUID] = _id()
+    company_id: Mapped[uuid.UUID] = _company_id()
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE")
+    )
+    kind: Mapped[str] = mapped_column(String(32))
+    target_type: Mapped[str | None] = mapped_column(String(16))
+    target_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    title: Mapped[str] = mapped_column(String(200))
+    channels: Mapped[list[str]] = mapped_column(ARRAY(Text))
+    dedupe_key: Mapped[str | None] = mapped_column(String(200))
+    sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = _created_at()
+
+
 class PartImport(Base):
     """SET-01 엑셀 이관 한 번. 파싱·제안 결과를 두고 SET-02 확정 때 그대로 쓴다 (F-SETUP-01·02)."""
 

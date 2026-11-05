@@ -52,3 +52,27 @@
 - `price_tiers`는 `min_qty`(1 이상)가 겹치지 않는 오름차순이어야 한다. 아니면 400. `moq` 기본 1, `shipping_fee` 기본 0.
 - 이름은 회사 안에서 유일하다(409 `NAME_TAKEN`). `name`·`holidays`에 `null`은 400, `contact`·`default_lead_time_days`는 `null`로 지울 수 있다.
 - 공급사는 발주·납기 이력의 기준이라 삭제 API를 두지 않는다. 거래를 끊으면 부품별 거래 조건을 지운다. 병합된 부품에는 조건을 등록할 수 없다(404).
+
+## SET-07 설비
+
+| API | 설명 |
+| --- | --- |
+| `GET /api/v1/equipment` | 목록과 연결 부품. 이름순(C 정렬), 커서 목록 |
+| `GET /api/v1/equipment/{id}` | 상세 |
+| `POST /api/v1/equipment` | 등록. 201 |
+| `PATCH /api/v1/equipment/{id}` | 보낸 항목만 수정. `parts`를 보내면 연결 부품 전체를 바꾼다 |
+
+```json
+// POST Request
+{ "name": "3호기", "loss_per_hour": 50000, "loss_is_estimate": true, "operating_hours": 16,
+  "parts": [ { "part_id": "...", "qty_per_maintenance": 4 } ] }
+
+// 201 Response
+{ "id": "...", "name": "3호기", "loss_per_hour": 50000, "loss_is_estimate": true, "operating_hours": 16,
+  "parts": [ { "part_id": "...", "name": "볼베어링 6205ZZ", "qty_per_maintenance": 4 } ] }
+```
+
+- `loss_per_hour`(기본 0, 0이면 손실액 미입력이라 금액 대신 "멈추는 설비"만 표시), `operating_hours` 1~24(기본 8).
+- `parts`: 정비 1회당 부품·수량(1 이상). 같은 부품 두 번은 400, 없거나 병합된 부품은 404. 정비 일정에 필요 부품이 없으면 이 수량을 확정 필요량 F로 쓴다.
+- 채팅이 설비를 이름(대소문자 무시)으로 찾으므로 이름은 회사 안에서 대소문자 무시 유일이다(409 `NAME_TAKEN`).
+- PATCH에서 `null`은 400. 설비는 출고·정비 원장에 연결되어 삭제 API를 두지 않는다.

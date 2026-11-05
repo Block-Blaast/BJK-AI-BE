@@ -42,3 +42,26 @@
 | `worker`·`manager`·`owner` 외 값 | 400 `VALIDATION_ERROR` |
 | 해당 역할 계정 없음 | 404 `NOT_FOUND` |
 | 개발 환경 아님 | 404 `NOT_FOUND` |
+
+## DEV-01 POST /api/v1/dev/jobs/{name}/run
+
+- 권한: owner
+- `{name}`: `nightly`, `missed-scan`, `order-check`, `briefing`, `weekly-merge`
+- 동작: 배치를 즉시(동기) 실행하고 실행 기록(`job_runs`, `trigger: manual`)을 남긴다. 응답에 작업 요약을 펼쳐 담는다. 예약 실행과 같이 앱 계정으로 돈다.
+
+```json
+// 200 Response
+{ "job": "nightly", "status": "ok", "started_at": "...", "finished_at": "...", "parts_computed": 6 }
+```
+
+| `status` | 뜻 |
+| --- | --- |
+| `ok` | 완료 |
+| `skipped` | 미구현 작업(`reason: not_implemented`) 또는 같은 작업 실행 중(`reason: already_running`) |
+| `error` | 실패. 작업 변경은 롤백되고 `error`에 사유 |
+
+| 상황 | 응답 |
+| --- | --- |
+| 없는 작업 이름 | 400 `VALIDATION_ERROR` |
+| owner 아님 | 403 `FORBIDDEN_ROLE` |
+| 개발 환경 아님 | 404 `NOT_FOUND` |

@@ -11,11 +11,14 @@ from sqlalchemy.orm import Session
 from bjk_server.api.auth import LoginResponse
 from bjk_server.api.schemas import TokenPair, UserBrief
 from bjk_server.auth import TenantDB, require_role
+from bjk_server.clock import KST
 from bjk_server.db.models import User
-from bjk_server.db.session import get_admin_db
+from bjk_server.db.session import get_admin_db, get_db
 from bjk_server.errors import ApiError, ErrorCode
+from bjk_server.jobs import registry  # noqa: F401 - 작업 등록
+from bjk_server.jobs.runner import JobName, run_job
 from bjk_server.security import Role, TokenClaims
-from bjk_server.seed.demo import COMPANY_CODE, KST, demo_id, seed_demo
+from bjk_server.seed.demo import COMPANY_CODE, demo_id, seed_demo
 
 router = APIRouter(prefix="/api/v1/dev", tags=["dev"])
 
@@ -73,3 +76,17 @@ def impersonate(body: ImpersonateRequest, owner: Owner, db: TenantDB) -> LoginRe
     return LoginResponse(
         **tokens.model_dump(), user=UserBrief(id=user.id, name=user.name, role=user.role)
     )
+
+
+@router.post("/jobs/{name}/run")
+def run_job_now(name: JobName, _: Owner, db: Annotated[Session, Depends(get_db)]) -> dict:
+    """DEV-01. 배치를 즉시 실행하고 실행 기록과 같은 요약을 돌려준다(앱 계정, 회사별 RLS)."""
+    result = run_job(db.get_bind(), name, "manual")
+    return {
+        "job": result.name,
+        "status": result.status,
+        "started_at": result.started_at,
+        "finished_at": result.finished_at,
+        **result.summary,
+        **({"error": result.error} if result.error else {}),
+    }

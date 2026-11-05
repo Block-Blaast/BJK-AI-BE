@@ -2,7 +2,7 @@
 
 - 날짜: 2026-11-05
 - 영역: AI (contracts 포함)
-- 관련: Issue #89, 브랜치 `feat/ai-bedrock/#89`(#85 브랜치 위에 쌓음), `2026-11-05-13-bedrock-feasibility.md`
+- 관련: Issue #89, Draft PR #90(→ #85 브랜치), 브랜치 `feat/ai-bedrock/#89`(#85 브랜치 위에 쌓음), `2026-11-05-13-bedrock-feasibility.md`
 
 ## 목적
 

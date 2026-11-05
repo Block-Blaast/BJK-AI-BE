@@ -1,7 +1,8 @@
 """의견서 검증 (F-REVIEW-08): 숫자, 판정 일치, 누락.
 
 - 숫자: 의견서의 숫자를 뽑아 정규화(쉼표, 만·천, %, 날짜)하고 허용 목록(검토 입력값 + 파생값)과
-  대조한다. 금액은 천 원 미만, 비율은 1%p 이하 차이를 반올림 오차로 본다.
+  대조한다. 만·천 단위로 어림해 쓴 금액(예: "1만 5천 원")은 천 원 미만, 비율은 1%p 이하 차이를
+  반올림 오차로 본다. 숫자로 정확히 쓴 금액(예: "15,000원")은 정확히 같아야 한다.
 - 판정 일치: 첫 줄 머리가 실제 판정·표시와 같고, 다른 판정 표시가 섞이지 않았는지.
 - 누락: 걸린 체크마다 근거 줄이 있고 그 체크를 가리키는 말이 있는지.
 
@@ -136,9 +137,9 @@ class Allowed:
             self._add(price - mean)
             self.percents.add(round((price / mean - 1) * 100))
 
-    def number_ok(self, value: float, *, money: bool, decimals: int) -> bool:
+    def number_ok(self, value: float, *, approximate: bool, decimals: int) -> bool:
         for allowed in self.numbers:
-            if money and abs(value - allowed) < MONEY_TOLERANCE:
+            if approximate and abs(value - allowed) < MONEY_TOLERANCE:
                 return True
             if round(allowed, decimals) == value:
                 return True
@@ -188,7 +189,7 @@ def check_numbers(text: str, request: OpinionRequest) -> list[str]:
 
     for match in _KO_AMOUNT.finditer(body):
         value = _parse_amount(match.group(0))
-        if not allowed.number_ok(value, money=True, decimals=0):
+        if not allowed.number_ok(value, approximate=True, decimals=0):
             errors.append(f"허용 목록에 없는 숫자: {match.group(0).strip()}({value:,.0f})")
     body = _KO_AMOUNT.sub(blank, body)
 
@@ -200,8 +201,8 @@ def check_numbers(text: str, request: OpinionRequest) -> list[str]:
                 errors.append(f"허용 목록에 없는 비율: {raw}%")
             continue
         decimals = len(raw.split(".")[1]) if "." in raw else 0
-        money = body[match.end() : match.end() + 2].lstrip().startswith("원")
-        if not allowed.number_ok(value, money=money, decimals=decimals):
+        # 실제 평균 15,500원을 "15,000원"으로 쓴 경우를 잡으려고 숫자 표기는 오차를 두지 않는다
+        if not allowed.number_ok(value, approximate=False, decimals=decimals):
             errors.append(f"허용 목록에 없는 숫자: {raw}")
     return errors
 

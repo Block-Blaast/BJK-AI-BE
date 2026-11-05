@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from itertools import combinations
 from typing import Any
 
-from bjk_server.domain.matching import _spec_value, similarity
+from bjk_server.domain.matching import same_spec_key, similarity, split_kind
 
 # 이름 유사 기준. 명세에 없는 초깃값이다(F-SIM 조정 대상).
 # 코사인은 매칭 확정 기준(0.85)보다 낮춰 사람이 판단할 후보를 넓게 잡는다.
@@ -41,10 +41,6 @@ class MergePair:
     reason: str = REASON
 
 
-def _spec_key(spec: Mapping[str, Any]) -> tuple[tuple[str, str], ...]:
-    return tuple(sorted((k, _spec_value(v)) for k, v in spec.items() if v not in (None, "")))
-
-
 def _cosine(a: Sequence[float], b: Sequence[float]) -> float:
     dot = sum(x * y for x, y in zip(a, b, strict=True))
     norm = math.sqrt(sum(x * x for x in a)) * math.sqrt(sum(y * y for y in b))
@@ -69,12 +65,15 @@ def find_duplicates(parts: Iterable[MergePart]) -> list[MergePair]:
     """병합 후보 쌍. 카테고리가 없거나 규격이 비어 있는 부품은 비교하지 않는다."""
     groups: dict[tuple[Any, tuple], list[MergePart]] = defaultdict(list)
     for part in parts:
-        key = _spec_key(part.spec)
+        # 종류는 한쪽에만 있을 수 있어 묶을 때는 빼고, 쌍마다 같은 규격인지 다시 본다.
+        key, _ = split_kind(part.spec)
         if part.category_id is not None and key:
             groups[(part.category_id, key)].append(part)
     pairs = []
     for members in groups.values():
         for a, b in combinations(members, 2):
+            if not same_spec_key(a.spec, b.spec):
+                continue
             score, similar = name_score(a, b)
             if similar:
                 first, second = sorted((a.part_id, b.part_id))

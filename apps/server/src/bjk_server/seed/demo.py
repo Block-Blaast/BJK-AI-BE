@@ -126,7 +126,7 @@ PARTS = (
         40,
         70,
         0.9,
-        {"thread": "M8", "length_mm": 20},
+        {"thread": "M8", "length_mm": 20, "kind": "HEX_BOLT"},
         pack_qty=100,
         location="A선반 1칸",
     ),
@@ -151,7 +151,7 @@ PARTS = (
         4,
         0.8,
         0.7,
-        {"volume_l": 20},
+        {"volume_l": 20, "kind": "SOLUBLE_CUTTING_OIL"},
         location="창고",
     ),
 )

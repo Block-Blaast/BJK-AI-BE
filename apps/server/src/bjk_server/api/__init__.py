@@ -27,6 +27,7 @@ from bjk_server.api import (
     review_pdf,
     review_questions,
     reviews,
+    scenarios,
     settings,
     sim_reports,
     suppliers,
@@ -56,6 +57,7 @@ api_router.include_router(review_decision.router)
 api_router.include_router(review_questions.router)
 api_router.include_router(events.router)
 api_router.include_router(settings.router)
+api_router.include_router(scenarios.router)
 api_router.include_router(audit.router)
 api_router.include_router(external.router)
 api_router.include_router(health.router)

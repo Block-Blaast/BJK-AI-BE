@@ -90,3 +90,13 @@
 | owner 아님 | 403 `FORBIDDEN_ROLE` |
 | 개발 환경 아님 | 404 `NOT_FOUND` |
 | 회사 설정 행 없음 | 404 `NOT_FOUND` |
+
+## 운영 시연 시나리오 (명세 밖, #303)
+
+DEV-02와 같은 외부 충격 스위치를 운영에서도 쓰게 연 API다. DEV-02는 개발 모드에서만 열린다.
+
+- `GET /api/v1/scenarios`: 권한 owner. `{ "external_shock": false }`
+- `POST /api/v1/scenarios/external-shock`: 권한 owner. 요청·응답·처리는 DEV-02와 같다. 해상운임(FREIGHT) r을 3으로 고정하고 회사 근거 지표를 바로 다시 계산한다. 스위치는 회사 설정 `scenarios.external_shock`에 남아 새벽 배치도 따른다. 끄면 실제 위험도로 다시 계산한다.
+- 이미 끝난 검토는 다시 돌리지 않는다. 켠 뒤 새로 만든 검토부터 C-09와 늘어난 납기를 쓴다. 외부 요인 현황(DSH-03)과 3D 창고 외부 요인 알림은 바로 바뀐다.
+- manager·worker는 403.
+

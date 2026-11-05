@@ -183,6 +183,9 @@ EQUIPMENT = (
 
 # (설비, 오늘부터 며칠 뒤)
 MAINTENANCE = (("eq3", 16), ("eq2", 30))
+# 완료됐지만 필요 부품 출고 기록이 없는 정비 (장부 검증 F-AUDIT-02 시연).
+# (설비, 오늘부터 며칠 전, 완료 시각, [(부품, 필요 수량)])
+COMPLETED_MAINTENANCE = (("eq3", 3, 15, [("p20", 100)]),)
 
 ALIASES = (("베어링 작은 거", "6205", 3),)
 
@@ -327,6 +330,21 @@ def seed_demo(session: Session, scenario: str = "demo_v1", today: date | None = 
                 company_id=company_id,
                 equipment_id=sid("equipment", key),
                 scheduled_date=today + timedelta(days=days),
+            )
+        )
+    for key, days_ago, hour, required in COMPLETED_MAINTENANCE:
+        day = today - timedelta(days=days_ago)
+        session.add(
+            Maintenance(
+                id=sid("maintenance", f"{key}:-{days_ago}"),
+                company_id=company_id,
+                equipment_id=sid("equipment", key),
+                scheduled_date=day,
+                required_parts=[
+                    {"part_id": str(sid("part", part_key)), "qty": qty}
+                    for part_key, qty in required
+                ],
+                completed_at=_at(day, hour),
             )
         )
     for alias, part_key, count in ALIASES:

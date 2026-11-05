@@ -8,6 +8,8 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy import case, select
 
+from bjk_server import clock
+from bjk_server.audit.counts import request_count
 from bjk_server.auth import TenantDB, require_role
 from bjk_server.db.models import AuditFlag, Part
 from bjk_server.domain.audit import Level, Rule
@@ -85,4 +87,31 @@ def list_audit_flags(
         ),
         cursor_of=lambda r: [r.rank, r.AuditFlag.created_at, r.AuditFlag.id],
         descending=True,
+    )
+
+
+class CountRequestCreate(BaseModel):
+    assignee_id: uuid.UUID
+
+
+class CountRequestCreated(BaseModel):
+    count_request_id: uuid.UUID
+    status: Literal["sent", "scheduled"]
+    scheduled_for: datetime | None
+    message_preview: str
+
+
+@router.post(
+    "/audit-flags/{flag_id}/count-request", status_code=201, response_model=CountRequestCreated
+)
+def create_count_request(
+    flag_id: uuid.UUID, body: CountRequestCreate, user: Manager, db: TenantDB
+) -> CountRequestCreated:
+    """AUD-02. 블라인드 실사 요청. 문구에 장부 수량을 넣지 않는다."""
+    request = request_count(db, user, flag_id, body.assignee_id, clock.utcnow())
+    return CountRequestCreated(
+        count_request_id=request.id,
+        status=request.status,
+        scheduled_for=request.scheduled_for,
+        message_preview=request.message,
     )

@@ -4,6 +4,7 @@ from typing import Literal
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 Provider = Literal["bedrock", "gemini"]
+HAIKU_4_5 = "global.anthropic.claude-haiku-4-5-20251001-v1:0"
 
 
 class Settings(BaseSettings):
@@ -15,12 +16,13 @@ class Settings(BaseSettings):
     embedding_provider: Provider = "bedrock"
 
     aws_region: str = "ap-northeast-3"
-    # Haiku 4.5는 모든 Bedrock 고객에게 열려 있다. Haiku 5.5는 콘솔에서 접근 승인 후 바꾼다.
-    bedrock_chat_model: str = "anthropic.claude-haiku-4-5"
-    bedrock_opinion_model: str = "anthropic.claude-haiku-4-5"
-    bedrock_import_model: str = "anthropic.claude-haiku-4-5"
+    # 오사카 on-demand는 global 추론 프로필로 부른다. 대회 계정은 jp. 프로필·Haiku 5.5 권한이 없다.
+    # global.anthropic.claude-sonnet-4-6도 쓸 수 있다.
+    bedrock_chat_model: str = HAIKU_4_5
+    bedrock_opinion_model: str = HAIKU_4_5
+    bedrock_import_model: str = HAIKU_4_5
     bedrock_embedding_model: str = "amazon.titan-embed-text-v2:0"
-    # Haiku 4.5는 effort를 받지 않아 비워 둔다. Haiku 5.5 이상으로 바꾸면 지연을 줄이려 "low".
+    # Haiku 4.5는 effort를 받지 않아 비워 둔다.
     bedrock_effort: str | None = None
 
     # Gemini는 키가 있을 때만 쓴다. llm_provider가 bedrock이면 LLM 재시도 폴백이 된다.

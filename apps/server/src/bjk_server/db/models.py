@@ -749,6 +749,8 @@ class Notification(Base):
     dedupe_key: Mapped[str | None] = mapped_column(String(200))
     sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # 웹 푸시 발송을 시도한 시각 (NOT-04). push 채널인데 비어 있으면 아직 보내지 않았다.
+    pushed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = _created_at()
 
 

@@ -5,6 +5,7 @@ from bjk_server.api import (
     auth,
     categories,
     chat,
+    equipment,
     external,
     health,
     parts,
@@ -19,6 +20,7 @@ api_router.include_router(users.router)
 api_router.include_router(parts.router)
 api_router.include_router(categories.router)
 api_router.include_router(suppliers.router)
+api_router.include_router(equipment.router)
 api_router.include_router(chat.router)
 api_router.include_router(audit.router)
 api_router.include_router(external.router)

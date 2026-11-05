@@ -11,6 +11,7 @@ from bjk_server.api import (
     health,
     ledger,
     maintenance,
+    notifications,
     parts,
     suppliers,
     users,
@@ -31,3 +32,4 @@ api_router.include_router(chat.router)
 api_router.include_router(audit.router)
 api_router.include_router(external.router)
 api_router.include_router(health.router)
+api_router.include_router(notifications.router)

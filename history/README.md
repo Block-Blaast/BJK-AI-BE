@@ -4,6 +4,7 @@ AI 영역 작업 기록 색인. 작성 규칙은 [docs/ai-work-rules.md](../docs
 
 | 날짜 | 파일 | 내용 |
 | --- | --- | --- |
+| 2026-11-05 | [2026-11-05-12-ai-status-review.md](2026-11-05-12-ai-status-review.md) | AI 전체 점검: 실제 동작, dev 시험 머지 374개 통과, server와 어긋난 9건 |
 | 2026-11-05 | [2026-11-05-11-review-langgraph.md](2026-11-05-11-review-langgraph.md) | 검토 처리 단계 LangGraph 그래프·진행 단계, 이전 "구현 완료" 보고 바로잡기 |
 | 2026-11-05 | [2026-11-05-10-import-suggest.md](2026-11-05-10-import-suggest.md) | 엑셀 이관 규격 추출·카테고리 제안 엔드포인트, 실제 Gemini 13줄 확인 |
 | 2026-11-05 | [2026-11-05-09-review-followup.md](2026-11-05-09-review-followup.md) | 재검토 미리 보기·갱신 판단, 후속 질문 주제 분류·양식 답변 |

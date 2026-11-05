@@ -17,6 +17,8 @@ from bjk_contracts import (
     EmbedResponse,
     EmbedTask,
     FallbackReason,
+    ImportSuggestRequest,
+    ImportSuggestResponse,
     OpinionRequest,
     OpinionResponse,
 )
@@ -32,6 +34,8 @@ EMBED_TIMEOUT = 12.0
 OPINION_TIMEOUT = 8.0
 # 채팅 중 부품 표현 하나의 검색용 임베딩. 채팅 응답 3초 목표 안에서 기다린다.
 QUERY_EMBED_TIMEOUT = 2.0
+# 엑셀 이관 제안. ai는 50줄 묶음을 병렬로 돌리며 묶음마다 30초 예산이다.
+IMPORT_TIMEOUT = 35.0
 HEALTH_TIMEOUT = 1.0
 
 Response = TypeVar("Response", bound=BaseModel)
@@ -76,6 +80,9 @@ class AiClient:
     ) -> EmbedResponse:
         body = EmbedRequest(company_id=company_id, task=task, texts=texts)
         return self._post("/v1/embeddings", body, EmbedResponse, timeout)
+
+    def suggest_import(self, body: ImportSuggestRequest) -> ImportSuggestResponse:
+        return self._post("/v1/imports/suggest", body, ImportSuggestResponse, IMPORT_TIMEOUT)
 
     def write_opinion(self, request: OpinionRequest) -> OpinionResponse:
         """의견서 문장 (F-REVIEW-08). 재작성 요청이면 previous_text·feedback을 채워 보낸다."""

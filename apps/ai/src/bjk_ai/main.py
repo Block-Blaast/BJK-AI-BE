@@ -5,6 +5,8 @@ from bjk_contracts import (
     ChatParseResponse,
     EmbedRequest,
     EmbedResponse,
+    ImportSuggestRequest,
+    ImportSuggestResponse,
     OpinionRequest,
     OpinionResponse,
 )
@@ -15,6 +17,7 @@ from bjk_ai.chat import parse_chat
 from bjk_ai.config import Settings, get_settings
 from bjk_ai.embedding import embed_texts
 from bjk_ai.gateway import GeminiGateway, LlmGateway
+from bjk_ai.import_suggest import suggest_import
 from bjk_ai.opinion import write_opinion
 
 
@@ -53,6 +56,14 @@ def create_app(settings: Settings | None = None, gateway: LlmGateway | None = No
     @app.post("/v1/opinions", tags=["review"])
     async def opinions(body: OpinionRequest, request: Request) -> OpinionResponse:
         return await write_opinion(
+            body, gateway=request.app.state.gateway, settings=request.app.state.settings
+        )
+
+    @app.post("/v1/imports/suggest", tags=["import"])
+    async def imports_suggest(
+        body: ImportSuggestRequest, request: Request
+    ) -> ImportSuggestResponse:
+        return await suggest_import(
             body, gateway=request.app.state.gateway, settings=request.app.state.settings
         )
 

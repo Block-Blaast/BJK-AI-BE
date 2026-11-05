@@ -2,7 +2,7 @@
 
 - 날짜: 2026-11-05
 - 영역: server·검토(숨은 재고 H_c·H_u)
-- 관련: #289, F-MATCH-01·03, F-REVIEW-02(H_c·H_u), C-04, 3D 창고 `same_spec_group`
+- 관련: #289, PR #290, F-MATCH-01·03, F-REVIEW-02(H_c·H_u), C-04, 3D 창고 `same_spec_group`
 
 ## 목적
 
@@ -32,6 +32,7 @@
 - demo_v1+v2 부품 106개로 묶음 확인: V벨트 B-50 ↔ 전동벨트 B-50, 헥사볼트 M8x20 ↔ 육각볼트 M8-20 두 묶음만 남음
 - `uv run pytest apps/server/tests/test_matching.py tests/test_domain_hidden_stock.py tests/test_merge_detection.py`: 44 통과(DB 3 건너뜀)
 - `REQUIRE_DB_TESTS=1 uv run pytest apps/server packages`: 914 통과, 엑셀 이관 기대 규격 5건 실패 → 기대값에 `kind` 반영 후 해당 파일·병합·3D 테스트 26 통과
+- 기대값 갱신 후 `REQUIRE_DB_TESTS=1 uv run pytest`(전체): 978 통과, 1 건너뜀
 
 ## 남은 일·확인 필요
 

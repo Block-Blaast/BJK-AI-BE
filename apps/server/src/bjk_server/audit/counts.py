@@ -12,6 +12,7 @@ from bjk_server.db.models import AuditFlag, CompanySettings, CountRequest, Movem
 from bjk_server.defaults import DEFAULT_SETTINGS
 from bjk_server.errors import ApiError, ErrorCode
 from bjk_server.inventory import lock_part_stock, stock_of
+from bjk_server.notify.service import notify
 from bjk_server.security import TokenClaims
 
 # 실사조정 원장 기록의 사유. 차이 사유(AUD-04)는 실사 요청에 남긴다.
@@ -103,6 +104,19 @@ def request_count(
     db.add(request)
     flag.status, flag.updated_at = "count_requested", now
     db.flush()
+    # 담당 작업자에게 채팅·웹 푸시 (F-NOTI-04). 예약 요청은 예약 시각부터 보인다.
+    notify(
+        db,
+        user.company_id,
+        [assignee_id],
+        "count_request",
+        request.message,
+        now,
+        channels=("chat", "push"),
+        target=("count", request.id),
+        dedupe_key=f"count_request:{request.id}",
+        at=request.scheduled_for,
+    )
     return request
 
 

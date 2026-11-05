@@ -3,9 +3,12 @@ from datetime import UTC, datetime
 
 import pytest
 from bjk_server import clock
+from bjk_server.db.models import Notification
 from bjk_server.jobs import registry  # noqa: F401
 from bjk_server.jobs.runner import run_job
 from bjk_server.seed.demo import demo_id
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from .conftest import auth_header
 
@@ -83,3 +86,38 @@ def test_unknown_flag_or_assignee_is_404(client, flags, target):
     res = _request(client, flag_id, assignee=assignee)
     assert res.status_code == 404
     assert res.json()["code"] == "NOT_FOUND"
+
+
+def _count_notices(demo_db):
+    with Session(demo_db.admin) as s:
+        rows = s.scalars(
+            select(Notification)
+            .where(Notification.kind == "count_request")
+            .order_by(Notification.sent_at)
+        )
+        return [(r.user_id, r.target_id, r.channels, r.title, r.sent_at) for r in rows]
+
+
+def test_count_request_notifies_assignee_in_chat_and_push(client, demo_db, flags):
+    body = _request(client, flags["오링 P-20"]).json()
+    assert _count_notices(demo_db) == [
+        (
+            WORKER,
+            uuid.UUID(body["count_request_id"]),
+            ["chat", "push"],
+            "오링 P-20 지금 몇 개 있나요? 세어서 숫자만 보내 주세요.",
+            NOW,
+        )
+    ]
+    items = client.get("/api/v1/notifications", headers=auth_header("worker")).json()["items"]
+    assert [i["kind"] for i in items] == ["count_request"]
+
+
+def test_scheduled_count_request_notice_shows_at_scheduled_time(client, demo_db, flags):
+    names = ["오링 P-20", "볼베어링 6205ZZ", "볼베어링 6204ZZ"]
+    for name in names:
+        _request(client, flags[name])
+    sent_at = [row[4] for row in _count_notices(demo_db)]
+    assert sent_at == [NOW, NOW, datetime(2026, 11, 5, 7, 30, tzinfo=clock.KST)]
+    items = client.get("/api/v1/notifications", headers=auth_header("worker")).json()["items"]
+    assert len(items) == 2

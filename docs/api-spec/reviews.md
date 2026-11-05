@@ -4,7 +4,7 @@
 
 ## 검토 실행
 
-HTTP API가 아니라 채팅 발주 요청(CHAT-04), 재고 부족 초안, 놓친 발주 초안이 부르는 서비스다.
+HTTP API가 아니라 채팅 발주 요청(CHAT-03 확정, CHAT-05 폼), 재고 부족 초안, 놓친 발주 초안이 부르는 서비스다.
 
 1. `create_review`: `reviewing` 검토를 만들고 같은 트랜잭션에 `review.created`를 남긴다. 원안은 `request`(`qty`, `supplier_id`, `unit_price`, `text`).
 2. 커밋 뒤 `run_review`(요청 처리 중이면 `ReviewRunner.start_after_commit`로 백그라운드 실행): 근거 고정 → 보류 판단 → 체크 9개 → 수정안 → 판정 → 의견서 → 검증.
@@ -17,6 +17,7 @@ HTTP API가 아니라 채팅 발주 요청(CHAT-04), 재고 부족 초안, 놓�
 | `hold` | `held` | 저장 시각 + `system.review_expire_days` |
 
 - 저장: `reviews`에 판정·표시·보류 사유·결과(`checks`, `original`, `proposal`, `alternatives`, `risk_if_not_ordered`, `count_requests`)·의견서(`text`, `source`, `verified`)·원안 총액·절감액·미발주 예상 손실, `review_snapshots`에 스냅샷 값·검토 기준값·해시(`sha256:…`)·계산 시각.
+- 알림(F-NOTI-01·04, 결과 저장과 같은 트랜잭션): 긴급(`urgent`)인 직원 요청·재고 부족 초안은 `review_urgent`, 그 밖의 직원 요청은 `review_completed`를 요청자를 뺀 활성 manager·owner에게(채널 `push`, `in_app`) 만든다. 일반 재고 부족 초안과 놓친 발주는 즉시 알리지 않고 아침 브리핑(DSH-01)으로 알린다. 보류는 요청자에게 `decision_result`(채널 `chat`)를 만들고, 보완 뒤 다시 보류되면 새로 만든다.
 - 의견서: ai(`AI_BASE_URL`)가 없거나 실패·시간 초과(8초)·숫자 검증 실패면 양식 의견서(`source: template`). ai 호출 사용량은 `llm_calls`(`purpose: opinion`)에 남긴다.
 - 이미 `reviewing`이 아닌 검토는 다시 실행하지 않는다.
 
@@ -30,9 +31,11 @@ HTTP API가 아니라 채팅 발주 요청(CHAT-04), 재고 부족 초안, 놓�
 | m, F, D95, D99, t_out, t_deadline, L, r_lead, r_price | 최신 새벽 계산(`part_metrics`). 계산 전이면 D95·D99는 0 |
 | F_12m | 향후 365일 미완료 정비의 필요 수량(일정의 필요 부품, 없으면 설비 정비 1회당 수량) |
 | 공급사 | `supplier_parts` 조건과 공급사별 최신 LT90, 계산 전이면 공급사 기본 납기(없으면 7일) |
+| O, 열린 발주 | 같은 부품(병합 포함)의 열린 발주 잔량. 도착 예정일은 주문 완료 시각(없으면 승인 시각) + 공급사 LT50(계산 전이면 공급사 기본 납기, 없으면 7일). 필요 시점(t_out) 전 도착분만 O에 더하고, t_out이 없으면 전부 더한다 |
+| p̄, σ_p, n | 같은 부품(병합 포함)의 최근 구매 단가 통계(`price_stats`) |
 | 연휴 | 오늘부터 기본 공급사 LT90 사이에 걸치는 연휴(카테고리 납기 요인의 국내·중국 명절, 기본 공급사 휴무) |
 
-- 현재 구현 범위: 열린 발주(O, `open_orders`)와 최근 구매 단가 통계(`price_stats`)는 발주 테이블 연결 전이라 비어 있다(C-03 열린 발주, C-05 건너뜀). 병합 부품 재고는 S에 더하지 않는다. 미확인 숨은 재고의 실사 요청은 결과 `count_requests`에만 담고 `count_requests` 행은 만들지 않는다.
+- 현재 구현 범위: 병합 부품 재고는 S에 더하지 않는다. 미확인 숨은 재고의 실사 요청은 결과 `count_requests`에만 담고 `count_requests` 행은 만들지 않는다.
 
 ## REV-04 POST /api/v1/reviews/{id}/recheck
 
@@ -53,7 +56,7 @@ HTTP API가 아니라 채팅 발주 요청(CHAT-04), 재고 부족 초안, 놓�
 }
 ```
 
-- `qty`는 0 이상, `supplier_id`·`unit_price`는 생략 가능(기본 공급사·등록 단가).
+- `qty`는 0 이상, `supplier_id`·`unit_price`는 생략 가능(기본 공급사·등록 단가). 결정(REV-05)의 `edited.qty`는 1 이상이라 수량 0으로 재검토한 값은 `approve_edited`로 승인할 수 없다.
 - 같은 스냅샷·수정 값이면 같은 `recheck_hash`. 원안 값 그대로면 저장된 스냅샷 해시와 같다. 결정(`approve_edited`)에서 이 값을 대조한다.
 - `proposal` 모양은 REV-02와 같다.
 
@@ -122,7 +125,7 @@ HTTP API가 아니라 채팅 발주 요청(CHAT-04), 재고 부족 초안, 놓�
 
 ## REV-05 POST /api/v1/reviews/{id}/decision
 
-manager 이상. 헤더 `Idempotency-Key` 필수(없으면 400). 같은 키·같은 본문이면 처음 응답을 그대로 돌려준다.
+manager 이상. 헤더 `Idempotency-Key` 필수(없으면 400). 같은 키·같은 본문이면 처음 응답을 그대로 돌려준다. 409 `SNAPSHOT_REFRESHED` 응답도 저장되므로, 다시 확인한 뒤에는 새 키로 보낸다. 같은 키를 다른 검토·다른 본문에 쓰면 409 `IDEMPOTENCY_CONFLICT`.
 
 | `action` | 결과 | 필수 |
 | --- | --- | --- |
@@ -134,12 +137,21 @@ manager 이상. 헤더 `Idempotency-Key` 필수(없으면 400). 같은 키·같�
 | `reject` | 검토 `closed`, 200 | `reason`(없으면 422 `REASON_REQUIRED`) |
 
 - `snapshot_hash`는 선택. 보내면 현재 스냅샷과 대조해 다르면 409 `SNAPSHOT_REFRESHED`.
-- 결정 직전 스냅샷이 24시간을 넘었거나 검토 후 같은 부품(병합 포함) 입출고가 있으면 근거를 다시 모아 판정한다. 새 스냅샷 행은 항상 저장하고, 판정·수정안이 바뀌었으면 검토 결과·양식 의견서를 갱신한 뒤 409 `SNAPSHOT_REFRESHED`(`detail`: `verdict`, `flags`, `snapshot_hash`, `proposal`). 이때 결정은 하지 않는다.
+- 결정 직전 스냅샷이 24시간을 넘었거나 검토 후 같은 부품(병합 포함) 입출고가 있으면 근거를 다시 모아 판정한다. 새 스냅샷 행은 항상 저장하고, 판정·수정안이 바뀌었으면 검토 결과·양식 의견서를 갱신한 뒤 409 `SNAPSHOT_REFRESHED`(`detail`: `verdict`, `flags`, `snapshot_hash`, `proposal`). 이때 결정은 하지 않는다. 이 `proposal`은 `{qty, supplier_id, unit_price, total}`로, REV-02·REV-04의 `proposal`보다 필드가 적다.
+- `approve_edited`의 `recheck_hash`가 현재 스냅샷으로 다시 계산한 값과 다르면 409 `SNAPSHOT_REFRESHED`(`detail`: `recheck_hash`, `verdict`). REV-04를 다시 불러 새 해시로 보낸다.
 - 응답 `purchase_order`: `id`, `status: approved`, `part_id`, `qty`, `supplier {id, name}`, `unit_price`, `total`, `saving`(원안 총액 대비), `order_message`(필요 시점이 있으면 희망 납기 포함), `pdf_url`.
 - 기록: `reviews.decision`(행동·사유·스냅샷 해시·수정 값·대안·발주 ID), `decided_by`, `decided_at`. SSE `review.decided` 발행.
 - 요청자가 있으면 `decision_result` 알림(채널 `chat`, `in_app`). `requester_notified`는 알림을 만들었는지.
-- 오류: 403 `SELF_APPROVAL_NOT_ALLOWED`(사장님이 아닌 사람이 본인 요청을 결정), 409 `REVIEW_NOT_DECIDABLE`(`reviewed`가 아님, 발주할 줄이 없음), 409 `REVIEW_ALREADY_DECIDED`(`approved`·`closed`, 동시 결정의 두 번째 포함).
-- PDF 생성(REV-07)은 아직 없다. `pdf_url`만 돌려준다.
+| 상황 | 응답 |
+| --- | --- |
+| 행동별 필수 값(`edited`, `recheck_hash`, `alternative_id`) 없음 | 400 `VALIDATION_ERROR`, `detail.fields` |
+| 없는 `alternative_id` | 400 `VALIDATION_ERROR`, `detail.alternative_id` |
+| 사장님이 아닌 사람이 본인 요청을 결정 | 403 `SELF_APPROVAL_NOT_ALLOWED` |
+| 없는 검토, 다른 회사 검토 | 404 `NOT_FOUND` |
+| `reviewed`가 아님, `approve_proposal`인데 수정안이 없거나 `no_order`, 고른 줄의 공급사·단가·수량이 정해지지 않음 | 409 `REVIEW_NOT_DECIDABLE` |
+| `approved`·`closed`(동시 결정의 두 번째 포함) | 409 `REVIEW_ALREADY_DECIDED` |
+
+- `pdf_url`은 REV-07 경로다.
 
 ## 재고 예측선 GET /api/v1/reviews/{id}/forecast (명세 밖, #258)
 

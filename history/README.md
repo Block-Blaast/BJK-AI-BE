@@ -5,6 +5,8 @@ AI·server 영역 작업 기록 색인. 작성 규칙은 [docs/ai-work-rules.md]
 | 날짜 | 파일 | 내용 |
 | --- | --- | --- |
 | 2026-11-05 | [2026-11-05-75-sim-reports.md](2026-11-05-75-sim-reports.md) | 검증 리포트 목록 API와 시연 더미 데이터(명세 밖, 사용자 결정) |
+| 2026-11-05 | [2026-11-05-77-api-spec-sync.md](2026-11-05-77-api-spec-sync.md) | API 명세 문서를 현재 구현에 맞게 수정(미구현 서술, 권한, 오류, 응답 필드) |
+| 2026-11-05 | [2026-11-05-74-review-count-notifications.md](2026-11-05-74-review-count-notifications.md) | 검토 완료·긴급·보류·실사 요청 알림 생성, 놓친 발주·일반 초안은 브리핑으로 대체 |
 | 2026-11-05 | [2026-11-05-73-external-data-collect.md](2026-11-05-73-external-data-collect.md) | 새벽 배치 외부 수집: 환율(Frankfurter)·해상운임(KCCI 수집)·공휴일(Nager.Date) |
 | 2026-11-05 | [2026-11-05-72-merge-validation-fixes.md](2026-11-05-72-merge-validation-fixes.md) | main 배포 PR 검증: 병합 부품 합산(nightly·장부 검증·입고 대조), 승인 409 반복, PDF 재현성 수정 |
 | 2026-11-05 | [2026-11-05-71-pdf-stable-font-time.md](2026-11-05-71-pdf-stable-font-time.md) | 결재용 PDF가 렌더링 시각마다 달라지는 문제 수정(글꼴 head 시각 고정) |

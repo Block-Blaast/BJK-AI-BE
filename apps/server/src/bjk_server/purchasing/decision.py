@@ -46,6 +46,8 @@ Action = Literal[
     "reject",
 ]
 APPROVALS = {"approve_proposal", "approve_original", "approve_edited", "approve_alternative"}
+# 미리 본 값(REV-04 재검토 해시, 대안 id)으로 결정하는 행동. 그 값은 미리 볼 때의 스냅샷 기준이다.
+PREVIEWED = {"approve_edited", "approve_alternative"}
 
 
 class EditedOrder(BaseModel):
@@ -142,15 +144,32 @@ def _proposal_out(result: ReviewResult) -> dict[str, Any] | None:
     }
 
 
+def _save_result(review: Review, after: ReviewResult, now: datetime) -> None:
+    """새 스냅샷으로 다시 판정한 결과를 검토 행에 저장한다(의견서 제외)."""
+    review.verdict, review.flags = after.verdict, list(after.flags)
+    review.hold_reasons = list(after.hold_reasons)
+    review.status = "held" if after.verdict == "hold" else "reviewed"
+    review.result = after.model_dump(
+        mode="json", exclude={"verdict", "flags", "hold_reasons", "review_hash"}
+    )
+    review.original_total = after.original.total
+    review.saving = after.proposal.saving if after.proposal else 0
+    review.loss = after.risk_if_not_ordered.loss
+    review.updated_at = now
+
+
 def _refresh(
     db: Session, review: Review, row: ReviewSnapshot, result: ReviewResult, now: datetime
-) -> tuple[ReviewResult, SnapshotValues, ReviewSettings, Refreshed | None]:
-    """필요하면 근거를 다시 모아 판정한다. 바뀌지 않았으면 새 결과로 계속 결정한다."""
+) -> tuple[ReviewResult, SnapshotValues, ReviewSettings, Refreshed | None, bool]:
+    """필요하면 근거를 다시 모아 판정한다. 바뀌지 않았으면 새 결과로 계속 결정한다.
+
+    마지막 값은 새 스냅샷을 저장했는지.
+    """
     snapshot = SnapshotValues.model_validate(row.values)
     settings = ReviewSettings.model_validate(row.settings)
     moved = _part_moved_since(db, review.part_id, row.created_at)
     if not needs_refresh(snapshot, now=now, part_moved_since=moved):
-        return result, snapshot, settings, None
+        return result, snapshot, settings, None, False
     order = OrderRequest.model_validate(review.request)
     company = company_settings(db, review.company_id)
     settings = review_settings(company)
@@ -168,24 +187,16 @@ def _refresh(
         )
     )
     if not decision_changed(result, after):
-        return after, fresh, settings, None
-    review.verdict, review.flags = after.verdict, list(after.flags)
-    review.hold_reasons = list(after.hold_reasons)
-    review.status = "held" if after.verdict == "hold" else "reviewed"
-    review.result = after.model_dump(
-        mode="json", exclude={"verdict", "flags", "hold_reasons", "review_hash"}
-    )
+        return after, fresh, settings, None, True
+    _save_result(review, after, now)
     text = template_opinion(to_opinion_request(after, fresh, company_id=review.company_id))
     review.opinion = {"text": text, "source": "template", "verified": True}
-    review.original_total = after.original.total
-    review.saving = after.proposal.saving if after.proposal else 0
-    review.loss = after.risk_if_not_ordered.loss
-    review.updated_at = now
     return (
         after,
         fresh,
         settings,
         Refreshed(after.verdict, list(after.flags), after.review_hash, _proposal_out(after)),
+        True,
     )
 
 
@@ -308,13 +319,23 @@ def decide(
     if body.snapshot_hash is not None and body.snapshot_hash != row.hash:
         result = stored[0]
         return Refreshed(result.verdict, list(result.flags), row.hash, _proposal_out(result))
-    result, snapshot, settings, refreshed = _refresh(db, review, row, stored[0], now)
+    result, snapshot, settings, refreshed, renewed = _refresh(db, review, row, stored[0], now)
     if refreshed is not None:
         return refreshed
 
     order: CreatedOrder | None = None
     if body.action in APPROVALS:
-        line, saving = _order_line(body, result, snapshot, settings)
+        try:
+            line, saving = _order_line(body, result, snapshot, settings)
+        except ApiError:
+            if not (renewed and body.action in PREVIEWED):
+                raise
+            # 미리 본 해시·대안 id는 이전 스냅샷 기준이다. 오류로 끝내면 새 스냅샷이 롤백돼 같은
+            # 409가 되풀이되므로, 새 결과를 저장한 채 다시 확인받는다.
+            _save_result(review, result, now)
+            return Refreshed(
+                result.verdict, list(result.flags), result.review_hash, _proposal_out(result)
+            )
         order = _create_order(db, review, user, line, saving, snapshot, now)
         review.status, outcome = "approved", "approved"
     else:

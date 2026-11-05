@@ -138,6 +138,48 @@ def test_tied_up_stock_counts_idle_parts_only(summary, demo_db):
     assert before == 10_000
 
 
+def test_tied_up_stock_counts_merged_part_outs_as_use(summary, demo_db):
+    """병합된 부품에 남은 최근 출고도 대표 부품을 쓴 것으로 본다(F-LEDGER-02)."""
+    rep, absorbed = uuid.uuid4(), uuid.uuid4()
+    long_ago = NOW - timedelta(days=200)
+    with Session(demo_db.admin) as s, s.begin():
+        s.add(
+            Part(
+                id=rep,
+                company_id=COMPANY,
+                name="볼트 대표",
+                unit="개",
+                default_supplier_id=demo_id("supplier", "a"),
+            )
+        )
+        s.flush()
+        s.add(Part(id=absorbed, company_id=COMPANY, name="볼트 병합", unit="개", merged_into=rep))
+        s.add(
+            SupplierPart(
+                company_id=COMPANY,
+                supplier_id=demo_id("supplier", "a"),
+                part_id=rep,
+                unit_price=1_000,
+            )
+        )
+        s.flush()
+        for part_id, qty, at in (
+            (rep, 10, long_ago),
+            (absorbed, 5, long_ago),
+            (absorbed, -1, NOW - timedelta(days=10)),
+        ):
+            s.add(
+                Movement(
+                    company_id=COMPANY,
+                    part_id=part_id,
+                    type="IN" if qty > 0 else "OUT",
+                    qty=qty,
+                    occurred_at=at,
+                )
+            )
+    assert summary().json()["tied_up_stock_amount"] == 0
+
+
 def test_today_movements_counted_from_kst_midnight(summary, demo_db):
     base = summary().json()["today"]["movements"]
     part = demo_id("part", "6205")

@@ -40,7 +40,7 @@ from bjk_server.db.models import (
     SupplierPart,
 )
 from bjk_server.domain import hidden_stock as hs
-from bjk_server.inventory import stock_of
+from bjk_server.inventory import stock_of, with_merged_ids
 from bjk_server.jobs.nightly import FALLBACK_LEAD_DAYS, HOLIDAY_FACTORS, IMPORT_DEPENDENT
 from bjk_server.purchasing.orders import open_orders, recent_price_stats, remaining_qty
 
@@ -257,7 +257,7 @@ def _orders(src: SnapshotSource) -> dict[str, Any]:
     필요 시점(t_out)이 없으면 열린 발주 잔량을 모두 O로 본다.
     """
     db, part = src.db, src.part
-    ids = [part.id, *db.scalars(select(Part.id).where(Part.merged_into == part.id))]
+    ids = with_merged_ids(db, part.id)
     lt50 = dict(
         db.execute(
             select(PartSupplierMetrics.supplier_id, PartSupplierMetrics.lt50)

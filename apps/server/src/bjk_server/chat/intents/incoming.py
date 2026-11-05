@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from bjk_server.clock import KST
 from bjk_server.db.models import PartSupplierMetrics, PurchaseOrder, Supplier
+from bjk_server.inventory import with_merged_ids
 from bjk_server.purchasing.orders import open_orders, remaining_qty
 
 DEFAULT_LEAD_DAYS = 7
@@ -45,7 +46,7 @@ def expected_date(db: Session, order: PurchaseOrder) -> date:
 
 def incoming_sentence(db: Session, part_id: uuid.UUID, unit: str) -> str:
     """예: "입고 예정 10개(11/08쯤)." 주문 전 발주가 섞여 있으면 그 건수를 덧붙인다."""
-    orders = [o for o in open_orders(db, [part_id]) if remaining_qty(o) > 0]
+    orders = [o for o in open_orders(db, with_merged_ids(db, part_id)) if remaining_qty(o) > 0]
     if not orders:
         return "입고 예정은 없어요."
     qty = sum(remaining_qty(o) for o in orders)

@@ -100,8 +100,11 @@ def _tied_up_amount(db, now: datetime) -> int:
     단가는 기본 공급사 단가, 없으면 등록된 공급사 중 가장 싼 단가. 단가가 없으면 0원으로 본다.
     """
     stock = stock_subquery()
+    # 병합된 부품에 남은 출고도 대표 부품의 사용으로 본다(F-LEDGER-02, stock_subquery와 같은 기준)
     used = (
-        select(Movement.part_id)
+        select(func.coalesce(Part.merged_into, Movement.part_id))
+        .select_from(Movement)
+        .join(Part, Part.id == Movement.part_id)
         .where(Movement.type == "OUT", Movement.occurred_at >= now - timedelta(days=IDLE_DAYS))
         .distinct()
     )

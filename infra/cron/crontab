@@ -1,0 +1,8 @@
+# 발주콕 배치 예약 (API 명세서 14장). 시각은 Asia/Seoul 기준.
+# 서버 컨테이너에서 실행: python -m bjk_server.jobs <name>
+CRON_TZ=Asia/Seoul
+0 3 * * *    python -m bjk_server.jobs nightly
+0 7 * * *    python -m bjk_server.jobs missed-scan
+0 7 * * *    python -m bjk_server.jobs order-check
+30 7 * * *   python -m bjk_server.jobs briefing
+30 3 * * 1   python -m bjk_server.jobs weekly-merge

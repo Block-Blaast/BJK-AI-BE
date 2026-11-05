@@ -16,7 +16,7 @@
 - `api/dashboard.py`: 묶인 재고의 최근 출고 판단에 병합된 부품 출고 포함
 - `purchasing/receipt.py`, `chat/intents/po_preview.py`, `chat/intents/incoming.py`: 병합된 부품의 열린 발주까지 대조. `reviews/snapshot.py`는 같은 함수로 교체
 - `purchasing/decision.py`: 스냅샷을 새로 모은 뒤 미리 본 값(재검토 해시·대안 id)이 맞지 않으면 새 스냅샷·결과를 저장한 채 `SNAPSHOT_REFRESHED`
-- `reviews/pdf.py`: PDF 만들 때 `SOURCE_DATE_EPOCH` 고정
+- `reviews/pdf.py`: PDF 바이트 고정은 #269의 글꼴 시각 고정(`_fix_font_timestamp`)으로 통합하고, 이 PR의 `SOURCE_DATE_EPOCH` 방식은 머지 시 제외. API 응답 바이트 테스트(`test_pdf_endpoint_bytes_do_not_depend_on_render_time`)는 유지
 - 테스트 추가: `test_merged_part_ledger.py` 3개, `test_dashboard.py` 1개, `test_review_decision.py` 1개, `test_review_pdf.py` 1개
 
 ## 결정과 근거

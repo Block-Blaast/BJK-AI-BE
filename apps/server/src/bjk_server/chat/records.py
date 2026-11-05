@@ -21,6 +21,7 @@ from bjk_server.errors import ApiError, ErrorCode
 from bjk_server.events import publish
 from bjk_server.inventory import lock_part_stock, stock_of
 from bjk_server.purchasing.receipt import PoMatch, ReceiptMatch, match_receipt
+from bjk_server.reviews.drafts import stock_draft_after_record
 from bjk_server.security import TokenClaims
 
 # 다른 부품으로 확정된 횟수가 이만큼 쌓이면 모호 별칭 (F-MATCH-02)
@@ -39,6 +40,7 @@ class MovementOut(BaseModel):
     # 입고 대조로 연결된 발주 (F-LEDGER-04)
     po_id: uuid.UUID | None = None
     _receipt: ReceiptMatch | None = PrivateAttr(default=None)
+    _draft_review_id: uuid.UUID | None = PrivateAttr(default=None)
 
 
 class AliasLearned(BaseModel):
@@ -47,7 +49,7 @@ class AliasLearned(BaseModel):
 
 
 class Triggered(BaseModel):
-    # 재고 부족 초안은 검토 기능에서 채운다. 장부 의심 항목은 음수 재고가 됐을 때 (F-LEDGER-03).
+    # 재고 부족 초안이 만들어졌을 때, 장부 의심 항목은 음수 재고가 됐을 때 (F-LEDGER-03).
     draft_review_id: uuid.UUID | None = None
     audit_flag_id: uuid.UUID | None = None
 
@@ -69,6 +71,9 @@ class RecordResponse(BaseModel):
         if self.intent == "IN" and receipt is not None and self.po_match is None:
             self.po_match = receipt.po_match
             self.actual_lead_time_days = receipt.actual_lead_time_days
+        draft = self.movement._draft_review_id
+        if draft is not None and self.triggered.draft_review_id is None:
+            self.triggered = self.triggered.model_copy(update={"draft_review_id": draft})
         return self
 
 
@@ -189,6 +194,8 @@ def record_movement(
     movement.receipt = receipt
     stock = stock_of(db, part.id)
     publish(db, user.company_id, "stock.changed", {"part_id": str(part.id), "stock": stock})
+    # 재주문점 이탈이면 재고 부족 초안 검토 (F-LEDGER-03). 응답 triggered.draft_review_id로 나간다
+    movement.draft_review_id = stock_draft_after_record(db, user.company_id, part, stock, now)
     action = "출고" if intent == "OUT" else "입고"
     label = "남은 재고" if intent == "OUT" else "현재 재고"
     return movement, stock, f"{action} 완료. {label} {stock}{part.unit}"
@@ -205,4 +212,5 @@ def movement_out(movement: Movement) -> MovementOut:
         po_id=movement.po_id,
     )
     out._receipt = getattr(movement, "receipt", None)
+    out._draft_review_id = getattr(movement, "draft_review_id", None)
     return out

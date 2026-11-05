@@ -14,6 +14,7 @@ from bjk_server.auth import TenantDB, require_role
 from bjk_server.clock import KST
 from bjk_server.db.models import CountRequest, MergeCandidate, Part, PartAlias
 from bjk_server.errors import ApiError, ErrorCode
+from bjk_server.events import publish_stock_changed
 from bjk_server.inventory import stock_of
 from bjk_server.pagination import Page, PageParams, keyset_page, page_params
 from bjk_server.security import TokenClaims
@@ -144,6 +145,8 @@ def _merge(db: Session, c: MergeCandidate, representative_id: uuid.UUID | None) 
         .where(or_(Part.id == absorbed_id, Part.merged_into == absorbed_id))
         .values(merged_into=representative_id)
     )
+    # 흡수된 부품의 원장이 대표 부품 재고에 더해진다.
+    publish_stock_changed(db, c.company_id, representative_id)
     _move_aliases(db, absorbed_id, representative_id)
     # 사라진 부품이 들어간 다른 열린 후보는 더 볼 필요가 없다.
     other = aliased(MergeCandidate)

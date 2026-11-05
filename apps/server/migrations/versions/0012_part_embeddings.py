@@ -18,8 +18,8 @@ down_revision: str | Sequence[str] | None = "0011"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
-# bjk_contracts.embedding.EMBEDDING_DIM과 같게 둔다.
-# Bedrock 임베딩(Titan Embed Text v2) 출력 차원에 맞춘다.
+# ai 임베딩(Bedrock Titan Text Embeddings V2) 차원. main 배포 때 1536에서 1024로 바로 고쳤다.
+# 이전 1536으로 만든 DB는 0019가 1024로 바꾼다.
 EMBEDDING_DIM = 1024
 TABLES = ("parts", "part_aliases")
 

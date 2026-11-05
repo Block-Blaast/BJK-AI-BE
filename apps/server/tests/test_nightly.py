@@ -50,7 +50,13 @@ def test_lead_time_applies_external_weight_and_holidays():
 
 def test_nightly_computes_every_part(nightly, demo_db):
     summary = nightly().summary
-    assert summary == {"companies": 1, "parts_computed": len(PARTS), "indicators": 2}
+    assert summary == {
+        "companies": 1,
+        "parts_computed": len(PARTS),
+        "audit_flags_created": len(PARTS),
+        "indicators": 2,
+        "embeddings_filled": 0,
+    }
     with Session(demo_db.admin) as s:
         assert s.scalar(select(func.count()).select_from(PartMetrics)) == len(PARTS)
         assert s.scalar(select(func.count()).select_from(PartSupplierMetrics)) == 8

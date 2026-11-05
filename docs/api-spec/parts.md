@@ -31,5 +31,59 @@
 
 - 지표(`abc`, `demand_class`, `t_out`, `p_out`, `risk_level`, `computed_at`)는 부품별 최신 새벽 계산(`part_metrics`) 값이다. 계산 전에는 `null`이고 지표 필터에 걸리지 않는다.
 - `risk_level`과 `risk` 필터는 카테고리 외부 위험 등급(r_lead·r_price 중 큰 값의 등급)이다.
-- 현재 구현 범위: 장부 검증 전이라 `ledger_status`는 모두 `normal`이고 `ledger_status=suspect`는 결과가 없다.
+- `ledger_status`는 열린 장부 의심 항목(AUD-01)이 있으면 `suspect`, 없으면 `normal`이다.
 - 허용 값 밖의 필터는 400 `VALIDATION_ERROR`, 토큰 없음은 401.
+
+## LED-01 GET /api/v1/parts/{id}/movements
+
+- 권한: 로그인한 모든 사용자. 부품이 없거나 다른 회사 부품이면 404.
+- 정렬: 발생 시각 최근 순(같은 시각은 ID 역순), 커서 목록.
+
+```json
+{
+  "items": [
+    {
+      "id": "...", "type": "OUT", "qty": -2, "occurred_at": "2026-11-04T01:12:00Z",
+      "author": "이현장", "source_text": "3호기 베어링 두 개 씀",
+      "equipment_id": "...", "maintenance_id": null, "po_id": null,
+      "reason": null, "corrects": null
+    }
+  ],
+  "next_cursor": null
+}
+```
+
+- `author`는 작성자 이름이다. 초기 이관처럼 작성자가 없는 기록은 `null`.
+- `corrects`는 정정 기록([LED-02](ledger.md))일 때 정정 대상 원장 행 ID다.
+- 병합된 부품도 자기 이력을 볼 수 있다. 대표 부품 이력에 병합 부품 이력을 합치는 것은 병합(MAT) 기능에서 정한다.
+
+## SET-05 POST /api/v1/parts, PATCH /api/v1/parts/{id}
+
+- 권한: manager 이상. worker는 403.
+
+```json
+// POST Request
+{
+  "name": "볼베어링 6206ZZ", "unit": "개",
+  "category_id": "...", "default_supplier_id": "...",
+  "spec": { "bearing_no": "6206", "shield": "ZZ" },
+  "pack_qty": null, "monthly_estimate": 2, "import_override": null, "location": "A선반 2칸",
+  "initial_stock": 5
+}
+
+// 201 Response (PATCH 200도 같은 형식)
+{
+  "id": "...", "name": "볼베어링 6206ZZ", "unit": "개", "category_id": "...", "default_supplier_id": "...",
+  "spec": { "bearing_no": "6206", "shield": "ZZ" }, "pack_qty": null, "monthly_estimate": 2,
+  "import_override": null, "location": "A선반 2칸", "stock": 5
+}
+```
+
+- 필수: `name`(1~200자), `unit`(1~16자). 앞뒤 공백은 뺀다. `spec` 값은 문자열·숫자만.
+- `initial_stock`(기본 0)이 있으면 원장에 `ADJUST`(사유 `초기 재고`, 작성자 등록한 관리자)로 넣는다. 재고 열은 저장하지 않는다.
+- `import_override`: 카테고리와 다른 수입 의존도(`high`, `medium`, `low`).
+- 없는 `category_id`·`default_supplier_id`는 404(`detail`에 필드).
+- PATCH는 보낸 항목만 고친다. 재고는 바꾸지 않는다(LED-02 정정, AUD-03 실사로 맞춘다). `name`·`unit`·`spec`에 `null`은 400, 나머지는 `null`로 지운다.
+- 병합된 부품은 404(`detail.merged_into`)이며 대표 부품을 고친다.
+- 등록·이름 변경 때 이름 임베딩(ai `/v1/embeddings`, `task: document`)을 저장한다. ai가 실패해도 등록은 되고, 빈 임베딩은 nightly가 채운다.
+- 현재 구현 범위: 등록 시 중복 후보 제안(F-SETUP-02 4단계)은 병합 기능에서 더한다.

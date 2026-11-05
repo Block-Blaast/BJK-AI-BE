@@ -4,6 +4,7 @@ import uuid
 from datetime import date, datetime
 from typing import Any
 
+from bjk_contracts import EMBEDDING_DIM
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     ARRAY,
@@ -35,9 +36,7 @@ NAMING = {
     "pk": "pk_%(table_name)s",
 }
 
-# bjk_contracts.embedding.EMBEDDING_DIM과 같게 둔다.
-# Bedrock 임베딩(Titan Embed Text v2) 출력 차원에 맞춘다.
-EMBEDDING_DIM = 1024
+# 임베딩 차원은 ai 계약(bjk_contracts.EMBEDDING_DIM, 1024)을 따른다. 마이그레이션 0019.
 # 모델이 다른 벡터끼리는 비교할 수 없어 벡터와 모델명을 함께 둔다.
 EMBEDDING_PAIR = "(embedding IS NULL) = (embedding_model IS NULL)"
 
@@ -92,6 +91,8 @@ class CompanySettings(Base):
     notify: Mapped[dict[str, Any]]
     review: Mapped[dict[str, Any]]
     system: Mapped[dict[str, Any]]
+    # 개발·시연 시나리오 스위치 (DEV-02 외부 충격 등). 운영에서는 비어 있다.
+    scenarios: Mapped[dict[str, Any]] = mapped_column(server_default=sql_text("'{}'::jsonb"))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -219,6 +220,31 @@ class Maintenance(Base):
     # [{"part_id": ..., "qty": ...}]. 비어 있으면 설비의 qty_per_maintenance를 쓴다.
     required_parts: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    completed_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = _created_at()
+
+
+class CalendarEvent(Base):
+    """연휴 캘린더 (F-EXT-01). 납기 구간과 겹치면 겹친 일수만큼 납기를 늘린다."""
+
+    __tablename__ = "calendar_events"
+    __table_args__ = (
+        CheckConstraint("scope IN ('KR', 'CN', 'supplier')", name="scope"),
+        CheckConstraint("end_date >= start_date", name="date_order"),
+        CheckConstraint("(scope = 'supplier') = (supplier_id IS NOT NULL)", name="supplier_scope"),
+        Index("ix_calendar_events_company_start", "company_id", "start_date"),
+    )
+
+    id: Mapped[uuid.UUID] = _id()
+    company_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("companies.id", ondelete="CASCADE"))
+    name: Mapped[str] = mapped_column(String(100))
+    start_date: Mapped[date] = mapped_column(Date)
+    end_date: Mapped[date] = mapped_column(Date)
+    # KR: 국내 명절, CN: 중국(춘절 등), supplier: 특정 공급사 휴무
+    scope: Mapped[str] = mapped_column(String(16))
+    supplier_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("suppliers.id", ondelete="CASCADE")
+    )
     created_at: Mapped[datetime] = _created_at()
 
 
@@ -432,6 +458,87 @@ class PartMetrics(Base):
     external_level: Mapped[str] = mapped_column(String(8))
 
 
+class AuditFlag(Base):
+    """장부 의심 항목 (F-AUDIT). 같은 부품의 열린 항목은 하나로 묶는다."""
+
+    __tablename__ = "audit_flags"
+    __table_args__ = (
+        CheckConstraint(
+            "rule IN ('NEGATIVE_STOCK', 'MAINTENANCE_OUT_MISMATCH', 'PATTERN_DEVIATION', "
+            "'SPIKE', 'COUNT_OVERDUE')",
+            name="rule",
+        ),
+        CheckConstraint("level IN ('high', 'medium', 'low')", name="level"),
+        CheckConstraint("status IN ('open', 'count_requested', 'closed')", name="status"),
+        Index(
+            "uq_audit_flags_open_part",
+            "company_id",
+            "part_id",
+            unique=True,
+            postgresql_where=sql_text("status <> 'closed'"),
+        ),
+        Index("ix_audit_flags_company_created", "company_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = _id()
+    company_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("companies.id", ondelete="CASCADE"))
+    part_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("parts.id", ondelete="CASCADE"))
+    # 대표 규칙(등급이 가장 높은 것)과 근거. 함께 걸린 규칙은 related에 둔다.
+    rule: Mapped[str] = mapped_column(String(32))
+    level: Mapped[str] = mapped_column(String(8))
+    status: Mapped[str] = mapped_column(String(16), server_default="open")
+    evidence: Mapped[dict[str, Any]]
+    # [{"rule": ..., "level": ..., "evidence": {...}}]
+    related: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, server_default=sql_text("'[]'::jsonb")
+    )
+    # 이 항목에 담긴 규칙의 중복 판단 키 (bjk_server.domain.audit.Hit.key)
+    keys: Mapped[list[str]] = mapped_column(ARRAY(Text))
+    # 종료 사유. 실사 기능에서 채운다.
+    resolution: Mapped[str | None] = mapped_column(String(16))
+    created_at: Mapped[datetime] = _created_at()
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class CountRequest(Base):
+    """블라인드 실사 요청 (F-AUDIT-06). 담당자에게 장부 수량을 보여주지 않는다."""
+
+    __tablename__ = "count_requests"
+    __table_args__ = (
+        CheckConstraint("status IN ('scheduled', 'sent', 'answered', 'closed')", name="status"),
+        CheckConstraint(
+            "reason IS NULL OR reason IN ('lost', 'missing_record', 'damaged', 'other')",
+            name="reason",
+        ),
+        Index("ix_count_requests_company_assignee", "company_id", "assignee_id"),
+    )
+
+    id: Mapped[uuid.UUID] = _id()
+    company_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("companies.id", ondelete="CASCADE"))
+    audit_flag_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("audit_flags.id", ondelete="CASCADE"), index=True
+    )
+    part_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("parts.id", ondelete="CASCADE"))
+    assignee_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    requested_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    # scheduled: 하루 한도를 넘어 scheduled_for에 보냄, sent: 응답 대기,
+    # answered: 차이가 있어 사유 대기, closed: 종료
+    status: Mapped[str] = mapped_column(String(16))
+    message: Mapped[str] = mapped_column(Text)
+    scheduled_for: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    counted_qty: Mapped[int | None] = mapped_column(Integer)
+    book_qty_before: Mapped[int | None] = mapped_column(Integer)
+    diff: Mapped[int | None] = mapped_column(Integer)
+    adjust_movement_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("movements.id"))
+    answered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    reason: Mapped[str | None] = mapped_column(String(16))
+    note: Mapped[str | None] = mapped_column(Text)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = _created_at()
+
+
 class PartSupplierMetrics(Base):
     """부품×공급사별 납기 (F-ANAL-04, 외부 요인·휴무일 반영 후)."""
 
@@ -449,3 +556,27 @@ class PartSupplierMetrics(Base):
     samples: Mapped[int] = mapped_column(Integer)
     unit_price: Mapped[int] = mapped_column(Integer)
     moq: Mapped[int] = mapped_column(Integer)
+
+
+class LlmCall(Base):
+    """ai 호출 한 번의 비용·장애 기록. 재시도까지 합친 값이다 (bjk_contracts.LlmUsage)."""
+
+    __tablename__ = "llm_calls"
+    __table_args__ = (
+        CheckConstraint(
+            "purpose IN ('chat_parse', 'import_suggest', 'opinion', 'embedding')", name="purpose"
+        ),
+        # 회사별 일일 토큰 합계 (호출 제한, API 명세서 1-5)
+        Index("ix_llm_calls_company_created", "company_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = _id()
+    company_id: Mapped[uuid.UUID] = _company_id()
+    purpose: Mapped[str] = mapped_column(String(16))
+    model: Mapped[str] = mapped_column(String(100))
+    input_tokens: Mapped[int] = mapped_column(Integer)
+    output_tokens: Mapped[int] = mapped_column(Integer)
+    latency_ms: Mapped[int] = mapped_column(Integer)
+    attempts: Mapped[int] = mapped_column(Integer)
+    success: Mapped[bool] = mapped_column(Boolean)
+    created_at: Mapped[datetime] = _created_at()

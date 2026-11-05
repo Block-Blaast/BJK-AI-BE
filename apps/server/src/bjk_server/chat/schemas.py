@@ -26,7 +26,7 @@ class CandidateOut(BaseModel):
     part_id: uuid.UUID
     name: str
     stock: int
-    reason: Literal["alias", "equipment_part", "name"]
+    reason: Literal["alias", "equipment_part", "name", "semantic"]
 
 
 class Card(BaseModel):

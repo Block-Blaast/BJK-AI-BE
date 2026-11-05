@@ -26,9 +26,9 @@
 ## 검증
 
 - `tests/test_receipt_po_match.py` 9개 통과
-- `REQUIRE_DB_TESTS=1 make test` 714개 통과, `make lint` 통과 (#161 브랜치 기준)
+- `REQUIRE_DB_TESTS=1 make test` 753개 통과, `make lint` 통과 (dev 반영 후)
 
 ## 남은 일·확인 필요
 
 - 확인 카드(CHAT-01) `po_match` 미리 보기는 C 레인 카드 코드(`chat/intents`, `chat/schemas.py`)에 붙일 일. C 레인과 조율 필요
-- #207 머지 후 dev 기준으로 다시 맞춤
+- 없음 (확인 카드 미리 보기는 위 항목)

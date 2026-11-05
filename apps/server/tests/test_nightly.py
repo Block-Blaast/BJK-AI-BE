@@ -1,8 +1,10 @@
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 from bjk_server.db.models import (
+    AuditFlag,
     Company,
+    CountRequest,
     ExternalIndicator,
     Movement,
     Part,
@@ -146,6 +148,73 @@ def test_parts_list_shows_latest_metrics_and_filters(nightly, client):
     assert {i["name"] for i in caution.json()["items"]} >= {"볼베어링 6205ZZ", "볼베어링 6204ZZ"}
     a = client.get("/api/v1/parts", params={"abc": "A"}, headers=auth_header("worker")).json()
     assert a["items"] and all(i["abc"] == "A" for i in a["items"])
+
+
+def add_hidden_twin(demo_db, qty, counted_days_ago=None, suspect=False):
+    """6205와 같은 카테고리·규격으로 다른 이름의 부품을 등록한다 (F-MATCH-03 숨은 재고)."""
+    with Session(demo_db.admin) as s, s.begin():
+        base = s.get(Part, demo_id("part", "6205"))
+        twin = Part(
+            company_id=COMPANY,
+            name="베어링 6205 실드",
+            unit="개",
+            category_id=base.category_id,
+            spec=dict(base.spec),
+        )
+        s.add(twin)
+        s.flush()
+        s.add(
+            Movement(
+                company_id=COMPANY,
+                part_id=twin.id,
+                type="ADJUST",
+                qty=qty,
+                occurred_at=NOW - timedelta(days=60),
+            )
+        )
+        if counted_days_ago is None and not suspect:
+            return twin.id
+        flag = AuditFlag(
+            company_id=COMPANY,
+            part_id=twin.id,
+            rule="COUNT_OVERDUE",
+            level="low",
+            status="open" if suspect else "closed",
+            evidence={},
+            keys=["COUNT_OVERDUE"],
+        )
+        s.add(flag)
+        s.flush()
+        if counted_days_ago is not None:
+            s.add(
+                CountRequest(
+                    company_id=COMPANY,
+                    audit_flag_id=flag.id,
+                    part_id=twin.id,
+                    assignee_id=demo_id("user", "worker"),
+                    requested_by=demo_id("user", "manager"),
+                    status="closed",
+                    message="몇 개 있나요?",
+                    counted_qty=qty,
+                    answered_at=NOW - timedelta(days=counted_days_ago),
+                )
+            )
+        return twin.id
+
+
+@pytest.mark.parametrize(
+    ("counted_days_ago", "suspect", "confirmed"),
+    [(14, False, True), (45, False, False), (None, False, False), (14, True, False)],
+)
+def test_hidden_stock_is_confirmed_only_after_recent_count(
+    nightly, demo_db, counted_days_ago, suspect, confirmed
+):
+    add_hidden_twin(demo_db, 800, counted_days_ago, suspect)
+    nightly()
+    m = _metrics(demo_db, "6205")
+    assert (m.hidden_confirmed, m.hidden_unconfirmed) == ((800, 0) if confirmed else (0, 800))
+    # 권장 발주량은 확인된 숨은 재고만 뺀다 (D95 11 − S 3 − H_c 800 → 0)
+    assert m.recommended_qty == (0 if confirmed else 10)
 
 
 def test_metrics_are_isolated_per_company(nightly, demo_db):

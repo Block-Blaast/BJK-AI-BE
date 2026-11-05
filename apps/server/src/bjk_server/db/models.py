@@ -220,6 +220,7 @@ class Maintenance(Base):
     # [{"part_id": ..., "qty": ...}]. 비어 있으면 설비의 qty_per_maintenance를 쓴다.
     required_parts: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    completed_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[datetime] = _created_at()
 
 

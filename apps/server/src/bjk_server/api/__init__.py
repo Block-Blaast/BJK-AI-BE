@@ -9,6 +9,7 @@ from bjk_server.api import (
     equipment,
     external,
     health,
+    ledger,
     maintenance,
     parts,
     suppliers,
@@ -20,6 +21,7 @@ api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(auth.router)
 api_router.include_router(users.router)
 api_router.include_router(parts.router)
+api_router.include_router(ledger.router)
 api_router.include_router(categories.router)
 api_router.include_router(suppliers.router)
 api_router.include_router(equipment.router)

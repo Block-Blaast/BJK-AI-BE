@@ -10,7 +10,7 @@ from sqlalchemy import exists, func, or_, select
 
 from bjk_server import clock
 from bjk_server.auth import CurrentUser, TenantDB, require_role
-from bjk_server.db.models import AuditFlag, Category, Movement, Part, PartAlias, Supplier
+from bjk_server.db.models import AuditFlag, Category, Movement, Part, PartAlias, Supplier, User
 from bjk_server.errors import ApiError, ErrorCode
 from bjk_server.inventory import latest_metrics_subquery, stock_of, stock_subquery
 from bjk_server.pagination import Page, PageParams, keyset_page, page_params
@@ -127,6 +127,63 @@ def list_parts(
             computed_at=r.computed_at,
         ),
         cursor_of=lambda r: [r.name, r.id],
+    )
+
+
+class MovementItem(BaseModel):
+    id: uuid.UUID
+    type: Literal["IN", "OUT", "ADJUST"]
+    qty: int
+    occurred_at: datetime
+    # 작성자 이름. 시스템 기록(초기 이관 등)은 null.
+    author: str | None
+    source_text: str | None
+    equipment_id: uuid.UUID | None
+    maintenance_id: uuid.UUID | None
+    po_id: uuid.UUID | None
+    reason: str | None
+    # 정정 기록이면 정정 대상 원장 행
+    corrects: uuid.UUID | None
+
+
+@router.get("/{part_id}/movements", response_model=Page[MovementItem])
+def list_movements(
+    part_id: uuid.UUID,
+    _: CurrentUser,
+    db: TenantDB,
+    params: Annotated[PageParams, Depends(page_params)],
+) -> Page[MovementItem]:
+    """LED-01. 부품의 입출고 이력(원문 포함). 최근 발생 순.
+
+    병합된 부품도 이력은 그대로 볼 수 있다. 원장은 고치지 않고 정정 기록을 더한다.
+    """
+    if db.get(Part, part_id) is None:
+        raise ApiError(ErrorCode.NOT_FOUND, "부품을 찾을 수 없습니다.", {"part_id": str(part_id)})
+    stmt = (
+        select(Movement, User.name.label("author"))
+        .outerjoin(User, User.id == Movement.author_id)
+        .where(Movement.part_id == part_id)
+    )
+    return keyset_page(
+        db,
+        stmt,
+        [Movement.occurred_at, Movement.id],
+        params,
+        to_item=lambda r: MovementItem(
+            id=r.Movement.id,
+            type=r.Movement.type,
+            qty=r.Movement.qty,
+            occurred_at=r.Movement.occurred_at,
+            author=r.author,
+            source_text=r.Movement.source_text,
+            equipment_id=r.Movement.equipment_id,
+            maintenance_id=r.Movement.maintenance_id,
+            po_id=r.Movement.po_id,
+            reason=r.Movement.reason,
+            corrects=r.Movement.corrects_id,
+        ),
+        cursor_of=lambda r: [r.Movement.occurred_at, r.Movement.id],
+        descending=True,
     )
 
 

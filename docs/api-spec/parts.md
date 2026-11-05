@@ -34,6 +34,29 @@
 - `ledger_status`는 열린 장부 의심 항목(AUD-01)이 있으면 `suspect`, 없으면 `normal`이다.
 - 허용 값 밖의 필터는 400 `VALIDATION_ERROR`, 토큰 없음은 401.
 
+## LED-01 GET /api/v1/parts/{id}/movements
+
+- 권한: 로그인한 모든 사용자. 부품이 없거나 다른 회사 부품이면 404.
+- 정렬: 발생 시각 최근 순(같은 시각은 ID 역순), 커서 목록.
+
+```json
+{
+  "items": [
+    {
+      "id": "...", "type": "OUT", "qty": -2, "occurred_at": "2026-11-04T01:12:00Z",
+      "author": "이현장", "source_text": "3호기 베어링 두 개 씀",
+      "equipment_id": "...", "maintenance_id": null, "po_id": null,
+      "reason": null, "corrects": null
+    }
+  ],
+  "next_cursor": null
+}
+```
+
+- `author`는 작성자 이름이다. 초기 이관처럼 작성자가 없는 기록은 `null`.
+- `corrects`는 정정 기록([LED-02](ledger.md))일 때 정정 대상 원장 행 ID다.
+- 병합된 부품도 자기 이력을 볼 수 있다. 대표 부품 이력에 병합 부품 이력을 합치는 것은 병합(MAT) 기능에서 정한다.
+
 ## SET-05 POST /api/v1/parts, PATCH /api/v1/parts/{id}
 
 - 권한: manager 이상. worker는 403.

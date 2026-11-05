@@ -1,7 +1,7 @@
 """reviews
 
-Revision ID: 0022
-Revises: 0021
+Revision ID: 0023
+Revises: 0022
 Create Date: 2026-11-05
 
 발주 검토와 스냅샷 (API 명세서 REV-01·02, 2장 코드값 사전).
@@ -15,8 +15,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-revision: str = "0022"
-down_revision: str | Sequence[str] | None = "0021"
+revision: str = "0023"
+down_revision: str | Sequence[str] | None = "0022"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

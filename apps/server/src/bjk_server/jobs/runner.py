@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from bjk_server import clock
 from bjk_server.db.models import JobRun
 
-JobName = Literal["nightly", "missed-scan", "order-check", "briefing", "weekly-merge"]
+JobName = Literal["nightly", "missed-scan", "order-check", "briefing", "weekly-merge", "cleanup"]
 JOB_NAMES: tuple[str, ...] = get_args(JobName)
 Trigger = Literal["schedule", "manual"]
 JobFunc = Callable[[Session, datetime], dict[str, Any]]

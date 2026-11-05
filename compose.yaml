@@ -23,6 +23,7 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://bjk_app_login:bjk_app_login@db:5432/bjk
       ADMIN_DATABASE_URL: postgresql+psycopg://bjk:bjk@db:5432/bjk
+      AI_BASE_URL: http://ai:8001
     ports:
       - "8000:8000"
     depends_on:
@@ -39,9 +40,13 @@ services:
     command: ["uv", "run", "--no-sync", "python", "-m", "bjk_server.jobs.scheduler"]
     environment:
       DATABASE_URL: postgresql+psycopg://bjk_app_login:bjk_app_login@db:5432/bjk
+      # nightly가 비어 있는 부품·별칭 임베딩을 채울 때 쓴다.
+      AI_BASE_URL: http://ai:8001
     depends_on:
       db:
         condition: service_healthy
+      ai:
+        condition: service_started
     restart: unless-stopped
     # 종료 신호 뒤 실행 중인 배치가 끝날 때까지 기다린다 (부품 1,000종 nightly 목표 5분).
     stop_grace_period: 5m

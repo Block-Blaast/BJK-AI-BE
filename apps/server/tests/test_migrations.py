@@ -116,7 +116,7 @@ def part_row(migrated_db_url):
     engine.dispose()
 
 
-def test_embedding_columns_are_vector_1536_with_model_name(part_row):
+def test_embedding_columns_are_vector_1024_with_model_name(part_row):
     engine, _, _ = part_row
     with engine.connect() as conn:
         for table in EMBEDDING_TABLES:
@@ -130,7 +130,7 @@ def test_embedding_columns_are_vector_1536_with_model_name(part_row):
                 ).all()
             )
             assert columns == {
-                "embedding": "vector(1536)",
+                "embedding": "vector(1024)",
                 "embedding_model": "character varying(100)",
             }
 
@@ -165,7 +165,7 @@ def test_orm_stores_embedding_and_compares_by_cosine(part_row):
 @pytest.mark.parametrize(
     ("dimension", "model", "error"),
     [
-        (2, "m1", "expected 1536 dimensions"),
+        (2, "m1", "expected 1024 dimensions"),
         (EMBEDDING_DIM, None, "embedding_model"),
         (None, "m1", "embedding_model"),
     ],

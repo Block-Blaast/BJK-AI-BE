@@ -1,18 +1,27 @@
 """부품 매칭 규칙 (기능명세서 F-MATCH-01). 순수 함수.
 
-단계: 1 정규화 → 2 별칭 일치 → 3 규격 필터 → 5 자모 3-gram 철자 유사도.
-4 임베딩 의미 유사도와 6 RRF 결합은 ai 연동 후 더한다. 지금 순위는 철자 유사도만으로 정한다.
+단계: 1 정규화 → 2 별칭 일치 → 3 규격 필터 → 4 임베딩 의미 유사도 → 5 자모 3-gram 철자 유사도
+→ 6 RRF 결합. 순위는 RRF로, 의미 유사도로 확정할지는 코사인으로 판단한다.
+의미 유사도(4)는 server가 pgvector로 구해 넘긴다. 없으면(ai 실패·벡터 없음) 철자 순위만 쓴다.
 """
 
 import re
 import unicodedata
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 # 철자 유사도 기준. 이 값 미만이거나 1위 점수의 절반 미만인 후보는 뺀다.
 MIN_SIMILARITY = 0.2
 RELATIVE_CUTOFF = 0.5
+# RRF 상수 (Cormack et al. 2009의 표준값)
+RRF_K = 60
+# 철자 기준에 들지 않은 후보를 의미 유사도만으로 넣는 최소 코사인. 명세에 없는 초깃값으로,
+# 관련 없는 부품까지 후보에 올라와 미등록 카드가 사라지는 것을 막는다(F-SIM 조정 대상).
+MIN_SEMANTIC_COSINE = 0.5
+# 의미 유사도 확정 기준 초깃값 (SYS-01 system.match_confirm_cosine, match_confirm_gap)
+CONFIRM_COSINE = 0.85
+CONFIRM_GAP = 0.05
 
 _CHO = "ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ"
 _JUNG = "ㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ"
@@ -110,17 +119,28 @@ class Ranked:
     part_id: Any
     score: float
     spec_match: bool
+    # 의미 유사도 상위 후보면 코사인, 아니면 None
+    cosine: float | None = None
+    # 철자 기준에는 들지 않고 의미 유사도로만 들어온 후보
+    semantic_only: bool = False
 
 
 @dataclass(frozen=True)
 class MatchResult:
     ranked: list[Ranked]
-    # 확정된 부품: 별칭 일치 또는 규격 완전 일치 후보 1개. 없으면 사람에게 고르게 한다.
+    # 확정된 부품: 별칭 일치, 규격 완전 일치 후보 1개, 또는 코사인 확정. 없으면 사람이 고른다.
     confirmed: Any | None
     confirmed_by: str | None
 
 
-def match_parts(query: str, parts: Sequence[PartText]) -> MatchResult:
+def match_parts(
+    query: str,
+    parts: Sequence[PartText],
+    semantic: Mapping[Any, float] | None = None,
+    confirm_cosine: float = CONFIRM_COSINE,
+    confirm_gap: float = CONFIRM_GAP,
+) -> MatchResult:
+    """`semantic`은 의미 유사도 상위 후보의 부품 → 코사인 (F-MATCH-01 4단계, 상위 10개)."""
     q_norm = normalize(query)
     q_spec = extract_spec(query)
     allowed = [p for p in parts if spec_relation(q_spec, p.spec) != "conflict"]
@@ -149,10 +169,53 @@ def match_parts(query: str, parts: Sequence[PartText]) -> MatchResult:
         if r.spec_match or (r.score >= MIN_SIMILARITY and r.score >= top * RELATIVE_CUTOFF)
     ]
     keep.sort(key=lambda r: (not r.spec_match, -r.score))
+    if semantic:
+        keep = _fuse(keep, ranked, semantic)
 
     if len(alias_hits) == 1 and len(shared_alias) == 1:
         return MatchResult(keep, next(iter(alias_hits)), "alias")
     spec_hits = [r for r in keep if r.spec_match]
     if len(spec_hits) == 1:
         return MatchResult(keep, spec_hits[0].part_id, "spec")
+    by_cosine = _confirm_by_cosine(keep, confirm_cosine, confirm_gap)
+    if by_cosine is not None:
+        return MatchResult(keep, by_cosine, "semantic")
     return MatchResult(keep, None, None)
+
+
+def _fuse(keep: list[Ranked], ranked: list[Ranked], semantic: Mapping[Any, float]) -> list[Ranked]:
+    """철자 순위와 의미 유사도 순위를 RRF로 합친다. 규격이 다른 부품(ranked 밖)은 넣지 않는다."""
+    allowed = {r.part_id: r for r in ranked}
+    cosines = {pid: cos for pid, cos in semantic.items() if pid in allowed}
+    kept = {r.part_id for r in keep}
+    extra = [
+        allowed[pid]
+        for pid, cos in cosines.items()
+        if pid not in kept and cos >= MIN_SEMANTIC_COSINE
+    ]
+    spell_rank = {r.part_id: i for i, r in enumerate(keep, 1)}
+    by_cosine = sorted(cosines, key=lambda pid: -cosines[pid])
+    semantic_rank = {pid: i for i, pid in enumerate(by_cosine, 1)}
+
+    def rrf(part_id: Any) -> float:
+        return sum(
+            1 / (RRF_K + rank[part_id]) for rank in (spell_rank, semantic_rank) if part_id in rank
+        )
+
+    fused = [
+        replace(r, cosine=cosines.get(r.part_id), semantic_only=r.part_id not in kept)
+        for r in [*keep, *extra]
+    ]
+    # 규격 일치 후보를 먼저 두는 것은 철자 순위와 같다.
+    fused.sort(key=lambda r: (not r.spec_match, -rrf(r.part_id)))
+    return fused
+
+
+def _confirm_by_cosine(ranked: list[Ranked], min_cosine: float, min_gap: float) -> Any | None:
+    """RRF 1위의 코사인이 기준 이상이고 2위보다 차이 이상 높으면 확정 (F-MATCH-01 확정 조건)."""
+    if not ranked or ranked[0].cosine is None:
+        return None
+    second = (ranked[1].cosine or 0.0) if len(ranked) > 1 else 0.0
+    if ranked[0].cosine >= min_cosine and ranked[0].cosine - second >= min_gap:
+        return ranked[0].part_id
+    return None

@@ -18,7 +18,7 @@ down_revision: str | Sequence[str] | None = "0011"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
-# bjk_contracts.embedding.EMBEDDING_DIM과 같게 둔다.
+# 처음 정한 차원. ai 계약(1024)에 맞춘 변경은 0019.
 EMBEDDING_DIM = 1536
 TABLES = ("parts", "part_aliases")
 

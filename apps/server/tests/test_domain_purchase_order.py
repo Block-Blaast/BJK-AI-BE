@@ -7,6 +7,8 @@ from bjk_server.domain.purchase_order import (
     apply_receipt,
     cancel,
     is_open,
+    lead_quantiles,
+    lead_time_samples,
     mark_ordered,
     price_stats,
 )
@@ -68,3 +70,17 @@ def test_price_stats():
     assert price_stats([15000]) == PriceStats(mean=15000.0, std=0.0, n=1)
     stats = price_stats([15000, 16000, 14000])
     assert (stats.mean, stats.std, stats.n) == (15000.0, 1000.0, 3)
+
+
+def test_lead_time_samples_fall_back_to_supplier():
+    assert lead_time_samples([5, 6, 7], [1, 2]) == [5, 6, 7]
+    assert lead_time_samples([5, 6], [5, 6, 9, 9]) == [5, 6, 9, 9]
+    assert lead_time_samples([], []) == []
+
+
+def test_lead_quantiles():
+    assert lead_quantiles([5, 6, 7, 8], False, 2.0, 0.25) == (7, 8)  # 6.5 → 7, 7.7 → 8
+    # 수입 의존: 표본마다 1 + 0.25 × 2 = 1.5배
+    assert lead_quantiles([4, 4, 4], True, 2.0, 0.25) == (6, 6)
+    with pytest.raises(ValueError):
+        lead_quantiles([], False, 0, 0.25)

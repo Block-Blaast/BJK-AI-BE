@@ -11,6 +11,8 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.engine import make_url
 
 SERVER_DIR = Path(__file__).resolve().parents[1]
+# 테스트 DB 정렬 로케일. compose·CI의 postgres:16 기본값과 같게 둔다.
+TEST_DB_LOCALE = os.environ.get("TEST_DB_LOCALE", "en_US.UTF-8")
 
 
 def _base_url() -> str:
@@ -30,7 +32,13 @@ def temp_database(base_url: str) -> Iterator[str]:
     name = f"bjk_test_{uuid.uuid4().hex[:12]}"
     engine = create_engine(base, isolation_level="AUTOCOMMIT")
     with engine.connect() as conn:
-        conn.execute(text(f'CREATE DATABASE "{name}"'))
+        # 서버 기본 로케일(로컬 C, CI·운영 en_US)과 관계없이 운영과 같은 정렬 규칙으로 만든다.
+        conn.execute(
+            text(
+                f"CREATE DATABASE \"{name}\" TEMPLATE template0 ENCODING 'UTF8' "
+                f"LC_COLLATE '{TEST_DB_LOCALE}' LC_CTYPE '{TEST_DB_LOCALE}'"
+            )
+        )
     try:
         yield base.set(database=name).render_as_string(hide_password=False)
     finally:

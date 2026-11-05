@@ -22,6 +22,16 @@ MVP의 LLM 사용처는 `about_project/01-functional-spec.md` 기준으로 아�
 
 LLM과 임베딩은 모두 **Gemini API**로 하고, API 키 하나를 `apps/ai`에서만 관리한다(2026-11-05 결정). 로컬 임베딩 모델(BGE-M3 등)은 쓰지 않는다.
 
+### 실행 설정 (`apps/ai`)
+
+| 환경 변수 | 기본값 | 내용 |
+| --- | --- | --- |
+| `GEMINI_API_KEY` | 없음 | 비어 있으면 Gemini를 부르지 않고 모든 요청에 대체 응답 |
+| `GEMINI_CHAT_MODEL` | `gemini-3.5-flash-lite` | 채팅 해석 모델 |
+| `GEMINI_EMBEDDING_MODEL` | `gemini-embedding-2` | 임베딩 모델(1536차원으로 받음) |
+| `CHAT_BUDGET_SECONDS` | 2.5 | 채팅 해석 재시도 포함 시간 예산 |
+| `EMBED_BUDGET_SECONDS` | 10 | 임베딩 재시도 포함 시간 예산 |
+
 ## 2. 지킬 원칙
 
 - LLM은 수량·판정·수정안을 만들지 않는다. 숫자는 입력으로 받은 스냅샷 값만 문장에 쓴다.
@@ -71,6 +81,12 @@ LLM과 임베딩은 모두 **Gemini API**로 하고, API 키 하나를 `apps/ai`
 - 다음 작업, 사람에게 확인할 질문
 ```
 
-## 4. 명세 충돌 시
+## 4. 작업 위치
+
+- 원래 폴더 `BJK-AI-BE`는 server 에이전트가 자기 브랜치를 체크아웃해 쓴다. AI 작업은 별도 git worktree(`../BJK-AI-BE-ai-contracts-61`)에서 한다.
+- 원래 폴더에는 파일을 만들거나 브랜치를 바꾸지 않는다. 브랜치를 바꾸면 server 작업 파일이 통째로 바뀐다.
+- worktree는 같은 저장소라 커밋·브랜치·원격을 공유한다. 결과는 PR로 합친다.
+
+## 5. 명세 충돌 시
 
 `about_project/README.md`의 충돌 규칙을 따른다. 기능·규칙은 `01`, API·코드값은 `02`가 정본이고, 레포의 다른 문서와 다르면 임의로 고르지 않고 사람에게 확인한다. 확인 전까지 해당 부분은 구현하지 않고 history의 "확인 필요"에 남긴다.

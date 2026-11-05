@@ -2,7 +2,7 @@
 
 - 날짜: 2026-11-05
 - 영역: AI (contracts 포함)
-- 관련: Issue #71, 브랜치 `feat/ai-review-opinion/#71`(#67 브랜치 위에 쌓음), F-REVIEW-05~10, REV-02
+- 관련: Issue #71, Draft PR #72(→ #67 브랜치), 브랜치 `feat/ai-review-opinion/#71`(#67 브랜치 위에 쌓음), F-REVIEW-05~10, REV-02
 
 ## 목적
 

@@ -4,5 +4,6 @@ from bjk_server.jobs import (
     cleanup,  # noqa: F401
     missed_scan,  # noqa: F401
     nightly,  # noqa: F401
+    order_check,  # noqa: F401
     weekly_merge,  # noqa: F401
 )

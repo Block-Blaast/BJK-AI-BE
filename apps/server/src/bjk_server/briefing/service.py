@@ -4,7 +4,8 @@
 - 놓친 발주: 결정을 기다리는 놓친 발주 초안(`missed_draft`), 예상 손실이 큰 순
 - 검토 대기: 결정을 기다리는 직원 요청·재고 부족 초안(`reviewed`·`held`)
 - 실사 필요: 아직 실사를 요청하지 않은 열린 의심 항목
-- 주문 확인 필요: 승인하고 24시간이 지나도록 주문 완료 표시가 없는 발주
+- 주문 확인 필요: 승인하고 24시간이 지나도록 주문 완료 표시가 없는 발주와, 주문 후 기본 공급사
+  LT90을 넘겨도 다 들어오지 않은 발주(order-check 배치와 같은 기준)
 - 정비 완료 확인 필요: 예정일 + 2일이 지나도록 완료 기록이 없는 정비
 """
 
@@ -19,13 +20,12 @@ from bjk_server.db.models import (
     AuditFlag,
     Maintenance,
     Part,
-    PurchaseOrder,
     Review,
     ReviewSnapshot,
 )
+from bjk_server.jobs.order_check import not_ordered, overdue_receipts
 
 DECISION_WAITING = ("reviewed", "held")
-ORDER_CHECK_AFTER = timedelta(hours=24)
 MAINTENANCE_CHECK_DAYS = 2
 
 
@@ -71,12 +71,8 @@ def build_briefing(db: Session, now: datetime) -> dict[str, Any]:
         )
     )
     count_needed = db.scalar(select(func.count()).where(AuditFlag.status == "open"))
-    order_check = db.scalar(
-        select(func.count()).where(
-            PurchaseOrder.status == "approved",
-            PurchaseOrder.approved_at <= now - ORDER_CHECK_AFTER,
-        )
-    )
+    # 주문 확인 필요: 24시간 미주문 + LT90을 넘긴 미입고 (F-MISSED-02, order-check와 같은 기준)
+    order_check = len(not_ordered(db, None, now)) + len(overdue_receipts(db, None, now))
     maintenance_check = db.scalar(
         select(func.count()).where(
             Maintenance.completed_at.is_(None),

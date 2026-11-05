@@ -148,7 +148,11 @@ def record_movement(
     equipment_id: uuid.UUID | None,
     source_text: str | None,
     message_id: uuid.UUID | None = None,
+    *,
+    supplier_id: uuid.UUID | None = None,
+    unit_price: int | None = None,
 ) -> tuple[Movement, int, str]:
+    """원장 기록. IN이면 열린 발주와 대조한다. 공급사·단가를 주면 발주와 다를 때 mismatch."""
     if qty <= 0:
         raise ApiError(ErrorCode.VALIDATION_ERROR, "수량은 1 이상이어야 합니다.", {"qty": qty})
 
@@ -172,7 +176,11 @@ def record_movement(
         message_id=message_id,
         occurred_at=now,
     )
-    receipt = match_receipt(db, part, qty, user.user_id, now) if intent == "IN" else None
+    receipt = (
+        match_receipt(db, part, qty, user.user_id, now, supplier_id, unit_price)
+        if intent == "IN"
+        else None
+    )
     if receipt is not None:
         movement.po_id = receipt.po_id
     db.add(movement)

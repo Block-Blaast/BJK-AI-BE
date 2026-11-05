@@ -8,7 +8,7 @@ API 명세서 10장·14장, 기능명세서 F-NOTI-02, F-MISSED-02, F-SETUP-04, 
 - `missed_orders`: 결정을 기다리는(`reviewed`·`held`) 놓친 발주 초안. 예상 손실 큰 순, `expected_loss_total`은 합계, `t_deadline`은 검토 스냅샷 값.
 - `pending_reviews`: 결정을 기다리는 직원 요청·재고 부족 초안 수(놓친 발주 제외).
 - `count_needed`: 아직 실사를 요청하지 않은 열린 의심 항목(`open`) 수.
-- `order_check_needed`: 승인하고 24시간이 지나도록 주문 완료 표시가 없는 발주 수. LT90을 넘긴 미입고는 order-check 배치(G4)와 함께 더한다.
+- `order_check_needed`: 승인하고 24시간이 지나도록 주문 완료 표시가 없는 발주 수 + 주문 후 기본 공급사 LT90(근거 지표, 없으면 공급사 기본 납기, 그것도 없으면 7일)을 넘겨도 다 들어오지 않은 발주 수(F-MISSED-02). 기준은 `order-check` 배치와 같다.
 - `maintenance_check_needed`: 예정일 + 2일이 지나도록 완료 기록이 없는 정비 수.
 - `should_notify`: 다섯 건수 중 하나라도 0이 아니면 `true`.
 

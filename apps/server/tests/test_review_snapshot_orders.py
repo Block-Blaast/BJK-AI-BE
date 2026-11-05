@@ -2,11 +2,13 @@
 
 from datetime import timedelta
 
+import pytest
 from bjk_review import OrderRequest
 from bjk_server.auth import set_tenant
 from bjk_server.db.models import PurchaseOrder, Review
 from bjk_server.defaults import default_settings
 from bjk_server.reviews.snapshot import collect_snapshot
+from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
 from .test_review_run import (  # noqa: F401
@@ -21,6 +23,13 @@ from .test_review_run import (  # noqa: F401
 )
 
 OWNER = demo_id("user", "owner")
+
+
+@pytest.fixture(autouse=True)
+def no_seed_orders(fresh):  # noqa: F811
+    """시드의 과거 입고 완료 발주(#12)를 지우고 이 테스트의 발주만 둔다."""
+    with Session(fresh.admin) as s, s.begin():
+        s.execute(delete(PurchaseOrder))
 
 
 def _add(db, **overrides) -> None:

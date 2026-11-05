@@ -5,6 +5,7 @@ AI·server 영역 작업 기록 색인. 작성 규칙은 [docs/ai-work-rules.md]
 | 날짜 | 파일 | 내용 |
 | --- | --- | --- |
 | 2026-11-05 | [2026-11-05-07-server-todo.md](2026-11-05-07-server-todo.md) | server 스택 앞으로 할 일 31단계 (시연 경로 나머지, ai 연동, B 단계, 운영 준비) |
+| 2026-11-05 | [2026-11-05-07-review-engine.md](2026-11-05-07-review-engine.md) | 발주 검토 판정 엔진 `packages/review`, F-REVIEW-10 예시 고정 |
 | 2026-11-05 | [2026-11-05-06-server-deferred.md](2026-11-05-06-server-deferred.md) | server 스택 남겨둔 점 (ai 파트, 선행 기능 대기 항목, 미검증 항목) |
 | 2026-11-05 | [2026-11-05-06-review-opinion-endpoint.md](2026-11-05-06-review-opinion-endpoint.md) | 의견서 문장 엔드포인트, 실제 Gemini 호출 확인, 이벤트 루프 문제 수정 |
 | 2026-11-05 | [2026-11-05-05-worktree-cleanup.md](2026-11-05-05-worktree-cleanup.md) | 원래 폴더의 복사본 정리, 작업 위치 규칙 추가 |

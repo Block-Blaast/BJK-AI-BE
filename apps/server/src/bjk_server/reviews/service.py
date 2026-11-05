@@ -15,10 +15,18 @@ from datetime import datetime, timedelta
 from typing import Annotated, Any
 
 from bjk_contracts import OpinionRequest, OpinionResponse
-from bjk_review import OrderRequest, ReviewDeps, ReviewOutcome, ReviewSettings, run_review_flow
+from bjk_review import (
+    OrderRequest,
+    ReviewDeps,
+    ReviewOutcome,
+    ReviewResult,
+    ReviewSettings,
+    run_review_flow,
+)
+from bjk_review import ReviewSnapshot as SnapshotValues
 from bjk_review.graph import Entry
 from fastapi import Depends
-from sqlalchemy import event
+from sqlalchemy import event, select
 from sqlalchemy.orm import Session
 
 from bjk_server import clock
@@ -221,3 +229,25 @@ def get_review_runner(
     ai: Annotated[AiClient | None, Depends(get_ai_client)],
 ) -> ReviewRunner:
     return ReviewRunner(scope, ai, _executor)
+
+
+def stored_review(db: Session, review: Review) -> tuple[ReviewResult, SnapshotValues] | None:
+    """저장한 판정 결과와 그 스냅샷(가장 최근 행). 아직 검토가 끝나지 않았으면 None."""
+    row = db.scalar(
+        select(ReviewSnapshot)
+        .where(ReviewSnapshot.review_id == review.id)
+        .order_by(ReviewSnapshot.created_at.desc(), ReviewSnapshot.id)
+        .limit(1)
+    )
+    if row is None or review.result is None or review.verdict is None:
+        return None
+    result = ReviewResult.model_validate(
+        {
+            **review.result,
+            "verdict": review.verdict,
+            "flags": review.flags,
+            "hold_reasons": review.hold_reasons,
+            "review_hash": row.hash,
+        }
+    )
+    return result, SnapshotValues.model_validate(row.values)

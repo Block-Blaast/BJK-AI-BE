@@ -5,7 +5,6 @@ AI·server 영역 작업 기록 색인. 작성 규칙은 [docs/ai-work-rules.md]
 | 날짜 | 파일 | 내용 |
 | --- | --- | --- |
 | 2026-11-05 | [2026-11-05-67-demo-flow-more.md](2026-11-05-67-demo-flow-more.md) | 시연 흐름 통합 테스트 보강(보류 보완 승인, 질문·PDF, 재고 부족 초안) |
-| 2026-11-06 | [2026-11-06-03-stock-draft.md](2026-11-06-03-stock-draft.md) | 재고 부족 초안 검토 생성(F-LEDGER-03), 초안 중복 방지 공유 |
 | 2026-11-05 | [2026-11-05-66-stock-draft.md](2026-11-05-66-stock-draft.md) | 재고 부족 초안 검토 생성(F-LEDGER-03), 초안 중복 방지 공유 |
 | 2026-11-05 | [2026-11-05-65-dashboard-awaiting-order.md](2026-11-05-65-dashboard-awaiting-order.md) | 대시보드 주문 대기 발주(approved) 연결, 권한·회사 격리 테스트 |
 | 2026-11-05 | [2026-11-05-64-demo-flow-test.md](2026-11-05-64-demo-flow-test.md) | 시연 핵심 흐름(발주 요청~입고 대조) 통합 테스트, 끊김 없음 |

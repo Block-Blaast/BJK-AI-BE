@@ -19,7 +19,8 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 # bjk_contracts.embedding.EMBEDDING_DIM과 같게 둔다.
-EMBEDDING_DIM = 1536
+# Bedrock 임베딩(Titan Embed Text v2) 출력 차원에 맞춘다.
+EMBEDDING_DIM = 1024
 TABLES = ("parts", "part_aliases")
 
 

@@ -36,7 +36,8 @@ NAMING = {
 }
 
 # bjk_contracts.embedding.EMBEDDING_DIM과 같게 둔다.
-EMBEDDING_DIM = 1536
+# Bedrock 임베딩(Titan Embed Text v2) 출력 차원에 맞춘다.
+EMBEDDING_DIM = 1024
 # 모델이 다른 벡터끼리는 비교할 수 없어 벡터와 모델명을 함께 둔다.
 EMBEDDING_PAIR = "(embedding IS NULL) = (embedding_model IS NULL)"
 

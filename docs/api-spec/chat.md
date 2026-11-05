@@ -97,7 +97,7 @@
 // 200 Response
 {
   "intent": "OUT",
-  "movement": { "id": "...", "type": "OUT", "part_id": "...", "qty": -2, "equipment_id": "...", "maintenance_id": null },
+  "movement": { "id": "...", "type": "OUT", "part_id": "...", "qty": -2, "equipment_id": "...", "maintenance_id": null, "po_id": null },
   "stock_after": 1,
   "reply": "출고 완료. 남은 재고 1개",
   "alias_learned": { "text": "베어링", "part_id": "..." },
@@ -114,7 +114,10 @@
 | 다른 사람의 카드, 없는 설비 | 404 `NOT_FOUND` |
 
 - `triggered.audit_flag_id`: 이 기록으로 재고가 0 이상에서 0 미만이 되면 만든(또는 묶은) 장부 의심 항목 ID ([audit.md](audit.md)).
-- 현재 구현 범위: `OUT`·`IN`만 처리한다. `triggered.draft_review_id`(재고 부족 초안), `IN`의 `po_match`·`actual_lead_time_days`는 검토·발주 기능에서 채운다.
+- `IN`은 같은 부품의 열린 발주와 대조한다(F-LEDGER-04, #164). 잔량이 입고 수량과 같은 발주를 먼저, 없으면 가장 오래된 승인을 고르고 원장 `movement.po_id`에 연결한다.
+  - `po_match`: `complete`(발주 수량 채움, `received`), `partial`(`partially_received`, 잔량 유지), `mismatch`(잔량보다 많이 들어옴, 입고는 반영하고 관리자·사장님에게 `receipt_check` 알림), `no_order`(열린 발주 없음). `OUT`은 `null`.
+  - `actual_lead_time_days`: 이번 입고로 발주를 채웠을 때 주문 완료 시각부터 입고까지 일수. 주문 완료 표시 없이 입고되면 서버가 `ordered`로 바꾸고(`implicit_order`) 납기 표본에서 빼서 `null`.
+- 현재 구현 범위: `OUT`·`IN`만 처리한다. `triggered.draft_review_id`(재고 부족 초안)는 검토 기능에서 채운다. 확인 카드(CHAT-01)의 `po_match` 미리 보기는 아직 붙이지 않았다.
 - 확인 카드 확정과 폼 입력은 같은 회사·부품의 원장 추가와 재고 합산을 트랜잭션 단위로 직렬화한다. `stock_after`는 해당 요청이 반영된 시점의 합산값이며, 이후 다른 요청이 재고를 바꿀 수 있다.
 
 ### 재고 동시성 검증 (#69)

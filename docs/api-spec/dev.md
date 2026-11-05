@@ -22,3 +22,23 @@
 | owner 아님 | 403 `FORBIDDEN_ROLE` |
 | 없는 시나리오 | 400 `VALIDATION_ERROR` |
 | 개발 환경 아님 | 404 `NOT_FOUND` |
+
+## DEV-04 POST /api/v1/dev/impersonate
+
+- 권한: owner
+- 동작: 같은 회사에서 요청한 역할의 시연 계정 토큰을 발급한다. 시드 계정(owner·manager·worker)이 활성 상태면 그 계정, 아니면 그 역할로 가장 먼저 만든 활성 계정을 쓴다.
+
+```json
+// Request
+{ "role": "worker" }
+
+// 200 Response (AUTH-02와 같은 형식)
+{ "access_token": "eyJ...", "refresh_token": "eyJ...", "expires_in": 900, "user": { "id": "...", "name": "이현장", "role": "worker" } }
+```
+
+| 상황 | 응답 |
+| --- | --- |
+| owner 아님 | 403 `FORBIDDEN_ROLE` |
+| `worker`·`manager`·`owner` 외 값 | 400 `VALIDATION_ERROR` |
+| 해당 역할 계정 없음 | 404 `NOT_FOUND` |
+| 개발 환경 아님 | 404 `NOT_FOUND` |

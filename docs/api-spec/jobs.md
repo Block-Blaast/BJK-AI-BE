@@ -72,8 +72,7 @@ python -m bjk_server.jobs nightly
 | 결품 확률 | `p_out` ≥ `system.missed_p_out_min`(기본 0.3) |
 | 발주 마감 | `t_deadline` ≤ 오늘 + `review.c08_days`(기본 5일, C-08과 같은 기준) |
 | 권장 발주량 | R > 0 (R = 0이면 초안을 만들지 않음) |
-| 중복 방지 | 같은 부품의 열린 검토(`reviewing`, `reviewed`, `held`)가 있거나, 오늘(Asia/Seoul) `accept_no_order`로 닫힌 검토가 있으면 제외 |
+| 중복 방지 | 같은 부품의 열린 발주(`approved`, `ordered`, `partially_received`)·열린 검토(`reviewing`, `reviewed`, `held`)가 있거나, 오늘(Asia/Seoul) `accept_no_order`로 닫힌 검토가 있으면 제외. 재고 부족 초안과 같은 규칙(`reviews.drafts.BLOCKERS`) |
 
 - 초안 원안: 수량 R, 공급사는 기본 공급사, 단가는 비움(등록 단가 사용). 우선순위(P_out × L) 높은 순으로 만든다.
 - 초안은 작업 트랜잭션과 함께 커밋되고, 검토([reviews.md](reviews.md) 검토 실행)는 커밋 직후 같은 프로세스에서 하나씩 끝까지 돈다. 요약 `{"companies", "drafts_created"}`.
-- 현재 구현 범위: 열린 발주 제외는 발주 테이블 연결 전이라 하지 않는다(`missed_scan.BLOCKERS`에 더할 자리).

@@ -63,7 +63,8 @@ def _record_card(
 ) -> tuple[str, Card]:
     """출고·입고 메시지의 확인 카드와 답변."""
     equipment = find_equipment(db, parsed.equipment_text)
-    candidates = find_candidates(db, parsed.part_text, equipment.id if equipment else None)
+    matched = find_candidates(db, parsed.part_text, equipment.id if equipment else None)
+    candidates = matched.candidates
     common = {
         "intent": parsed.intent,
         "part_text": parsed.part_text,
@@ -77,7 +78,7 @@ def _record_card(
         "source_text": text,
     }
 
-    if not candidates:
+    if not candidates and matched.confirmed is None:
         entry = _add_entry(db, user, message_id, "unregistered", parsed.intent, payload, now)
         label = parsed.part_text or "부품"
         reply = f"'{label}'은(는) 등록되지 않은 부품이에요. 관리자에게 등록을 요청해 주세요."
@@ -85,7 +86,8 @@ def _record_card(
             type="unregistered", entry_id=entry.id, expires_at=entry.expires_at, **common
         )
 
-    if len(candidates) > 1:
+    # 확정 조건(별칭 일치, 규격 완전 일치 후보 1개)이 아니면 후보가 하나여도 사람이 고른다.
+    if matched.confirmed is None:
         payload["candidate_ids"] = [str(c.part_id) for c in candidates]
         entry = _add_entry(db, user, message_id, "select", parsed.intent, payload, now)
         card = Card(
@@ -97,7 +99,7 @@ def _record_card(
         )
         return f"어떤 {parsed.part_text}인가요?", card
 
-    part = candidates[0]
+    part = matched.confirmed
     payload["part_id"] = str(part.part_id)
     unusual = parsed.qty is not None and is_unusual_qty(db, part.part_id, parsed.intent, parsed.qty)
     type_: CardType = "warning" if unusual else "confirm"
@@ -127,7 +129,8 @@ def _candidate_out(c: Candidate) -> CandidateOut:
 
 
 def _query_reply(db: Session, parsed: Interpretation, now: datetime) -> str:
-    candidates = find_candidates(db, parsed.part_text, None)
+    matched = find_candidates(db, parsed.part_text, None)
+    candidates = [matched.confirmed] if matched.confirmed else matched.candidates
     if not candidates:
         return f"'{parsed.part_text or ''}'에 해당하는 부품을 찾지 못했어요."
     if len(candidates) > 1:

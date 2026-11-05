@@ -57,3 +57,5 @@ class MessageResponse(BaseModel):
     reply: str
     cards: list[Card]
     ai: AiStatus
+    # COUNT 응답에서 차이 사유를 보낼 실사 요청(AUD-04). 그 밖에는 null
+    count_request_id: uuid.UUID | None = None

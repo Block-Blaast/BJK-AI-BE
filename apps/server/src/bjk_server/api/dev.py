@@ -11,11 +11,12 @@ from sqlalchemy.orm import Session
 from bjk_server.api.auth import LoginResponse
 from bjk_server.api.schemas import TokenPair, UserBrief
 from bjk_server.auth import TenantDB, require_role
+from bjk_server.clock import KST
 from bjk_server.db.models import User
 from bjk_server.db.session import get_admin_db
 from bjk_server.errors import ApiError, ErrorCode
 from bjk_server.security import Role, TokenClaims
-from bjk_server.seed.demo import COMPANY_CODE, KST, demo_id, seed_demo
+from bjk_server.seed.demo import COMPANY_CODE, demo_id, seed_demo
 
 router = APIRouter(prefix="/api/v1/dev", tags=["dev"])
 

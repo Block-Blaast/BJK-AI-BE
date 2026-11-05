@@ -17,6 +17,7 @@ from bjk_server.api.schemas import Forecast
 from bjk_server.auth import CurrentUser, TenantDB
 from bjk_server.clock import KST
 from bjk_server.db.models import Part, Review, ReviewSnapshot, User
+from bjk_server.domain.external import Level, risk_level
 from bjk_server.errors import ApiError, ErrorCode
 from bjk_server.pagination import Page, PageParams, keyset_page, page_params
 from bjk_server.reviews.service import stored_review
@@ -71,6 +72,22 @@ class SnapshotOut(BaseModel):
     values: dict[str, Any]
 
 
+class ExternalFactors(BaseModel):
+    """스냅샷에 담긴 외부 요인 (F-EXT-02). 위험이 없어도 값을 보여준다.
+
+    r_lead는 납기 요인(해상운임 등), r_price는 단가 요인(환율) 위험도다. 수입 의존 부품만 반영한다.
+    applied는 C-09(외부 리스크)에 걸렸는지다.
+    """
+
+    import_dependent: bool
+    r_lead: float
+    r_price: float
+    lead_level: Level
+    price_level: Level
+    holidays_in_lead: list[str]
+    applied: bool
+
+
 class ReviewDetail(BaseModel):
     id: uuid.UUID
     entry: Entry
@@ -88,6 +105,7 @@ class ReviewDetail(BaseModel):
     count_requests: list[dict[str, Any]]
     opinion: Opinion | None
     snapshot: SnapshotOut | None
+    external: ExternalFactors | None
     computed_at: datetime | None
     expires_at: datetime | None
     decision: dict[str, Any] | None
@@ -102,6 +120,12 @@ def visible_reviews(user: TokenClaims):
     return stmt
 
 
+class ItemDecision(BaseModel):
+    action: str
+    reason: str | None
+    decided_at: datetime | None
+
+
 class ReviewItem(BaseModel):
     id: uuid.UUID
     entry: Entry
@@ -109,9 +133,22 @@ class ReviewItem(BaseModel):
     status: Status
     verdict: Verdict | None
     flags: list[str]
+    # 요청 수량(원안). 폰 "내 요청"이 상세를 따로 받지 않고 보여 준다 (#297)
+    qty: int | None
     original_total: int | None
     saving: int
+    decision: ItemDecision | None
     created_at: datetime
+
+
+def _item_decision(review: Review) -> ItemDecision | None:
+    if not review.decision:
+        return None
+    return ItemDecision(
+        action=review.decision["action"],
+        reason=review.decision.get("reason"),
+        decided_at=review.decided_at.astimezone(KST) if review.decided_at else None,
+    )
 
 
 # 긴급(C-08) 먼저, 그다음 미발주 예상 손실 큰 순 (REV-01)
@@ -157,8 +194,10 @@ def list_reviews(
             status=r.Review.status,
             verdict=r.Review.verdict,
             flags=r.Review.flags,
+            qty=(r.Review.request or {}).get("qty"),
             original_total=r.Review.original_total,
             saving=r.Review.saving,
+            decision=_item_decision(r.Review),
             created_at=r.Review.created_at.astimezone(KST),
         ),
         cursor_of=lambda r: [r.urgent_rank, r.Review.loss, r.Review.created_at, r.Review.id],
@@ -213,6 +252,19 @@ def snapshot_values(values: dict[str, Any], request_qty: int | None) -> dict[str
     }
 
 
+def external_factors(values: dict[str, Any], checks: list[dict[str, Any]]) -> ExternalFactors:
+    r_lead, r_price = values.get("r_lead", 0.0), values.get("r_price", 0.0)
+    return ExternalFactors(
+        import_dependent=values.get("import_dependent", False),
+        r_lead=r_lead,
+        r_price=r_price,
+        lead_level=risk_level(r_lead),
+        price_level=risk_level(r_price),
+        holidays_in_lead=values.get("holidays_in_lead", []),
+        applied=any(c.get("code") == "C-09" for c in checks),
+    )
+
+
 @router.get("/{review_id}", response_model=ReviewDetail)
 def get_review(review_id: uuid.UUID, user: CurrentUser, db: TenantDB) -> ReviewDetail:
     """REV-02. 판정·체크·원안·수정안·대안·미발주 리스크·의견서·스냅샷."""
@@ -264,6 +316,7 @@ def get_review(review_id: uuid.UUID, user: CurrentUser, db: TenantDB) -> ReviewD
         )
         if snap
         else None,
+        external=external_factors(snap.values, result.get("checks", [])) if snap else None,
         computed_at=snap.computed_at.astimezone(KST) if snap else None,
         expires_at=review.expires_at.astimezone(KST) if review.expires_at else None,
         decision=review.decision,

@@ -9,7 +9,7 @@ from bjk_server.seed.demo import demo_id
 from sqlalchemy.orm import Session
 
 from .conftest import auth_header
-from .review_rows import SUP_A, add_review
+from .review_rows import SUP_A, add_review, vbelt_snapshot
 
 
 @pytest.fixture
@@ -116,3 +116,32 @@ def test_detail_reads_review_saved_by_run_service(client, demo_db):
     assert body["snapshot"]["values"]["R"] == 10
     assert body["opinion"]["source"] == "template"
     assert body["part"] == "V벨트 A-42"
+
+
+def test_external_factors_shown_even_when_normal(client, vbelt):
+    """외부 요인이 정상이어도 검토 상세에 값을 담는다 (#291)."""
+    external = _get(client, vbelt).json()["external"]
+    assert external == {
+        "import_dependent": False,
+        "r_lead": 0.0,
+        "r_price": 0.0,
+        "lead_level": "normal",
+        "price_level": "normal",
+        "holidays_in_lead": [],
+        "applied": False,
+    }
+
+
+def test_external_factors_mark_c09(client, demo_db):
+    """수입 의존 부품에 운임 위험도가 높으면 단계와 C-09 적용을 함께 보여준다."""
+    demo_db.reseed()
+    snapshot = vbelt_snapshot().model_copy(
+        update={"import_dependent": True, "r_lead": 2.4, "r_price": 1.1}
+    )
+    with Session(demo_db.admin) as s, s.begin():
+        review_id = add_review(s, snapshot=snapshot).id
+    body = _get(client, review_id).json()
+    assert "C-09" in {c["code"] for c in body["checks"]}
+    external = body["external"]
+    assert (external["lead_level"], external["price_level"]) == ("high", "caution")
+    assert external["r_lead"] == 2.4 and external["applied"] is True

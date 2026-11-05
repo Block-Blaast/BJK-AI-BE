@@ -4,6 +4,7 @@ AI·server 영역 작업 기록 색인. 작성 규칙은 [docs/ai-work-rules.md]
 
 | 날짜 | 파일 | 내용 |
 | --- | --- | --- |
+| 2026-11-05 | [2026-11-05-40-review-clarify.md](2026-11-05-40-review-clarify.md) | 보류 검토 보완 API(REV-03), 같은 검토 재실행 |
 | 2026-11-05 | [2026-11-05-39-dashboard-summary.md](2026-11-05-39-dashboard-summary.md) | 대시보드 요약 DSH-02(#180), 묶인 재고 180일 미출고 기준, 주문 대기는 발주 연결 전 0 |
 | 2026-11-05 | [2026-11-05-38-part-merge.md](2026-11-05-38-part-merge.md) | 중복 부품 후보 탐지 `weekly-merge`, MAT-01·02 병합, 병합 재고 합산(#209), 714개 통과 |
 | 2026-11-05 | [2026-11-05-37-policy-main-only.md](2026-11-05-37-policy-main-only.md) | dev 대상 PR 협업 정책 검사 중단, main·Issue 검사 유지 |

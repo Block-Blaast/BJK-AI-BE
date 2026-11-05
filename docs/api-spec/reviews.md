@@ -62,3 +62,26 @@ HTTP API가 아니라 채팅 발주 요청(CHAT-04), 재고 부족 초안, 놓�
 | `reviewed`가 아닌 검토(검토중·보류·결정됨) | 409 `REVIEW_NOT_DECIDABLE`, `detail.status` |
 | 없는 검토, 다른 회사 검토 | 404 `NOT_FOUND` |
 | 수량 음수 등 형식 오류 | 400 `VALIDATION_ERROR` |
+
+## REV-03 POST /api/v1/reviews/{id}/clarify
+
+- 권한: 요청자 본인 또는 manager 이상. 다른 작업자의 검토는 404.
+- 보류(`held`) 검토에 부품·공급사를 보완하고 같은 검토를 `reviewing`으로 되돌려 다시 실행한다(F-REVIEW-03). 결과는 새 스냅샷 행으로 쌓인다.
+
+```json
+// Request (보류 사유에 맞는 값만)
+{ "part_id": "...", "supplier_id": "..." }
+
+// 202 Response
+{ "review_id": "...", "status": "reviewing" }
+```
+
+- 실행은 응답 커밋 뒤 백그라운드에서 한다. 화면은 `review.progress`의 `done`을 받으면 다시 조회한다.
+- 보완하지 않은 보류 건은 `expires_at`(보류 시각 + 7일) 뒤 만료 대상이다.
+
+| 상황 | 응답 |
+| --- | --- |
+| `held`가 아닌 검토 | 409 `REVIEW_NOT_DECIDABLE`, `detail.status` |
+| 부품·공급사 둘 다 없음 | 400 `VALIDATION_ERROR`, `detail.fields` |
+| 없는 부품(병합된 부품, 다른 회사 부품 포함)·공급사 | 400 `VALIDATION_ERROR`, `detail.field` |
+| 없는 검토, 다른 회사 검토, 다른 작업자의 검토 | 404 `NOT_FOUND` |

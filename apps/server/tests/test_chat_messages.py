@@ -60,11 +60,13 @@ def test_qty_over_five_times_past_max_gives_warning_card(chat):
     assert body["reply"] == "볼베어링 6205ZZ 6개 맞나요? 평소보다 훨씬 많아요."
 
 
-def test_in_with_single_match_is_confirm(chat):
+def test_single_name_match_still_asks_to_select(chat):
+    # 확정 조건(별칭, 규격 완전 일치)이 아니면 후보가 하나여도 사람이 고른다 (F-MATCH-01)
     body = chat("V벨트 3개 들어옴").json()
     assert body["intent"] == "IN"
-    assert body["cards"][0]["type"] == "confirm"
-    assert body["reply"] == "V벨트 A-42 3개 입고할까요?"
+    card = body["cards"][0]
+    assert card["type"] == "select"
+    assert [c["name"] for c in card["candidates"]] == ["V벨트 A-42"]
 
 
 def test_unknown_part_gives_unregistered_card(chat):

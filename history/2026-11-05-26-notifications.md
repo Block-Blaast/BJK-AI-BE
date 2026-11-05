@@ -25,6 +25,7 @@
 
 - `REQUIRE_DB_TESTS=1 uv run pytest apps/server/tests/test_notifications.py`: 11개 통과
 - `REQUIRE_DB_TESTS=1 make test`: 586개 통과, `make lint` 통과
+- dev 반영 후 `REQUIRE_DB_TESTS=1 make test` 592개 통과, 마이그레이션 0021(dev 최신 0020 다음) 확인
 
 ## 남은 일·확인 필요
 

@@ -4,6 +4,7 @@ import uuid
 from datetime import date, datetime
 from typing import Any
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     ARRAY,
     Boolean,
@@ -33,6 +34,11 @@ NAMING = {
     "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
     "pk": "pk_%(table_name)s",
 }
+
+# bjk_contracts.embedding.EMBEDDING_DIM과 같게 둔다.
+EMBEDDING_DIM = 1536
+# 모델이 다른 벡터끼리는 비교할 수 없어 벡터와 모델명을 함께 둔다.
+EMBEDDING_PAIR = "(embedding IS NULL) = (embedding_model IS NULL)"
 
 
 class Base(DeclarativeBase):
@@ -124,6 +130,7 @@ class Part(Base):
             "import_override IS NULL OR import_override IN ('high', 'medium', 'low')",
             name="import_override",
         ),
+        CheckConstraint(EMBEDDING_PAIR, name="embedding_model"),
     )
 
     id: Mapped[uuid.UUID] = _id()
@@ -138,13 +145,18 @@ class Part(Base):
     import_override: Mapped[str | None] = mapped_column(String(8))
     location: Mapped[str | None] = mapped_column(String(100))
     merged_into: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("parts.id"))
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBEDDING_DIM))
+    embedding_model: Mapped[str | None] = mapped_column(String(100))
     created_at: Mapped[datetime] = _created_at()
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class PartAlias(Base):
     __tablename__ = "part_aliases"
-    __table_args__ = (UniqueConstraint("company_id", "text", "part_id"),)
+    __table_args__ = (
+        UniqueConstraint("company_id", "text", "part_id"),
+        CheckConstraint(EMBEDDING_PAIR, name="embedding_model"),
+    )
 
     id: Mapped[uuid.UUID] = _id()
     company_id: Mapped[uuid.UUID] = _company_id()
@@ -152,6 +164,8 @@ class PartAlias(Base):
     text: Mapped[str] = mapped_column(String(100))
     confirmed_count: Mapped[int] = mapped_column(Integer, server_default="0")
     ambiguous: Mapped[bool] = mapped_column(Boolean, server_default=sql_text("false"))
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBEDDING_DIM))
+    embedding_model: Mapped[str | None] = mapped_column(String(100))
     created_at: Mapped[datetime] = _created_at()
 
 
@@ -235,6 +249,8 @@ class Movement(Base):
     source_text: Mapped[str | None] = mapped_column(Text)
     equipment_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("equipment.id"))
     maintenance_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("maintenance.id"))
+    # 채팅으로 기록한 경우 원본 메시지. 폼 입력·실사조정 등은 null.
+    message_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("chat_messages.id"))
     # 발주 테이블은 발주 Issue에서 추가하고 외래 키를 건다.
     po_id: Mapped[uuid.UUID | None]
     reason: Mapped[str | None] = mapped_column(Text)

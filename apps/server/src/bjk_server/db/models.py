@@ -661,6 +661,7 @@ class ReviewSnapshot(Base):
     # 스냅샷을 만들 때 쓴 설정값. 설정이 바뀌어도 이 검토의 판정은 그대로 재현된다.
     settings: Mapped[dict[str, Any]]
     computed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = _created_at()
 
 
 class LlmCall(Base):

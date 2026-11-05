@@ -123,3 +123,39 @@ def order_message(part_name: str, qty: int, unit: str, need_by: date | None) -> 
     if need_by is not None:
         text += f" {need_by.month}월 {need_by.day}일까지 받을 수 있을까요?"
     return text
+
+
+# 공급사×부품 납기 표본이 이보다 적으면 그 공급사 전체 표본을 쓴다 (F-ANAL-04)
+MIN_PART_LEAD_SAMPLES = 3
+
+
+def lead_time_samples(part_supplier: Sequence[int], supplier: Sequence[int]) -> list[int]:
+    """실제 납기 표본 고르기.
+
+    공급사×부품 3건 이상이면 그것, 아니면 공급사 전체. 둘 다 없으면 빈 목록(기본 납기를 쓴다).
+    """
+    if len(part_supplier) >= MIN_PART_LEAD_SAMPLES:
+        return list(part_supplier)
+    return list(supplier)
+
+
+def lead_quantiles(
+    samples: Sequence[int], import_dependent: bool, r_lead: float, k: float
+) -> tuple[int, int]:
+    """실제 납기 표본의 LT50·LT90 (일, 올림).
+
+    수입 의존 부품은 표본마다 (1 + k × r_lead)를 곱한다(F-EXT-02 5단계). 분위수는 선형 보간.
+    연휴 반영은 부르는 쪽이 결과에 더한다.
+    """
+    if not samples:
+        raise ValueError("납기 표본이 비어 있습니다.")
+    weight = 1 + k * r_lead if import_dependent else 1.0
+    values = sorted(d * weight for d in samples)
+
+    def quantile(q: float) -> int:
+        pos = (len(values) - 1) * q
+        lo, hi = math.floor(pos), math.ceil(pos)
+        value = values[lo] + (values[hi] - values[lo]) * (pos - lo)
+        return math.ceil(value - 1e-9)
+
+    return quantile(0.5), quantile(0.9)

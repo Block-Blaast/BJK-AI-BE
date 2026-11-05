@@ -91,6 +91,8 @@ class CompanySettings(Base):
     notify: Mapped[dict[str, Any]]
     review: Mapped[dict[str, Any]]
     system: Mapped[dict[str, Any]]
+    # 개발·시연 시나리오 스위치 (DEV-02 외부 충격 등). 운영에서는 비어 있다.
+    scenarios: Mapped[dict[str, Any]] = mapped_column(server_default=sql_text("'{}'::jsonb"))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

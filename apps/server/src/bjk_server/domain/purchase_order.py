@@ -4,6 +4,8 @@
 cancelled(취소)는 approved에서만 갈 수 있다. received·cancelled는 끝 상태다.
 """
 
+import math
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal
 
@@ -88,3 +90,27 @@ def apply_receipt(
 
 def is_open(status: PoStatus) -> bool:
     return status in OPEN_STATUSES
+
+
+@dataclass(frozen=True)
+class PriceStats:
+    """최근 구매 단가의 평균 p̄, 표준편차 σ_p, 건수 n (F-REVIEW-02, C-05).
+
+    건수가 0이면 평균·표준편차는 None.
+    """
+
+    mean: float | None
+    std: float | None
+    n: int
+
+
+def price_stats(prices: Sequence[int]) -> PriceStats:
+    """표본 표준편차(n − 1). 한 건이면 표준편차 0."""
+    n = len(prices)
+    if n == 0:
+        return PriceStats(mean=None, std=None, n=0)
+    mean = sum(prices) / n
+    if n == 1:
+        return PriceStats(mean=mean, std=0.0, n=1)
+    variance = sum((p - mean) ** 2 for p in prices) / (n - 1)
+    return PriceStats(mean=mean, std=math.sqrt(variance), n=n)

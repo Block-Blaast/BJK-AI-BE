@@ -2,11 +2,13 @@ import pytest
 from bjk_server.domain.purchase_order import (
     STATUSES,
     OrderStateConflict,
+    PriceStats,
     ReceiptOutcome,
     apply_receipt,
     cancel,
     is_open,
     mark_ordered,
+    price_stats,
 )
 
 
@@ -59,3 +61,10 @@ def test_open_statuses():
 
 def test_same_input_same_output():
     assert apply_receipt("ordered", 7, 2, 3) == apply_receipt("ordered", 7, 2, 3)
+
+
+def test_price_stats():
+    assert price_stats([]) == PriceStats(mean=None, std=None, n=0)
+    assert price_stats([15000]) == PriceStats(mean=15000.0, std=0.0, n=1)
+    stats = price_stats([15000, 16000, 14000])
+    assert (stats.mean, stats.std, stats.n) == (15000.0, 1000.0, 3)

@@ -2,7 +2,7 @@
 
 - 날짜: 2026-11-05
 - 영역: AI (검토 엔진)
-- 관련: Issue #85, 브랜치 `feat/review-langgraph/#85`(#81 브랜치 위에 쌓음), F-REVIEW-01, 2장 기술 스택, API 명세서 11장 SSE `review.progress`
+- 관련: Issue #85, Draft PR #86(→ #81 브랜치), 브랜치 `feat/review-langgraph/#85`(#81 브랜치 위에 쌓음), F-REVIEW-01, 2장 기술 스택, API 명세서 11장 SSE `review.progress`
 
 ## 바로잡기
 

@@ -4,6 +4,7 @@ AI·server 영역 작업 기록 색인. 작성 규칙은 [docs/ai-work-rules.md]
 
 | 날짜 | 파일 | 내용 |
 | --- | --- | --- |
+| 2026-11-05 | [2026-11-05-32-missed-scan.md](2026-11-05-32-missed-scan.md) | 놓친 발주 스캔 배치(F-MISSED-01), 중복 방지 |
 | 2026-11-05 | [2026-11-05-31-review-clarify.md](2026-11-05-31-review-clarify.md) | 보류 검토 보완 API(REV-03), 같은 검토 재실행 |
 | 2026-11-05 | [2026-11-05-30-review-recheck.md](2026-11-05-30-review-recheck.md) | 재검토 미리 보기 API(REV-04), 같은 수정 값이면 같은 해시 |
 | 2026-11-05 | [2026-11-05-29-review-run.md](2026-11-05-29-review-run.md) | 검토 실행·저장 서비스, 스냅샷 수집, 의견서 ai 호출 |

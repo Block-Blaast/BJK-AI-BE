@@ -7,12 +7,14 @@ from typing import Any
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     ARRAY,
+    BigInteger,
     Boolean,
     CheckConstraint,
     Date,
     DateTime,
     Float,
     ForeignKey,
+    Identity,
     Index,
     Integer,
     MetaData,
@@ -468,3 +470,16 @@ class PartSupplierMetrics(Base):
     samples: Mapped[int] = mapped_column(Integer)
     unit_price: Mapped[int] = mapped_column(Integer)
     moq: Mapped[int] = mapped_column(Integer)
+
+
+class ServerEvent(Base):
+    """SSE 실시간 이벤트 (API 명세서 NOT-03). id는 SSE 이벤트 ID로 쓴다."""
+
+    __tablename__ = "events"
+    __table_args__ = (Index("ix_events_company_id_id", "company_id", "id"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    company_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("companies.id", ondelete="CASCADE"))
+    type: Mapped[str] = mapped_column(String(32))
+    data: Mapped[dict[str, Any]]
+    created_at: Mapped[datetime] = _created_at()

@@ -18,6 +18,7 @@ from bjk_server.domain.ledger import (
     pick_maintenance,
 )
 from bjk_server.errors import ApiError, ErrorCode
+from bjk_server.events import publish
 from bjk_server.inventory import stock_of
 from bjk_server.security import TokenClaims
 
@@ -143,6 +144,7 @@ def record_movement(
     db.add(movement)
     db.flush()
     stock = stock_of(db, part.id)
+    publish(db, user.company_id, "stock.changed", {"part_id": str(part.id), "stock": stock})
     action = "출고" if intent == "OUT" else "입고"
     label = "남은 재고" if intent == "OUT" else "현재 재고"
     return movement, stock, f"{action} 완료. {label} {stock}{part.unit}"

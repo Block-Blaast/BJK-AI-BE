@@ -22,6 +22,7 @@ TABLES = {
     "movements",
     "idempotency_keys",
     "invites",
+    "events",
 }
 
 

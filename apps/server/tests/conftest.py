@@ -11,7 +11,7 @@ from alembic import command
 from alembic.config import Config
 from bjk_server import ratelimit
 from bjk_server.chat.interpreter import get_interpreter
-from bjk_server.db.session import get_admin_db, get_db
+from bjk_server.db.session import get_admin_db, get_db, get_session_scope
 from bjk_server.main import create_app
 from bjk_server.security import create_access_token
 from bjk_server.seed.demo import COMPANY_CODE, USERS, demo_id, seed_demo
@@ -152,6 +152,7 @@ def build_client(db: DemoDB) -> TestClient:
 
     app.dependency_overrides[get_db] = app_db
     app.dependency_overrides[get_admin_db] = admin_db
+    app.dependency_overrides[get_session_scope] = lambda: app_sessions.begin
     return TestClient(app)
 
 

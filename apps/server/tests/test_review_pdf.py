@@ -49,6 +49,24 @@ def test_approved_review_pdf_is_stable(client, fresh):  # noqa: F811
     assert again.content == first.content
 
 
+def test_pdf_bytes_do_not_depend_on_render_time(client, fresh, monkeypatch):  # noqa: F811
+    """harfbuzz-subset이 없으면(CI, slim 이미지) fontTools가 글꼴을 줄이며 현재 시각을 넣는다."""
+    import itertools
+    from types import SimpleNamespace
+
+    from fontTools.misc import timeTools
+    from weasyprint.pdf import fonts
+
+    monkeypatch.setattr(fonts, "harfbuzz_subset", None)
+    ticks = itertools.count(1_800_000_000, 60)
+    monkeypatch.setattr(timeTools, "time", SimpleNamespace(time=lambda: next(ticks)))
+    review_id = _approved(fresh)
+    first = client.get(_url(review_id), headers=auth_header("manager"))
+    again = client.get(_url(review_id), headers=auth_header("manager"))
+    assert first.status_code == 200, first.text
+    assert again.content == first.content
+
+
 @pytest.mark.parametrize("approve", [False, True])
 def test_not_approved_is_409(client, fresh, approve):  # noqa: F811
     review_id = _create(fresh)

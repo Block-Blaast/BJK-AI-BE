@@ -5,6 +5,7 @@
 """
 
 import io
+import os
 from dataclasses import dataclass
 from datetime import date, datetime
 from html import escape
@@ -177,4 +178,7 @@ svg {{ width: 100%; height: auto; }}
 def render_pdf(html: str) -> bytes:
     from weasyprint import HTML
 
+    # harfbuzz-subset이 없는 환경(CI, slim 이미지)에서는 fontTools가 글꼴을 줄이며 head.modified에
+    # 현재 시각을 넣어 같은 검토도 바이트가 달라진다. 재현 빌드 규약 SOURCE_DATE_EPOCH로 고정한다.
+    os.environ.setdefault("SOURCE_DATE_EPOCH", "0")
     return HTML(string=html).write_pdf()

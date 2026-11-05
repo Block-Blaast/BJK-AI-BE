@@ -5,6 +5,7 @@ AI·server 영역 작업 기록 색인. 작성 규칙은 [docs/ai-work-rules.md]
 | 날짜 | 파일 | 내용 |
 | --- | --- | --- |
 | 2026-11-05 | [2026-11-05-52-review-detail.md](2026-11-05-52-review-detail.md) | 검토 상세 REV-02(#147), #206 저장 구조 기준, worker 본인 요청만 |
+| 2026-11-05 | [2026-11-05-51-order-check.md](2026-11-05-51-order-check.md) | order-check 주문·입고 확인 알림 배치(#226), 812개 통과 |
 | 2026-11-05 | [2026-11-05-50-review-snapshot-orders.md](2026-11-05-50-review-snapshot-orders.md) | 검토 스냅샷에 열린 발주 O·C-03·최근 단가 연결, DB 포함 813개 통과 |
 | 2026-11-05 | [2026-11-05-49-morning-briefing.md](2026-11-05-49-morning-briefing.md) | 아침 브리핑 DSH-01(#182)과 briefing 배치, 검토 만료·브리핑 알림 |
 | 2026-11-05 | [2026-11-05-48-chat-query-incoming.md](2026-11-05-48-chat-query-incoming.md) | 채팅 재고 조회 답변에 입고 예정 추가(#22), 792개 통과 |

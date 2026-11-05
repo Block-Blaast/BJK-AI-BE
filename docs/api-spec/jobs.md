@@ -10,7 +10,7 @@ python -m bjk_server.jobs nightly
 | --- | --- | --- |
 | `nightly` | 매일 03:00 | 외부 지표 위험도 → 부품 근거 지표 → 장부 검증 → 빈 임베딩 채우기 |
 | `missed-scan` | 매일 07:00 | 놓친 발주 초안 생성 → 검토 |
-| `order-check` | 매일 07:00 | 미구현 |
+| `order-check` | 매일 07:00 | 승인 후 24시간 지나도 주문 전인 발주 → 승인자(없으면 관리자·사장님)에게 `order_check` 알림, 주문 후 기본 공급사 LT90(근거 지표, 없으면 공급사 기본 납기, 그것도 없으면 7일)을 넘겨 다 들어오지 않은 발주 → 관리자·사장님에게 `receipt_check` 알림. 발주마다 한 번만. 요약 `{ "order_check": n, "receipt_check": n }` |
 | `briefing` | 매일 07:30 | 결정 대기 검토 만료(요청자 알림) → 브리핑 계산, 확인할 일이 있으면 사장님·관리자 알림(하루 1회) |
 | `weekly-merge` | 월요일 03:30 | 중복 부품 후보 저장, 한쪽이 병합된 열린 후보 종료([merge.md](merge.md)) |
 | `cleanup` | 매일 04:00 | 만료 행 삭제: `rate_limits` 창 종료 1시간 뒤, `pin_attempts` 잠금 해제·마지막 실패 1일 뒤, `idempotency_keys` 7일 뒤 (명세 밖, #185) |

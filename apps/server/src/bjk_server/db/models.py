@@ -556,3 +556,27 @@ class PartSupplierMetrics(Base):
     samples: Mapped[int] = mapped_column(Integer)
     unit_price: Mapped[int] = mapped_column(Integer)
     moq: Mapped[int] = mapped_column(Integer)
+
+
+class LlmCall(Base):
+    """ai 호출 한 번의 비용·장애 기록. 재시도까지 합친 값이다 (bjk_contracts.LlmUsage)."""
+
+    __tablename__ = "llm_calls"
+    __table_args__ = (
+        CheckConstraint(
+            "purpose IN ('chat_parse', 'import_suggest', 'opinion', 'embedding')", name="purpose"
+        ),
+        # 회사별 일일 토큰 합계 (호출 제한, API 명세서 1-5)
+        Index("ix_llm_calls_company_created", "company_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = _id()
+    company_id: Mapped[uuid.UUID] = _company_id()
+    purpose: Mapped[str] = mapped_column(String(16))
+    model: Mapped[str] = mapped_column(String(100))
+    input_tokens: Mapped[int] = mapped_column(Integer)
+    output_tokens: Mapped[int] = mapped_column(Integer)
+    latency_ms: Mapped[int] = mapped_column(Integer)
+    attempts: Mapped[int] = mapped_column(Integer)
+    success: Mapped[bool] = mapped_column(Boolean)
+    created_at: Mapped[datetime] = _created_at()

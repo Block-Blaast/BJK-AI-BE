@@ -2,7 +2,7 @@
 
 - 날짜: 2026-11-05
 - 영역: AI
-- 관련: Issue #109, 브랜치 `chore/ai-integration-doc/#109`(#89 브랜치 위에 쌓음), `2026-11-05-12-ai-status-review.md` 문제 2·5~8
+- 관련: Issue #109, Draft PR #110(→ #89 브랜치), 브랜치 `chore/ai-integration-doc/#109`(#89 브랜치 위에 쌓음), `2026-11-05-12-ai-status-review.md` 문제 2·5~8
 
 ## 목적
 
